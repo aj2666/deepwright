@@ -133,7 +133,7 @@ describe("canonical playbook catalog", () => {
     await expect(loadPlaybooks(context.pluginRoot)).rejects.toThrow(/ENOENT|no such file/);
   });
 
-  it.each(["uncatalogued.md", "FEATURE.MD"])("rejects extra flat markdown file %s", async (name) => {
+  it.each(["uncatalogued.md", "UNCATALOGUED.MD"])("rejects extra flat markdown file %s", async (name) => {
     const context = await fixture();
     await writeFile(join(context.directory, name), "Not catalogued.\n");
     await expect(loadPlaybooks(context.pluginRoot)).rejects.toThrow(/uncatalogued playbook/);
