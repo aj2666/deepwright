@@ -17,6 +17,8 @@ node scripts/score-skill-evals.mjs --help
 
 The self-tests feed synthetic good and bad receipts to the scorer. They establish that its schema, completeness checks, and scoring rules work. They do **not** show that an agent routed correctly, followed a skill, or became faster. The scorer accepts observer-supplied evidence references but does not read or authenticate the referenced artifacts. A passing receipt with fabricated checks remains fabricated.
 
+For artifact-backed runs, use the additive [seal, verify, and compare workflow](ARTIFACTS.md). It binds receipts to actual authorized evidence files and the current suite, rejects path escapes and digest mismatches, and requires matching reported setup for paired comparisons. It does not authenticate the observer's judgments or launch agents. Run both sets of self-tests with `npm run test:evals`.
+
 ## Collect a real comparison
 
 1. Compare the existing and proposed Deepwright revisions in fresh, isolated sessions with the same host version, model, available tools, repository fixtures, and permission boundaries. Record exact revision and model identifiers. Verify which plugin variant is actually installed; exclude unintended global rules/plugins from both sessions. Do not bypass permissions to obtain isolation.

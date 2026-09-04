@@ -34,6 +34,6 @@ and its CLI installation on macOS, but it does not exercise the desktop UI.
 
 ## Discovery release check
 
-Run `skills`, `skill interrogate`, `invoke interrogate`, and `status --json` through the bundled helper, including from a checkout path containing spaces. Confirm the printed Codex prompt token resolves in a fresh CLI session and the corresponding display name resolves in the desktop `@` picker. Confirm a trivial question does not start a broad workflow and a diagnosis-only request does not edit files.
+Run the no-argument start page, `skills review --compact`, `playbooks performance`, `skill interrogate`, `invoke interrogate`, `config show`, `config check`, and `status --json` through the bundled helper, including from a checkout path containing spaces. Confirm a missing config uses defaults and malformed TOML fails without printing its contents. Confirm the printed Codex prompt token resolves in a fresh CLI session and the corresponding display name resolves in the desktop `@` picker. Confirm a trivial question does not start a broad workflow and a diagnosis-only request does not edit files.
 
 The automated suite checks output contracts and source metadata. Actual model selection, macOS desktop interaction, and cross-agent instruction loading require the manual checks above; do not infer them from terminal status.

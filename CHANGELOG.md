@@ -2,6 +2,10 @@
 
 ## 1.1.0 — Unreleased
 
+- Add a compact terminal start page, all-term metadata search, compact results, and playbook browsing derived from the existing router table.
+- Validate optional project TOML with a pinned bundled parser; expose read-only show/check/template commands, default/project provenance, and versioned status without model-availability claims.
+- Share configuration rules across Setup, the router, Swarm, and Architect; preserve inspection-only boundaries and workflow requirements.
+- Add artifact sealing, digest verification, matched-run comparison, regression reporting, and correctness-gated efficiency metrics without launching models.
 - Add read-only terminal skill search, details, invocation guidance, and local status derived from canonical skill metadata.
 - Offer print-only AGENTS.md and CLAUDE.md fallback pointers without installing adapters or duplicating skill logic.
 - Clarify positive and negative router triggers, task-local scope, and explicit worker propagation; retain all 46 skills and the single implicit router.
