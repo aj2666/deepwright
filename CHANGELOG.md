@@ -2,6 +2,8 @@
 
 ## 1.1.0 — Unreleased
 
+- Apply the shared configuration contract to every direct skill consumer; preserve fixed review lenses and remove duplicated configurable defaults.
+- Require both bundled dependency licenses and their NOTICE references during package validation.
 - Add a compact terminal start page, all-term metadata search, compact results, and playbook browsing derived from the existing router table.
 - Validate optional project TOML with a pinned bundled parser; expose read-only show/check/template commands, default/project provenance, and versioned status without model-availability claims.
 - Share configuration rules across Setup, the router, Swarm, and Architect; preserve inspection-only boundaries and workflow requirements.

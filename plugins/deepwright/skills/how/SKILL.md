@@ -14,6 +14,8 @@ Two modes:
 1. **Explain** (default). Explore the codebase and produce a clear explanation
 2. **Critique.** Explain first, then run several independent review passes to identify architectural issues
 
+Before using role or reviewer preferences, read [the shared configuration contract](../deepwright/references/configuration.md). It governs validation, explicit-user/project/default precedence, and host confirmation even when How is invoked directly. Read it only when delegation or critique needs those settings.
+
 ## Explain Mode
 
 ### Step 1. Understand the Question and Assess Complexity
@@ -99,7 +101,7 @@ Run the full explain flow above (Steps 1-4). You must understand the architectur
 
 ### Step 2. Spawn Critics
 
-After the explanation is complete, run the configured number of read-only architectural critics. Use `parallelism.reviewers` from `.codex/deepwright.toml` or default to three, cap concurrency to advertised free capacity, and process the remainder in bounded waves. If collaboration is unavailable, run the lenses sequentially in the parent context and disclose the reduced independence. Inherit the parent model unless the host confirms a configured `roles.review` override.
+After the explanation is complete, choose the number of read-only architectural critics using `parallelism.reviewers` under the shared configuration contract. Cap concurrency to advertised free capacity and process the remainder in bounded waves. If collaboration is unavailable, run the lenses sequentially in the parent context and disclose the reduced independence. Inherit the parent model unless the host confirms a configured `roles.review` override.
 
 Read `references/critic-prompt.md` and `references/critique-rubric.md` before delegating. Embed their relevant content in every critic brief rather than relying on plugin-relative paths. Each critic gets:
 1. The explanation from Step 1 (so they don't re-explore)

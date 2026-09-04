@@ -34,7 +34,7 @@ Write one clear paragraph. Reviewers challenge whether the work achieves the int
 
 ## Step 3, Spawn Reviewers
 
-Use the host's collaboration mechanism when available. Use `parallelism.reviewers` from `.codex/deepwright.toml` when present; otherwise use three. Cap concurrent reviewers to advertised free capacity and process the remainder in bounded waves. Reviewers are read-only and inherit the parent model unless the host confirms a configured `roles.review` override. Never guess a model slug or retry with a different product's model name. If the host cannot delegate, run one careful local review and disclose the reduced independence.
+Read [the shared configuration contract](../deepwright/references/configuration.md) before choosing `parallelism.reviewers` or `roles.review`, including when Interrogate is invoked directly. Follow its validation and explicit-user/project/default precedence. Use the host's collaboration mechanism when available, cap concurrent reviewers to advertised free capacity, and process the remainder in bounded waves. Reviewers are read-only and inherit the parent model unless the host confirms the configured override. Never guess a model slug or retry with a different product's model name. If the host cannot delegate, run one careful local review and disclose the reduced independence.
 
 Read `references/reviewer-prompt.md`, `references/rubric.md`, and `references/code-quality-review.md` before delegating. Embed their relevant contents and the explicit untrusted-evidence/no-write contract directly in every reviewer brief; do not expect workers to resolve plugin-relative paths. Fill the template with:
 1. The stated intent
