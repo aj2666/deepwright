@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +16,8 @@ afterEach(async () => {
 });
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), "deepwright-discovery-"));
+  // macOS can expose its temporary directory through /var -> /private/var.
+  const root = await realpath(await mkdtemp(join(tmpdir(), "deepwright-discovery-")));
   temporaryDirectories.push(root);
   const pluginRoot = join(root, "plugin  $(touch sentinel) ; [space]");
   const cwd = join(root, "project");
@@ -75,6 +76,18 @@ describe("read-only skill discovery", () => {
       expect(JSON.parse(result.stdout).skills.map((skill: { name: string }) => skill.name)).toEqual(["alpha"]);
     }
     expect((await run(["skills", "no matches"], context)).stdout).toBe("No matching skills.\n");
+  });
+
+  it("resolves a symlinked plugin root to canonical paths on every platform", async () => {
+    const context = await fixture();
+    const alias = join(context.root, "plugin alias");
+    await symlink(context.pluginRoot, alias, "dir");
+    const result = await run(["skill", "alpha", "--json"], { ...context, pluginRoot: alias });
+    expect(result.code).toBe(0);
+    const canonical = await realpath(join(context.pluginRoot, "skills", "alpha", "SKILL.md"));
+    expect(JSON.parse(result.stdout).skill.path).toBe(canonical);
+    const status = await run(["status", "--json"], { ...context, pluginRoot: alias });
+    expect(JSON.parse(status.stdout).pluginRoot).toBe(await realpath(context.pluginRoot));
   });
 
   it("shows canonical paths, native CLI invocation, desktop title and policy without printing the body", async () => {
@@ -240,7 +253,8 @@ describe("read-only skill discovery", () => {
     await rename(context.cwd, cwd);
     const updated = { pluginRoot, cwd };
     const unsafe = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u202e]/u;
-    const path = join(pluginRoot, "skills", "alpha", "SKILL.md");
+    const path = await realpath(join(pluginRoot, "skills", "alpha", "SKILL.md"));
+    const canonicalRoot = await realpath(pluginRoot);
     for (const host of ["agents", "claude"]) {
       const result = await run(["invoke", "alpha", "--host", host], updated);
       expect(result.code).toBe(0);
@@ -260,12 +274,12 @@ describe("read-only skill discovery", () => {
     const status = await run(["status"], updated);
     expect(status.stdout).not.toMatch(unsafe);
     expect(JSON.parse(status.stdout.split("\n").find((line) => line.startsWith("Plugin root: "))!
-      .slice("Plugin root: ".length))).toBe(pluginRoot);
+      .slice("Plugin root: ".length))).toBe(canonicalRoot);
     expect(JSON.parse(status.stdout.split("\n").find((line) => line.startsWith("Project config: "))!
       .slice("Project config: missing — ".length))).toBe(join(cwd, ".codex", "deepwright.toml"));
     const json = await run(["status", "--json"], updated);
     expect(json.stdout).not.toMatch(unsafe);
-    expect(JSON.parse(json.stdout).pluginRoot).toBe(pluginRoot);
+    expect(JSON.parse(json.stdout).pluginRoot).toBe(canonicalRoot);
   });
 
   it("resolves installed bundle metadata through a bin symlink with spaces and shell metacharacters", async () => {
