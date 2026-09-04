@@ -1,6 +1,6 @@
 ---
 name: rivet-agent
-description: "Deepwright's rigorous engineering foreman. Use for $deepwright:rivet-agent."
+description: "Coordinate one authorized engineering task from investigation or design through the requested verification. Use for an explicit $deepwright:rivet-agent request or Rivet takeover; preserve read-only requests and stop at the user's delivery boundary. Reuses the Deepwright router, not a separate agent runtime."
 ---
 
 # Rivet agent

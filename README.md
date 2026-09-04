@@ -93,15 +93,46 @@ Deepwright works without configuration. Run `$deepwright:setup-deepwright` to cr
 
 Only use model IDs that the active Codex host confirms are available. Missing role settings inherit the parent model.
 
+## Find and invoke a skill
+
+All 46 skills remain available. These are useful starting points, not a second routing system:
+
+| Need | Existing skill |
+|---|---|
+| Choose a workflow for an engineering task | Deepwright / Rivet |
+| Understand behavior or rationale | How / Why |
+| Design before implementation | Architect |
+| Review a design or diff without applying fixes | Interrogate |
+| Implement through a focused test loop | TDD |
+| Configure optional roles and parallelism | Setup Deepwright |
+
+From this checkout, use the optional helper in your shell:
+
+```bash
+plugins/deepwright/skills/deepwright/scripts/deepwright skills review
+plugins/deepwright/skills/deepwright/scripts/deepwright skill interrogate
+plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
+plugins/deepwright/skills/deepwright/scripts/deepwright status --json
+```
+
+These commands only read files and print results. They do not launch an agent or modify the project. Paste the printed skill token into a **Codex prompt**, not your shell; use the `@` picker in the desktop app. Search reads current skill metadata, not a separately maintained catalog. See the [terminal and adapter guide](docs/TERMINAL.md).
+
+For a host without native plugin discovery, `invoke deepwright --host agents` or `--host claude` prints an opt-in pointer block. Review it before manually merging it into existing repository instructions. No adapters, hooks, MCP server, or global settings are installed.
+
+`status` reports local metadata and whether `.codex/deepwright.toml` exists in the current working directory. It does not parse that file or claim the active Codex session has loaded the plugin, confirmed models, or connected MCP tools. Configuration remains optional and host-interpreted.
+
 ## Verify this checkout
 
 ```bash
 npm run validate
 npm install --prefix plugins/deepwright/skills/deepwright/scripts
 npm run test:tools
+npm run test:evals
 ```
 
 The GitHub Actions matrix runs the static validator, tool tests, and real Codex install smoke on Linux and macOS. The manual desktop checklist is in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
+
+The [skill evaluation corpus](evals/README.md) separates prompts from observer rubrics and supports offline receipt scoring. Passing its scorer tests is not evidence that a model's automatic triggering improved. The [Ponytail comparison](docs/PONYTAIL_REVIEW.md) explains what we adopted and deferred.
 
 ## Repository layout
 
