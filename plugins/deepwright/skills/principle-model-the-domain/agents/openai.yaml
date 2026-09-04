@@ -1,0 +1,6 @@
+interface:
+  display_name: "Model The Domain"
+  short_description: "Encode domain rules in explicit structures and types"
+  default_prompt: "Use $principle-model-the-domain to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

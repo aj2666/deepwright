@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Deepwright</title>
+  <desc id="desc">A forged D inside a copper rivet.</desc>
+  <defs>
+    <linearGradient id="bg" x1="96" y1="64" x2="928" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#13263F"/>
+      <stop offset="1" stop-color="#07111F"/>
+    </linearGradient>
+    <linearGradient id="copper" x1="250" y1="184" x2="796" y2="844" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB15F"/>
+      <stop offset="0.55" stop-color="#FF713D"/>
+      <stop offset="1" stop-color="#D84324"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <path d="M512 126 817 302v352L512 830 207 654V302L512 126Z" fill="none" stroke="url(#copper)" stroke-width="56" stroke-linejoin="round"/>
+  <path d="M350 286h156c151 0 256 92 256 226S657 738 506 738H350V286Zm112 104v244h44c87 0 142-44 142-122s-55-122-142-122h-44Z" fill="#F8FAFC" fill-rule="evenodd"/>
+  <circle cx="512" cy="188" r="20" fill="#FF8A47"/>
+  <circle cx="512" cy="836" r="20" fill="#FF8A47"/>
+  <path d="m512 892-54-54h108l-54 54Z" fill="#FF8A47"/>
+</svg>

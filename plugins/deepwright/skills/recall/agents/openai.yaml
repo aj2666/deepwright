@@ -1,0 +1,6 @@
+interface:
+  display_name: "Recall"
+  short_description: "Rebuild current work context from scoped evidence"
+  default_prompt: "Use $recall to rebuild the current task context from live, scoped evidence."
+policy:
+  allow_implicit_invocation: false

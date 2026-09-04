@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+scripts_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+bundle="$scripts_dir/dist/watch-pr.mjs"
+
+if [ ! -f "$bundle" ]; then
+  echo "deepwright-watch-pr: bundled CLI is missing; run 'npm run build' in $scripts_dir" >&2
+  exit 78
+fi
+
+exec node "$bundle" "$@"

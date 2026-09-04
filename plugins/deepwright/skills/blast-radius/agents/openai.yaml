@@ -1,0 +1,6 @@
+interface:
+  display_name: "Blast Radius"
+  short_description: "Find downstream risks and prove a change is safe"
+  default_prompt: "Use $blast-radius to map the downstream risks and prove this change is safe."
+policy:
+  allow_implicit_invocation: false

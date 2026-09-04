@@ -1,0 +1,6 @@
+interface:
+  display_name: "Arena"
+  short_description: "Compare parallel solutions and synthesize the best"
+  default_prompt: "Use $arena to compare several candidate solutions and synthesize the strongest one."
+policy:
+  allow_implicit_invocation: false

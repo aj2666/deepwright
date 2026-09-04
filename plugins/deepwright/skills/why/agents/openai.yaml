@@ -1,0 +1,6 @@
+interface:
+  display_name: "Why"
+  short_description: "Trace design rationale through authorized evidence"
+  default_prompt: "Use $why to trace why this design exists through authorized evidence."
+policy:
+  allow_implicit_invocation: false

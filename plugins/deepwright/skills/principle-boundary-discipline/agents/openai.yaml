@@ -1,0 +1,6 @@
+interface:
+  display_name: "Boundary Discipline"
+  short_description: "Validate boundaries and trust typed internals"
+  default_prompt: "Use $principle-boundary-discipline to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

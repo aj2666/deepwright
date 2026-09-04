@@ -1,0 +1,7 @@
+interface:
+  display_name: "Deepwright"
+  short_description: "Evidence-first engineering workflows"
+  brand_color: "#FF713D"
+  default_prompt: "Use $deepwright to plan, build, and prove this change."
+policy:
+  allow_implicit_invocation: true

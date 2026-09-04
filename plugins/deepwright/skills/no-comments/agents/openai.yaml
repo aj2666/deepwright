@@ -1,0 +1,6 @@
+interface:
+  display_name: "No Comments"
+  short_description: "Remove narrating comments and stale suppressions"
+  default_prompt: "Use $no-comments to remove narrating comments and stale suppressions from this scoped diff."
+policy:
+  allow_implicit_invocation: false

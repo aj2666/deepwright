@@ -1,0 +1,6 @@
+interface:
+  display_name: "Automate Me"
+  short_description: "Capture working preferences as a reusable mode skill"
+  default_prompt: "Use $automate-me to turn my confirmed working preferences into a reusable mode skill."
+policy:
+  allow_implicit_invocation: false

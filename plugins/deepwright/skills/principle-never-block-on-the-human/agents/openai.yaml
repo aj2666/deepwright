@@ -1,0 +1,6 @@
+interface:
+  display_name: "Never Block On The Human"
+  short_description: "Advance safe work and pause only for real choices"
+  default_prompt: "Use $principle-never-block-on-the-human to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

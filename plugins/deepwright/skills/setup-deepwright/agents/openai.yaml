@@ -1,0 +1,6 @@
+interface:
+  display_name: "Setup Deepwright"
+  short_description: "Configure Deepwright role models and parallelism"
+  default_prompt: "Use $setup-deepwright to create project-local role and parallelism settings."
+policy:
+  allow_implicit_invocation: false

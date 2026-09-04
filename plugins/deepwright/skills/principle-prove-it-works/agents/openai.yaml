@@ -1,0 +1,6 @@
+interface:
+  display_name: "Prove It Works"
+  short_description: "Verify behavior against the real artifact"
+  default_prompt: "Use $principle-prove-it-works to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

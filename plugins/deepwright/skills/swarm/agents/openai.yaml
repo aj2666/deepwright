@@ -1,0 +1,6 @@
+interface:
+  display_name: "Swarm"
+  short_description: "Coordinate parallel workers into one checked result"
+  default_prompt: "Use $swarm to split this task across isolated workers and consolidate verified results."
+policy:
+  allow_implicit_invocation: false

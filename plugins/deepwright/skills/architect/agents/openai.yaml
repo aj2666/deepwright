@@ -1,0 +1,6 @@
+interface:
+  display_name: "Architect"
+  short_description: "Design code structure before implementation"
+  default_prompt: "Use $architect to design the module boundaries and interfaces for this change before implementation."
+policy:
+  allow_implicit_invocation: false

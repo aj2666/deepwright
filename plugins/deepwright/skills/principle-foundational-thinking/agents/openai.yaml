@@ -1,0 +1,6 @@
+interface:
+  display_name: "Foundational Thinking"
+  short_description: "Choose data structures and invariants before logic"
+  default_prompt: "Use $principle-foundational-thinking to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

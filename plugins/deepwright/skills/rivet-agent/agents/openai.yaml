@@ -1,0 +1,7 @@
+interface:
+  display_name: "Rivet"
+  short_description: "Deepwright's rigorous engineering foreman"
+  brand_color: "#FF713D"
+  default_prompt: "Use $rivet-agent to take this task from evidence to proof."
+policy:
+  allow_implicit_invocation: false

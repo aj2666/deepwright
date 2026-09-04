@@ -1,0 +1,7 @@
+*.sh text eol=lf
+*.ts text eol=lf
+*.mjs text eol=lf
+*.md text eol=lf
+*.tsv text eol=lf diff
+*.png binary
+*.jpg binary

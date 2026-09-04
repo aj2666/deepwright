@@ -1,0 +1,6 @@
+interface:
+  display_name: "TypeScript Best Practices"
+  short_description: "Apply disciplined TypeScript design and safety"
+  default_prompt: "Use $typescript-best-practices to improve this TypeScript with strict safety and clear boundaries."
+policy:
+  allow_implicit_invocation: false

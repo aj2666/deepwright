@@ -1,0 +1,47 @@
+#!/bin/sh
+set -eu
+
+json=false
+for argument in "$@"; do
+  if [ "$argument" = "--json" ]; then json=true; fi
+done
+
+if ! command -v node >/dev/null 2>&1; then
+  if [ "$json" = true ]; then
+    printf '%s\n' '{"tool":"deepwright","command":"doctor","ok":false,"checks":[{"id":"node","label":"Node.js","status":"fail","required":true,"detail":"Node.js was not found; install Node.js 20 or newer"}]}'
+  else
+    echo "Deepwright doctor: FAILED" >&2
+    echo "[fail] Node.js was not found; install Node.js 20 or newer" >&2
+  fi
+  exit 1
+fi
+
+node_version=$(node -p 'process.versions.node' 2>/dev/null || echo unknown)
+node_major=${node_version%%.*}
+case "$node_major" in
+  ''|*[!0-9]*) node_major=0 ;;
+esac
+if [ "$node_major" -lt 20 ]; then
+  if [ "$json" = true ]; then
+    printf '%s\n' "{\"tool\":\"deepwright\",\"command\":\"doctor\",\"ok\":false,\"checks\":[{\"id\":\"node\",\"label\":\"Node.js\",\"status\":\"fail\",\"required\":true,\"detail\":\"Node.js $node_version is unsupported; version 20 or newer is required\"}]}"
+  else
+    echo "Deepwright doctor: FAILED" >&2
+    echo "[fail] Node.js $node_version is unsupported; version 20 or newer is required" >&2
+  fi
+  exit 1
+fi
+
+scripts_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+bundle="$scripts_dir/dist/deepwright.mjs"
+
+if [ ! -f "$bundle" ]; then
+  if [ "$json" = true ]; then
+    printf '%s\n' '{"tool":"deepwright","command":"doctor","ok":false,"checks":[{"id":"bundles","label":"CLI bundles","status":"fail","required":true,"detail":"dist/deepwright.mjs is missing"}]}'
+  else
+    echo "Deepwright doctor: FAILED" >&2
+    echo "[fail] dist/deepwright.mjs is missing" >&2
+  fi
+  exit 1
+fi
+
+exec node "$bundle" "$@"

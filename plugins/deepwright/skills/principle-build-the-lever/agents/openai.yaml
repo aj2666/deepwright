@@ -1,0 +1,6 @@
+interface:
+  display_name: "Build The Lever"
+  short_description: "Automate repetitive work with reusable checks"
+  default_prompt: "Use $principle-build-the-lever to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

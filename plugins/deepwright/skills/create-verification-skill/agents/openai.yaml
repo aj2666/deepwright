@@ -1,0 +1,6 @@
+interface:
+  display_name: "Create Verification Skill"
+  short_description: "Build a project-specific real-surface verification skill"
+  default_prompt: "Use $create-verification-skill to build a project-local verification skill for this app."
+policy:
+  allow_implicit_invocation: false

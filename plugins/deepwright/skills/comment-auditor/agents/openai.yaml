@@ -1,0 +1,6 @@
+interface:
+  display_name: "Comment Auditor"
+  short_description: "Audit comments and suppressions without logic changes"
+  default_prompt: "Use $comment-auditor to audit this diff's comments and suppressions without editing code."
+policy:
+  allow_implicit_invocation: false

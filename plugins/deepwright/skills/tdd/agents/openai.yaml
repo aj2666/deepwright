@@ -1,0 +1,6 @@
+interface:
+  display_name: "TDD"
+  short_description: "Drive a change with a focused red-green-refactor loop"
+  default_prompt: "Use $tdd to implement this change with a focused red-green-refactor loop."
+policy:
+  allow_implicit_invocation: false

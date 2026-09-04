@@ -1,0 +1,6 @@
+interface:
+  display_name: "Separate Before Serializing Shared State"
+  short_description: "Separate writers before adding synchronization"
+  default_prompt: "Use $principle-separate-before-serializing-shared-state to apply this principle to the current decision."
+policy:
+  allow_implicit_invocation: false

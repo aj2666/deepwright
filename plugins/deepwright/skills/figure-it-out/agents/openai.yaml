@@ -1,0 +1,6 @@
+interface:
+  display_name: "Figure It Out"
+  short_description: "Design an auditable plan for unusual complex work"
+  default_prompt: "Use $figure-it-out to design an auditable workflow for this unusual cross-cutting task."
+policy:
+  allow_implicit_invocation: false

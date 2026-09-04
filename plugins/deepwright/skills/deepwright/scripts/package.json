@@ -1,0 +1,27 @@
+{
+  "name": "@deepwright/tools",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "deepwright": "deepwright",
+    "deepwright-orch": "orch/orch",
+    "deepwright-watch-pr": "watch-pr/watch-pr"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.14",
+    "commander": "14.0.0",
+    "esbuild": "0.25.9",
+    "typescript": "5.9.2",
+    "vitest": "4.0.17"
+  }
+}

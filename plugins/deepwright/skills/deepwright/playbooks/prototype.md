@@ -1,0 +1,14 @@
+### Prototype
+
+**You own the design decision, not the code. The prototype is a throwaway instrument; the real build follows Feature.** For "prototype", "mock it up", "sketch this", "try this layout", or exploring a UI, interaction, or layout before committing. Also for settling an empirical fork (which behavior, which timing, which approach) by observing it run, when you would otherwise ask the human a question a quick sketch could answer for you.
+
+The one playbook where the Laziness Protocol's "smallest change" and the verification bar invert. Speed over polish, code quality does not matter, no planning. The rigor is in picking the right design cheaply. Be bold: propose variations the user didn't ask for, throw an approach away and try another.
+
+1. Scope the decision the prototype exists to make: which layout, which interaction, which density, or for an empirical fork which behavior, timing, or approach. No decision means no prototype; route to Feature.
+2. Gather references when the design space is open and network access is authorized and available. Summarize prior art, themes, palettes, and layouts, then let the user pick a direction before building when the choice is subjective. Skip when the direction is set.
+3. Build the throwaway artifact in an isolated scratch directory, separate from production source. Use dependencies already available in the project or host; do not add remote CDN dependencies or install packages merely for a prototype without approval. For a behavioral or timing decision, write the smallest script that exercises the question. No production framework, tests, or abstractions unless the decision specifically needs them.
+4. When comparing alternatives, build them behind one switcher (buttons or a keypress), each variant labeled so the user can name it. This is `$principle-exhaust-the-design-space` made cheap.
+5. Verify on the matching surface with the host's available browser, terminal, simulator, or application-control capability. For a visual decision, capture each variant and drive the interaction; for a behavioral or timing decision, log the timing, print the output, or watch the render. If the host cannot reach the surface, label the evidence incomplete instead of claiming verification.
+6. Present alternatives, tradeoffs, and a recommendation. The output is the decision plus the throwaway artifact, not shippable code. Route the chosen direction back through `$deepwright` for Feature, or invoke `$architect` first when the production shape is still open.
+
+**Reply:** the variants explored, the evidence (screenshots for a visual decision, the observed output or timing for a behavioral one), tradeoffs, your recommendation, and the scratch path. Say plainly that the prototype is throwaway.
