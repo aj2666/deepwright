@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Deepwright",
     "shortDescription": "Evidence-first engineering workflows for Codex.",
-    "longDescription": "Rivet routes complex engineering work through investigation, design, safe parallelism, review, and proof on the real artifact.",
+    "longDescription": "Meet the Investigator Owl: sharp, skeptical, and curious. Deepwright routes engineering work through investigation, design, review, and proof on the real artifact.",
     "developerName": "aj2666",
     "category": "Developer Tools",
     "capabilities": [
@@ -33,7 +33,7 @@
       "Ask Rivet to investigate this bug and prove the fix.",
       "Use Deepwright's adversarial review workflow on this change."
     ],
-    "brandColor": "#FF713D",
+    "brandColor": "#000000",
     "composerIcon": "./assets/icon.png",
     "logo": "./assets/logo.png",
     "logoDark": "./assets/logo-dark.png"

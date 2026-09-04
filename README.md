@@ -1,12 +1,17 @@
 <p align="center">
-  <img src="plugins/deepwright/assets/logo.png" alt="Deepwright logo" width="180">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="plugins/deepwright/assets/logo-dark.png">
+    <img src="plugins/deepwright/assets/logo.png" alt="Deepwright's Investigator Owl — sharp, skeptical, and curious" width="220">
+  </picture>
 </p>
 
 # Deepwright
 
 **Go deep. Ship sound.**
 
-Deepwright is an evidence-first engineering plugin for Codex. Rivet, its workshop foreman, routes complex work through focused playbooks for investigation, design, implementation, review, and proof on the real artifact.
+Meet **the Investigator Owl** — sharp, skeptical, and curious. Deepwright's black-and-white mascot keeps an eye on the evidence.
+
+Deepwright is an evidence-first engineering plugin for Codex. Rivet, its engineering router, routes complex work through focused playbooks for investigation, design, implementation, review, and proof on the real artifact.
 
 This repository is a native Codex package—not a compatibility wrapper. It uses the required [`.codex-plugin/plugin.json`](https://developers.openai.com/plugins/build/plugins) manifest, standard skill folders, and per-skill invocation policy. It has no Cursor agents, slash commands, hooks, or hard-coded model names.
 
