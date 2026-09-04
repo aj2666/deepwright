@@ -45,6 +45,7 @@ const manifestPath = path.join(pluginRoot, ".codex-plugin", "plugin.json");
 const marketplacePath = path.join(repoRoot, ".agents", "plugins", "marketplace.json");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
+const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
 
 for (const required of [
   path.join(pluginRoot, "LICENSE"),
@@ -87,9 +88,13 @@ const prompts = Array.isArray(manifest.interface?.defaultPrompt)
 if (prompts.length > 3 || prompts.some((value) => value.length > 128)) {
   fail("defaultPrompt must contain at most three entries of 128 characters or fewer");
 }
-if (!prompts.some((value) => value.includes("$deepwright"))) {
-  fail("one default prompt must invoke $deepwright");
+if (!prompts.some((value) => /\b(?:Deepwright|Rivet)\b/.test(value))) {
+  fail("one default prompt must name Deepwright or Rivet");
 }
+if (prompts.some((value) => /\$deepwright(?::[a-z0-9-]+)?/i.test(value))) {
+  fail("plugin defaultPrompt entries must be surface-neutral; keep CLI skill syntax in the CLI docs");
+}
+if (rootPackage.version !== manifest.version) fail("root and plugin versions must match");
 
 if (marketplace.name !== "deepwright") fail("marketplace name must be deepwright");
 const entry = marketplace.plugins?.find((plugin) => plugin.name === "deepwright");
@@ -99,6 +104,9 @@ if (entry?.source?.source !== "local" || entry?.source?.path !== "./plugins/deep
 }
 if (entry?.policy?.installation !== "AVAILABLE" || entry?.policy?.authentication !== "ON_INSTALL") {
   fail("marketplace policy must be AVAILABLE / ON_INSTALL");
+}
+if (entry?.category !== manifest.interface?.category) {
+  fail("marketplace and manifest categories must match");
 }
 
 const skillDirs = (await readdir(skillsRoot, { withFileTypes: true }))
@@ -150,6 +158,16 @@ for (const directory of skillDirs) {
 
 const releaseFiles = await filesUnder(pluginRoot);
 const textExtensions = new Set([".json", ".md", ".mjs", ".js", ".ts", ".sh", ".yaml", ".yml", ".toml", ".txt", ""]);
+const bundledSkillNames = new Set(skillDirs);
+const bareSkillReference = /\$([a-z0-9]+(?:-[a-z0-9]+)*)(?![a-z0-9-]|:)/g;
+function validateSkillReferences(source, file) {
+  if (file.endsWith(path.join("agents", "openai.yaml"))) return;
+  for (const match of source.matchAll(bareSkillReference)) {
+    if (bundledSkillNames.has(match[1])) {
+      fail(`${path.relative(repoRoot, file)} contains unqualified bundled skill $${match[1]}`);
+    }
+  }
+}
 const legacyAllowed = new Set([
   path.join(pluginRoot, "LICENSE"),
   path.join(pluginRoot, "NOTICE.md")
@@ -173,6 +191,7 @@ const forbidden = [
 for (const file of releaseFiles) {
   if (!textExtensions.has(path.extname(file))) continue;
   const source = await readFile(file, "utf8");
+  validateSkillReferences(source, file);
   for (const [pattern, label] of forbidden) {
     pattern.lastIndex = 0;
     if (pattern.test(source)) fail(`${path.relative(repoRoot, file)} contains ${label}`);
@@ -180,6 +199,10 @@ for (const file of releaseFiles) {
   if (!legacyAllowed.has(file) && /\b(?:pstack|poteto)\b/i.test(source)) {
     fail(`${path.relative(repoRoot, file)} contains legacy branding`);
   }
+}
+
+for (const file of [path.join(repoRoot, "MIGRATION.md")]) {
+  validateSkillReferences(await readFile(file, "utf8"), file);
 }
 
 for (const file of releaseFiles.filter((file) => file.endsWith(".md"))) {

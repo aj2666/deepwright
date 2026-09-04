@@ -1,6 +1,6 @@
 ---
 name: principle-laziness-protocol
-description: "Prefer deletion and the smallest sufficient change. Use for $principle-laziness-protocol."
+description: "Prefer deletion and the smallest sufficient change. Use for $deepwright:principle-laziness-protocol."
 ---
 
 # Laziness Protocol

@@ -1,6 +1,6 @@
 ---
 name: principle-build-the-lever
-description: "Automate repetitive work with reusable checks. Use for $principle-build-the-lever."
+description: "Automate repetitive work with reusable checks. Use for $deepwright:principle-build-the-lever."
 ---
 # Build the Lever
 
@@ -17,6 +17,6 @@ When repeated or error-prone work earns it, build the smallest tool that does or
 - For an analysis-only request, use an existing command or an ephemeral scratch script and return the evidence. Do not add repository files merely to satisfy this principle.
 - Commit a useful lever only when commits are authorized and the artifact belongs in the repository. Otherwise keep it in the task's scratch evidence or propose it.
 
-**Balance:** A one-off can earn a lever when it is the cheapest reliable proof, but not when building it costs more than the task. Apply [`$principle-laziness-protocol`](../principle-laziness-protocol/SKILL.md): build the smallest script that does or proves the job, never a framework.
+**Balance:** A one-off can earn a lever when it is the cheapest reliable proof, but not when building it costs more than the task. Apply [`$deepwright:principle-laziness-protocol`](../principle-laziness-protocol/SKILL.md): build the smallest script that does or proves the job, never a framework.
 
-Distinct from [`$principle-encode-lessons-in-structure`](../principle-encode-lessons-in-structure/SKILL.md), which makes a recurring instruction a durable guardrail. This is throughput and reviewability on the work in front of you. For verification, use [`$principle-prove-it-works`](../principle-prove-it-works/SKILL.md).
+Distinct from [`$deepwright:principle-encode-lessons-in-structure`](../principle-encode-lessons-in-structure/SKILL.md), which makes a recurring instruction a durable guardrail. This is throughput and reviewability on the work in front of you. For verification, use [`$deepwright:principle-prove-it-works`](../principle-prove-it-works/SKILL.md).

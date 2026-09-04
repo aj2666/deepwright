@@ -1,6 +1,6 @@
 ---
 name: principle-encode-lessons-in-structure
-description: "Turn recurring corrections into structural checks. Use for $principle-encode-lessons-in-structure."
+description: "Turn recurring corrections into structural checks. Use for $deepwright:principle-encode-lessons-in-structure."
 ---
 
 # Encode Lessons in Structure

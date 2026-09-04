@@ -3,7 +3,6 @@ import type { Dirent } from "node:fs";
 import {
   access,
   mkdir,
-  open,
   readFile,
   readdir,
   rename,
@@ -16,6 +15,7 @@ import { basename, dirname, join, resolve } from "node:path";
 const UNIT_HEADER = "id\ttrack\tstate\tbranch\tpr\tsha\tbrief";
 const LEDGER_HEADER = "pr\tsha\tverdict\tevidence\tverifier\tts";
 const LOCK_FILE = ".orch.lock";
+const LOCK_CLAIM = /^([1-9]\d*)-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.claim$/;
 
 export type Verdict =
   | "live-ui-verified"
@@ -339,62 +339,100 @@ function holderIsDead(holder: string): boolean {
 async function acquireLock(
   store: string,
   options: OpenStoreOptions
-): Promise<() => Promise<void>> {
-  const path = join(store, LOCK_FILE);
+): Promise<{
+  readonly assertOwned: () => Promise<void>;
+  readonly release: () => Promise<void>;
+}> {
+  const directory = join(store, LOCK_FILE);
   const pid = String(process.pid);
-  const create = async (): Promise<void> => {
-    const handle = await open(path, "wx");
-    await handle.writeFile(`${pid}\n`);
-    await handle.close();
+  try {
+    await mkdir(directory, { recursive: true });
+  } catch (error) {
+    if (errorCode(error) === "EEXIST") {
+      throw new UserError(
+        `${LOCK_FILE} must be a directory; close older orch processes and remove the legacy lock file`
+      );
+    }
+    throw error;
+  }
+
+  const claimName = `${pid}-${randomUUID()}.claim`;
+  const claimPath = join(directory, claimName);
+  try {
+    await writeFile(claimPath, `${pid}\n`, { flag: "wx" });
+  } catch (error) {
+    try {
+      await unlink(claimPath);
+    } catch (cleanupError) {
+      if (errorCode(cleanupError) !== "ENOENT") throw cleanupError;
+    }
+    throw error;
+  }
+
+  const claims = async (): Promise<readonly {
+    readonly name: string;
+    readonly path: string;
+    readonly holder: string;
+  }[]> => {
+    const entries = await readdir(directory, { withFileTypes: true });
+    return entries
+      .map((entry) => ({
+        name: entry.name,
+        path: join(directory, entry.name),
+        holder: LOCK_CLAIM.exec(entry.name)?.[1] ?? "unknown",
+      }))
+      .sort((left, right) => left.name.localeCompare(right.name));
   };
 
-  const takeOver = async (): Promise<void> => {
-    await unlink(path);
+  const remove = async (path: string): Promise<void> => {
     try {
-      await create();
-    } catch (retryError) {
-      if (errorCode(retryError) === "EEXIST") {
-        const retryHolder =
-          (await readFile(path, "utf8")).trim() || "unknown";
-        throw new UserError(`store lock held by pid ${retryHolder}`);
-      }
-      throw retryError;
+      await unlink(path);
+    } catch (error) {
+      if (errorCode(error) !== "ENOENT") throw error;
     }
   };
 
   try {
-    await create();
+    for (const claim of await claims()) {
+      if (claim.name === claimName) continue;
+      if (holderIsDead(claim.holder)) {
+        options.onStaleLock?.(claim.holder);
+        await remove(claim.path);
+      } else if (options.force) {
+        options.onLockStolen?.(claim.holder);
+        await remove(claim.path);
+      } else {
+        throw new UserError(`store lock held by pid ${claim.holder}`);
+      }
+    }
+
+    // A contender always owns a unique path. Re-listing after cleanup makes
+    // simultaneous stale-lock recovery fail safely: at most one claimant can
+    // observe itself as the only remaining owner. A later normal claimant sees
+    // this claim and refuses to enter; it cannot replace or unlink it.
+    const remaining = await claims();
+    const ownsClaim = remaining.some((claim) => claim.name === claimName);
+    const competitor = remaining.find((claim) => claim.name !== claimName);
+    if (!ownsClaim) {
+      throw new UserError("store lock acquisition lost a concurrent race; retry");
+    }
+    if (competitor !== undefined) {
+      throw new UserError(`store lock held by pid ${competitor.holder}`);
+    }
   } catch (error) {
-    if (errorCode(error) !== "EEXIST") {
-      throw error;
-    }
-    let holder = "unknown";
-    try {
-      holder = (await readFile(path, "utf8")).trim() || "unknown";
-    } catch {
-      holder = "unknown";
-    }
-    if (holderIsDead(holder)) {
-      options.onStaleLock?.(holder);
-      await takeOver();
-    } else if (options.force) {
-      options.onLockStolen?.(holder);
-      await takeOver();
-    } else {
-      throw new UserError(`store lock held by pid ${holder}`);
-    }
+    await remove(claimPath);
+    throw error;
   }
 
-  return async (): Promise<void> => {
-    try {
-      if ((await readFile(path, "utf8")).trim() === pid) {
-        await unlink(path);
+  return {
+    assertOwned: async (): Promise<void> => {
+      if (!(await claims()).some((claim) => claim.name === claimName)) {
+        throw new UserError("store lock ownership was lost; retry the operation");
       }
-    } catch (error) {
-      if (errorCode(error) !== "ENOENT") {
-        throw error;
-      }
-    }
+    },
+    release: async (): Promise<void> => {
+      await remove(claimPath);
+    },
   };
 }
 
@@ -844,24 +882,30 @@ export function openStore(
   options: OpenStoreOptions = {}
 ): Store {
   const store = resolve(directory);
+  let closing = false;
   let closed = false;
-  let releaseLock: (() => Promise<void>) | null = null;
+  let lockLease: Awaited<ReturnType<typeof acquireLock>> | null = null;
   let lockRequest: Promise<void> | null = null;
+  let mutationTail: Promise<void> = Promise.resolve();
+  let closeRequest: Promise<void> | null = null;
 
   const ensureOpen = (): void => {
-    if (closed) {
+    if (closing || closed) {
       throw new UserError("store is closed");
     }
   };
 
   const ensureLock = async (): Promise<void> => {
-    ensureOpen();
-    if (releaseLock !== null) {
+    if (closed) {
+      throw new UserError("store is closed");
+    }
+    if (lockLease !== null) {
+      await lockLease.assertOwned();
       return;
     }
     if (lockRequest === null) {
-      lockRequest = acquireLock(store, options).then((release) => {
-        releaseLock = release;
+      lockRequest = acquireLock(store, options).then((lease) => {
+        lockLease = lease;
       });
     }
     try {
@@ -873,7 +917,6 @@ export function openStore(
   };
 
   const beginWrite = async (): Promise<void> => {
-    ensureOpen();
     if (!(await exists(store))) {
       throw new UserError(
         `store is not initialized at ${store}; run orch init`
@@ -882,60 +925,74 @@ export function openStore(
     await ensureLock();
   };
 
+  const enqueueMutation = <T>(operation: () => Promise<T>): Promise<T> => {
+    // Admission is synchronous, so close() can establish a hard boundary:
+    // mutations accepted before it are drained, and later calls are rejected.
+    ensureOpen();
+    const result = mutationTail.then(operation);
+    mutationTail = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
+  };
+
   return {
     units: {
-      add: async (params) => {
-        await beginWrite();
-        const row: Unit = {
-          id: requiredCell(params.id, "unit id"),
-          track: requiredCell(params.track, "track"),
-          state: "pending",
-          branch: "",
-          pr: "",
-          sha: "",
-          brief:
-            params.brief === undefined
-              ? ""
-              : requiredCell(params.brief, "brief"),
-        };
-        const rows = [...(await readUnits(store))];
-        if (rows.some((unit) => unit.id === row.id)) {
-          throw new UserError(`unit ${row.id} already exists`);
-        }
-        rows.push(row);
-        await saveUnits(store, rows);
-        return row;
-      },
-      set: async (params) => {
-        await beginWrite();
-        const id = requiredCell(params.id, "unit id");
-        const state = requiredCell(params.state, "state");
-        const rows = [...(await readUnits(store))];
-        const index = rows.findIndex((unit) => unit.id === id);
-        const old = rows[index];
-        if (index < 0 || old === undefined) {
-          throw new NotFoundError(`unit ${id} not found`);
-        }
-        const row: Unit = {
-          ...old,
-          state,
-          branch:
-            params.branch === undefined
-              ? old.branch
-              : requiredCell(params.branch, "branch"),
-          pr:
-            params.pr === undefined
-              ? old.pr
-              : String(positiveInteger(params.pr, "PR")),
-          sha:
-            params.sha === undefined
-              ? old.sha
-              : requiredCell(params.sha, "SHA"),
-        };
-        rows[index] = row;
-        await saveUnits(store, rows);
-        return row;
-      },
+      add: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const row: Unit = {
+            id: requiredCell(params.id, "unit id"),
+            track: requiredCell(params.track, "track"),
+            state: "pending",
+            branch: "",
+            pr: "",
+            sha: "",
+            brief:
+              params.brief === undefined
+                ? ""
+                : requiredCell(params.brief, "brief"),
+          };
+          const rows = [...(await readUnits(store))];
+          if (rows.some((unit) => unit.id === row.id)) {
+            throw new UserError(`unit ${row.id} already exists`);
+          }
+          rows.push(row);
+          await saveUnits(store, rows);
+          return row;
+        }),
+      set: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const id = requiredCell(params.id, "unit id");
+          const state = requiredCell(params.state, "state");
+          const rows = [...(await readUnits(store))];
+          const index = rows.findIndex((unit) => unit.id === id);
+          const old = rows[index];
+          if (index < 0 || old === undefined) {
+            throw new NotFoundError(`unit ${id} not found`);
+          }
+          const row: Unit = {
+            ...old,
+            state,
+            branch:
+              params.branch === undefined
+                ? old.branch
+                : requiredCell(params.branch, "branch"),
+            pr:
+              params.pr === undefined
+                ? old.pr
+                : String(positiveInteger(params.pr, "PR")),
+            sha:
+              params.sha === undefined
+                ? old.sha
+                : requiredCell(params.sha, "SHA"),
+          };
+          rows[index] = row;
+          await saveUnits(store, rows);
+          return row;
+        }),
       get: async (id) => {
         ensureOpen();
         const cleanId = requiredCell(id, "unit id");
@@ -971,32 +1028,33 @@ export function openStore(
       },
     },
     ledger: {
-      record: async (params) => {
-        await beginWrite();
-        const verdict = parseVerdict(params.verdict);
-        const row: LedgerEntry = {
-          pr: String(positiveInteger(params.pr, "PR")),
-          sha: requiredCell(params.sha, "SHA"),
-          verdict,
-          evidence: requiredCell(params.evidence, "evidence"),
-          verifier:
-            params.verifier === undefined
-              ? ""
-              : requiredCell(params.verifier, "verifier"),
-          ts: new Date().toISOString(),
-        };
-        const rows = [...(await readLedger(store))];
-        const index = rows.findIndex(
-          (old) => old.pr === row.pr && old.sha === row.sha
-        );
-        if (index < 0) {
-          rows.push(row);
-        } else {
-          rows[index] = row;
-        }
-        await saveLedger(store, rows);
-        return row;
-      },
+      record: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const verdict = parseVerdict(params.verdict);
+          const row: LedgerEntry = {
+            pr: String(positiveInteger(params.pr, "PR")),
+            sha: requiredCell(params.sha, "SHA"),
+            verdict,
+            evidence: requiredCell(params.evidence, "evidence"),
+            verifier:
+              params.verifier === undefined
+                ? ""
+                : requiredCell(params.verifier, "verifier"),
+            ts: new Date().toISOString(),
+          };
+          const rows = [...(await readLedger(store))];
+          const index = rows.findIndex(
+            (old) => old.pr === row.pr && old.sha === row.sha
+          );
+          if (index < 0) {
+            rows.push(row);
+          } else {
+            rows[index] = row;
+          }
+          await saveLedger(store, rows);
+          return row;
+        }),
       check: async (params) => {
         ensureOpen();
         const pr = String(positiveInteger(params.pr, "PR"));
@@ -1020,48 +1078,50 @@ export function openStore(
       },
     },
     inbox: {
-      push: async (params) => {
-        await beginWrite();
-        const pointer: InboxPointer = {
-          ts: new Date().toISOString(),
-          agent: requiredCell(params.agent, "agent"),
-          unit: requiredCell(params.unit, "unit"),
-          status: requiredCell(params.status, "status"),
-          report:
-            params.report === undefined
-              ? ""
-              : requiredCell(params.report, "report"),
-        };
-        const inbox = join(store, "inbox");
-        if (!(await exists(inbox))) {
-          throw new UserError(
-            `store is not initialized at ${store}; run orch init`
+      push: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const pointer: InboxPointer = {
+            ts: new Date().toISOString(),
+            agent: requiredCell(params.agent, "agent"),
+            unit: requiredCell(params.unit, "unit"),
+            status: requiredCell(params.status, "status"),
+            report:
+              params.report === undefined
+                ? ""
+                : requiredCell(params.report, "report"),
+          };
+          const inbox = join(store, "inbox");
+          if (!(await exists(inbox))) {
+            throw new UserError(
+              `store is not initialized at ${store}; run orch init`
+            );
+          }
+          const timestamp = pointer.ts.replace(/[:.]/g, "-");
+          const filename = `${timestamp}-${process.pid}-${randomUUID()}.tsv`;
+          const contents = `${pointerCells(pointer).map(cleanCell).join("\t")}\n`;
+          await atomicWrite(join(inbox, filename), contents);
+          return { pointer, filename };
+        }),
+      drain: async () =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const inbox = join(store, "inbox");
+          const rows = await readPointers(inbox);
+          const drained = join(
+            store,
+            `.inbox-drain-${process.pid}-${randomUUID()}`
           );
-        }
-        const timestamp = pointer.ts.replace(/[:.]/g, "-");
-        const filename = `${timestamp}-${process.pid}-${randomUUID()}.tsv`;
-        const contents = `${pointerCells(pointer).map(cleanCell).join("\t")}\n`;
-        await atomicWrite(join(inbox, filename), contents);
-        return { pointer, filename };
-      },
-      drain: async () => {
-        await beginWrite();
-        const inbox = join(store, "inbox");
-        const rows = await readPointers(inbox);
-        const drained = join(
-          store,
-          `.inbox-drain-${process.pid}-${randomUUID()}`
-        );
-        await rename(inbox, drained);
-        try {
-          await mkdir(inbox);
-        } catch (error) {
-          await rename(drained, inbox);
-          throw error;
-        }
-        await rm(drained, { recursive: true, force: true });
-        return rows;
-      },
+          await rename(inbox, drained);
+          try {
+            await mkdir(inbox);
+          } catch (error) {
+            await rename(drained, inbox);
+            throw error;
+          }
+          await rm(drained, { recursive: true, force: true });
+          return rows;
+        }),
       peek: async () => {
         ensureOpen();
         return readPointers(join(store, "inbox"));
@@ -1072,129 +1132,140 @@ export function openStore(
       },
     },
     gates: {
-      park: async (params) => {
-        await beginWrite();
-        const gate: OpenGate = {
-          kind: "open",
-          id: requiredLine(params.id, "gate id"),
-          question: requiredLine(params.question, "question"),
-          options: requiredLine(params.options, "options"),
-          defaultAnswer: requiredLine(
-            params.defaultAnswer,
-            "default"
-          ),
-        };
-        const rows = [...(await readGates(store))];
-        const index = rows.findIndex((old) => old.id === gate.id);
-        if (index < 0) {
-          rows.push(gate);
-        } else {
-          rows[index] = gate;
-        }
-        await atomicWrite(join(store, "gates.md"), renderGates(rows));
-        return gate;
-      },
+      park: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const gate: OpenGate = {
+            kind: "open",
+            id: requiredLine(params.id, "gate id"),
+            question: requiredLine(params.question, "question"),
+            options: requiredLine(params.options, "options"),
+            defaultAnswer: requiredLine(
+              params.defaultAnswer,
+              "default"
+            ),
+          };
+          const rows = [...(await readGates(store))];
+          const index = rows.findIndex((old) => old.id === gate.id);
+          if (index < 0) {
+            rows.push(gate);
+          } else {
+            rows[index] = gate;
+          }
+          await atomicWrite(join(store, "gates.md"), renderGates(rows));
+          return gate;
+        }),
       list: async () => {
         ensureOpen();
         return (await readGates(store)).filter(
           (gate): gate is OpenGate => gate.kind === "open"
         );
       },
-      resolve: async (params) => {
-        await beginWrite();
-        const id = requiredLine(params.id, "gate id");
-        const rows = [...(await readGates(store))];
-        const index = rows.findIndex((gate) => gate.id === id);
-        const old = rows[index];
-        if (index < 0 || old === undefined) {
-          throw new NotFoundError(`gate ${id} not found`);
-        }
-        const gate: ResolvedGate = {
-          kind: "resolved",
-          id: old.id,
-          question: old.question,
-          options: old.options,
-          defaultAnswer: old.defaultAnswer,
-          answer: requiredLine(params.answer, "answer"),
-        };
-        rows[index] = gate;
-        await atomicWrite(join(store, "gates.md"), renderGates(rows));
-        return gate;
-      },
+      resolve: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const id = requiredLine(params.id, "gate id");
+          const rows = [...(await readGates(store))];
+          const index = rows.findIndex((gate) => gate.id === id);
+          const old = rows[index];
+          if (index < 0 || old === undefined) {
+            throw new NotFoundError(`gate ${id} not found`);
+          }
+          const gate: ResolvedGate = {
+            kind: "resolved",
+            id: old.id,
+            question: old.question,
+            options: old.options,
+            defaultAnswer: old.defaultAnswer,
+            answer: requiredLine(params.answer, "answer"),
+          };
+          rows[index] = gate;
+          await atomicWrite(join(store, "gates.md"), renderGates(rows));
+          return gate;
+        }),
     },
     standing: {
       show: async () => {
         ensureOpen();
         return readStanding(store);
       },
-      add: async (params) => {
-        await beginWrite();
-        const rows = [...(await readStanding(store))];
-        const item: StandingLine = {
-          number: rows.length + 1,
-          line: requiredLine(params.line, "standing order"),
-        };
-        rows.push(item);
-        await atomicWrite(
-          join(store, "preferences.md"),
-          `${rows.map((row) => `${row.number}. ${row.line}`).join("\n")}\n`
-        );
-        return item;
-      },
+      add: async (params) =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const rows = [...(await readStanding(store))];
+          const item: StandingLine = {
+            number: rows.length + 1,
+            line: requiredLine(params.line, "standing order"),
+          };
+          rows.push(item);
+          await atomicWrite(
+            join(store, "preferences.md"),
+            `${rows.map((row) => `${row.number}. ${row.line}`).join("\n")}\n`
+          );
+          return item;
+        }),
     },
     status: {
-      render: async () => {
-        await beginWrite();
-        const unitRows = await readUnits(store);
-        const ledgerRows = await readLedger(store);
-        const gateRows = await readGates(store);
-        const currentSummary = summarize(unitRows, ledgerRows, gateRows);
-        const path = join(store, "status.md");
-        const before = (await exists(path))
-          ? previousSummary(await readFile(path, "utf8"))
-          : null;
-        const change = changed(before, currentSummary);
-        await atomicWrite(
-          path,
-          statusMarkdown(unitRows, ledgerRows, gateRows, currentSummary)
-        );
-        return {
-          units: unitRows,
-          ledger: ledgerRows,
-          gates: gateRows,
-          summary: currentSummary,
-          changed: change,
-        };
-      },
+      render: async () =>
+        enqueueMutation(async () => {
+          await beginWrite();
+          const unitRows = await readUnits(store);
+          const ledgerRows = await readLedger(store);
+          const gateRows = await readGates(store);
+          const currentSummary = summarize(unitRows, ledgerRows, gateRows);
+          const path = join(store, "status.md");
+          const before = (await exists(path))
+            ? previousSummary(await readFile(path, "utf8"))
+            : null;
+          const change = changed(before, currentSummary);
+          await atomicWrite(
+            path,
+            statusMarkdown(unitRows, ledgerRows, gateRows, currentSummary)
+          );
+          return {
+            units: unitRows,
+            ledger: ledgerRows,
+            gates: gateRows,
+            summary: currentSummary,
+            changed: change,
+          };
+        }),
     },
-    init: async () => {
-      ensureOpen();
-      await mkdir(store, { recursive: true });
-      await ensureLock();
-      await writeIfMissing(join(store, "units.tsv"), `${UNIT_HEADER}\n`);
-      await writeIfMissing(join(store, "ledger.tsv"), `${LEDGER_HEADER}\n`);
-      await mkdir(join(store, "inbox"), { recursive: true });
-      await writeIfMissing(join(store, "gates.md"), "");
-      await writeIfMissing(join(store, "preferences.md"), "");
-      return { store };
-    },
-    close: async () => {
-      if (closed) {
-        return;
+    init: async () =>
+      enqueueMutation(async () => {
+        await mkdir(store, { recursive: true });
+        await ensureLock();
+        await writeIfMissing(join(store, "units.tsv"), `${UNIT_HEADER}\n`);
+        await writeIfMissing(join(store, "ledger.tsv"), `${LEDGER_HEADER}\n`);
+        await mkdir(join(store, "inbox"), { recursive: true });
+        await writeIfMissing(join(store, "gates.md"), "");
+        await writeIfMissing(join(store, "preferences.md"), "");
+        return { store };
+      }),
+    close: () => {
+      if (closeRequest !== null) {
+        return closeRequest;
       }
-      if (lockRequest !== null) {
-        try {
-          await lockRequest;
-        } catch {
-          // A failed acquisition has no lock to release.
+      closing = true;
+      closeRequest = (async () => {
+        // Every mutation admitted before closing owns a place in this queue.
+        // Drain it before releasing the claim so another Store cannot overlap.
+        await mutationTail;
+        if (lockRequest !== null) {
+          try {
+            await lockRequest;
+          } catch {
+            // A failed acquisition has no lock to release.
+          }
         }
-      }
-      const release = releaseLock;
-      releaseLock = null;
-      closed = true;
-      if (release !== null) {
-        await release();
-      }
+        const lease = lockLease;
+        lockLease = null;
+        closed = true;
+        if (lease !== null) {
+          await lease.release();
+        }
+      })();
+      return closeRequest;
     },
   };
 }

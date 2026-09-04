@@ -3483,20 +3483,25 @@ var {
 import { spawn } from "node:child_process";
 
 // watch-pr/types.ts
+var MAX_GITHUB_PR_NUMBER = 2147483647;
 function nonEmpty(items) {
   return items.length === 0 ? null : [items[0], ...items.slice(1)];
 }
 function parsePrNumber(value, label = "PR number") {
-  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0)
-    throw new Error(`${label} must be a positive integer`);
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0 || value > MAX_GITHUB_PR_NUMBER)
+    throw new Error(
+      `${label} must be a positive 32-bit GitHub GraphQL integer`
+    );
   return value;
 }
 
 // watch-pr/github.ts
-var REVIEW_THREADS_QUERY = "\nquery ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      reviewThreads(first: 100, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        nodes {\n          id\n          isResolved\n          comments(first: 10) {\n            nodes {\n              body\n              createdAt\n              path\n              line\n              author { login }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+var REVIEW_THREADS_QUERY = "\nquery ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      reviewThreads(first: 100, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        nodes {\n          id\n          isResolved\n          comments(first: 1) {\n            nodes {\n              body\n              createdAt\n              path\n              line\n              author { login }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 var PR_COMMIT_STATUS_QUERY = "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 var PR_CHECK_ROLLUP_QUERY = "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 var COMMAND_TIMEOUT_MS = 12e4;
+var COMMAND_OUTPUT_LIMIT_BYTES = 16 * 1024 * 1024;
+var COMMAND_OUTPUT_LIMIT_EXIT = 125;
 var WatcherQueryError = class extends Error {
   failure;
   constructor(failure) {
@@ -3512,35 +3517,68 @@ var ChecksUnavailable = class extends WatcherQueryError {
   }
 };
 var firstLine = (value) => value.trim().split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
-function run(argv, timeoutMs = COMMAND_TIMEOUT_MS) {
+function run(argv, timeoutMs = COMMAND_TIMEOUT_MS, maxOutputBytes = COMMAND_OUTPUT_LIMIT_BYTES, signal) {
+  if (signal?.aborted)
+    return Promise.resolve({
+      code: 124,
+      stdout: "",
+      stderr: `${argv[0]} aborted at the watch deadline`
+    });
   return new Promise((resolve) => {
     const child = spawn(argv[0], argv.slice(1), {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let settled = false;
-    let timedOut = false;
+    let termination = null;
     let timeoutHandle;
     let stdout = "";
     let stderr = "";
+    let capturedBytes = 0;
     const finish = (result) => {
       if (settled) return;
       settled = true;
       if (timeoutHandle !== void 0) clearTimeout(timeoutHandle);
+      signal?.removeEventListener("abort", abortAtDeadline);
       resolve(result);
     };
-    if (timeoutMs > 0) {
+    const terminate = (cause) => {
+      if (settled || termination !== null) return;
+      termination = cause;
+      if (timeoutHandle !== void 0) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = void 0;
+      }
+      child.kill("SIGKILL");
+    };
+    const abortAtDeadline = () => terminate("watch-deadline");
+    signal?.addEventListener("abort", abortAtDeadline, { once: true });
+    if (signal?.aborted) abortAtDeadline();
+    if (timeoutMs > 0 && termination === null) {
       timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGKILL");
+        terminate("command-timeout");
       }, timeoutMs);
       timeoutHandle.unref();
     }
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
+      if (termination !== null) return;
+      const bytes = Buffer.byteLength(chunk);
+      if (capturedBytes + bytes > maxOutputBytes) {
+        terminate("output-limit");
+        return;
+      }
+      capturedBytes += bytes;
       stdout += chunk;
     });
     child.stderr.on("data", (chunk) => {
+      if (termination !== null) return;
+      const bytes = Buffer.byteLength(chunk);
+      if (capturedBytes + bytes > maxOutputBytes) {
+        terminate("output-limit");
+        return;
+      }
+      capturedBytes += bytes;
       stderr += chunk;
     });
     child.on(
@@ -3554,9 +3592,9 @@ function run(argv, timeoutMs = COMMAND_TIMEOUT_MS) {
     child.on(
       "close",
       (code) => finish({
-        code: timedOut ? 124 : code ?? -1,
+        code: termination === "output-limit" ? COMMAND_OUTPUT_LIMIT_EXIT : termination === "watch-deadline" ? 124 : termination === "command-timeout" ? 124 : code ?? -1,
         stdout,
-        stderr: timedOut ? `${stderr}${stderr && !stderr.endsWith("\n") ? "\n" : ""}${argv[0]} timed out after ${timeoutMs}ms` : stderr
+        stderr: termination === "output-limit" ? `${argv[0]} output exceeded ${maxOutputBytes} byte limit` : termination === "watch-deadline" ? `${argv[0]} aborted at the watch deadline` : termination === "command-timeout" ? `${stderr}${stderr && !stderr.endsWith("\n") ? "\n" : ""}${argv[0]} timed out after ${timeoutMs}ms` : stderr
       })
     );
   });
@@ -3572,12 +3610,31 @@ function parseJson(text, label) {
     });
   }
 }
-async function runJson(argv) {
-  const result = await run(argv);
+function commandTimeoutMilliseconds(deadline) {
+  const remaining = deadline?.remainingMilliseconds();
+  return remaining === null || remaining === void 0 ? COMMAND_TIMEOUT_MS : Math.min(COMMAND_TIMEOUT_MS, Math.max(0, Math.ceil(remaining)));
+}
+function runWithDeadline(argv, deadline) {
+  const timeoutMs = commandTimeoutMilliseconds(deadline);
+  if (deadline !== void 0 && timeoutMs === 0)
+    return Promise.resolve({
+      code: 124,
+      stdout: "",
+      stderr: `${argv[0]} aborted at the watch deadline`
+    });
+  return run(
+    argv,
+    timeoutMs,
+    COMMAND_OUTPUT_LIMIT_BYTES,
+    deadline?.signal
+  );
+}
+async function runJson(argv, deadline) {
+  const result = await runWithDeadline(argv, deadline);
   if (result.code !== 0)
     throw new WatcherQueryError({
       kind: "command-exit",
-      retryable: result.code !== 126 && result.code !== 127,
+      retryable: ![4, COMMAND_OUTPUT_LIMIT_EXIT, 126, 127].includes(result.code),
       code: result.code,
       detail: commandFailureDetail(argv, result)
     });
@@ -3602,6 +3659,13 @@ function missing(path, value) {
     detail: value === void 0 ? `missing ${path}` : `invalid ${path}: ${raw(value)}`,
     ...value === void 0 ? {} : { rawValue: raw(value) }
   });
+}
+function apiPrNumber(value, path) {
+  try {
+    return parsePrNumber(value, path);
+  } catch {
+    return missing(path, value);
+  }
 }
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -3692,12 +3756,13 @@ function parsePrUrl(value) {
   try {
     const url = new URL(value);
     const parts = url.pathname.split("/").filter(Boolean);
-    if (url.protocol !== "https:" || url.hostname !== "github.com" || url.port || url.username || url.password || url.search || url.hash || parts.length !== 4 || parts[2] !== "pull")
+    const numberText = parts[3] ?? "";
+    if (url.protocol !== "https:" || url.hostname !== "github.com" || url.port || url.username || url.password || url.search || url.hash || parts.length !== 4 || parts[2] !== "pull" || url.pathname !== `/${parts.join("/")}` || !/^[1-9][0-9]*$/u.test(numberText))
       throw new Error("not a canonical GitHub pull URL");
     return {
       owner: parts[0],
       repo: parts[1],
-      number: parsePrNumber(Number(parts[3]))
+      number: parsePrNumber(Number(numberText), "PR URL number")
     };
   } catch (error) {
     throw new WatcherQueryError({
@@ -3814,6 +3879,7 @@ function passKey(comment) {
   return match?.[1] ?? null;
 }
 var MAX_REVIEW_THREAD_PAGES = 100;
+var MAX_REVIEW_THREAD_BODY_BYTES = 8 * 1024 * 1024;
 function parseReviewThreadPage(value) {
   const connection = record(
     at(value, ["data", "repository", "pullRequest", "reviewThreads"]),
@@ -3859,11 +3925,12 @@ function parseReviewThreadNodes(nodes) {
     automatedReviewPasses: passes
   }));
 }
-async function collectReviewThreads(fetchPage) {
+async function collectReviewThreads(fetchPage, maxBodyBytes = MAX_REVIEW_THREAD_BODY_BYTES) {
   const nodes = [];
   const cursors = /* @__PURE__ */ new Set();
   let after = null;
   let pages = 0;
+  let bodyBytes = 0;
   do {
     if (pages >= MAX_REVIEW_THREAD_PAGES)
       throw new WatcherQueryError({
@@ -3874,6 +3941,25 @@ async function collectReviewThreads(fetchPage) {
       });
     const page = parseReviewThreadPage(await fetchPage(after));
     pages += 1;
+    for (const node of page.nodes) {
+      const thread = record(node, "review thread");
+      const comments = list(
+        at(thread, ["comments", "nodes"]),
+        "review thread.comments.nodes"
+      );
+      if (comments.length === 0) continue;
+      const comment = record(comments[0], "review comment");
+      bodyBytes += Buffer.byteLength(
+        string(comment.body, "review comment.body")
+      );
+      if (bodyBytes > maxBodyBytes)
+        throw new WatcherQueryError({
+          kind: "response-too-large",
+          retryable: false,
+          detail: `review thread bodies exceeded the ${maxBodyBytes}-byte safety limit`,
+          limitBytes: maxBodyBytes
+        });
+    }
     nodes.push(...page.nodes);
     if (page.endCursor !== null && cursors.has(page.endCursor))
       throw new WatcherQueryError({
@@ -3947,8 +4033,13 @@ function parseOpenPullRequests(value) {
     });
   return items.map((item, index) => {
     const object = record(item, `open PRs[${index}]`);
+    if (typeof object.isCrossRepository !== "boolean")
+      missing(
+        `open PRs[${index}].isCrossRepository`,
+        object.isCrossRepository
+      );
     return {
-      number: parsePrNumber(object.number, `open PRs[${index}].number`),
+      number: apiPrNumber(object.number, `open PRs[${index}].number`),
       headRefName: string(
         object.headRefName,
         `open PRs[${index}].headRefName`
@@ -3956,27 +4047,49 @@ function parseOpenPullRequests(value) {
       baseRefName: string(
         object.baseRefName,
         `open PRs[${index}].baseRefName`
-      )
+      ),
+      isCrossRepository: object.isCrossRepository
     };
   });
 }
+function parseCurrentPr(value, requested) {
+  const object = record(value, "current PR");
+  const parsed = parsePrUrl(string(object.url, "current PR.url"));
+  const reported = apiPrNumber(object.number, "current PR.number");
+  if (reported !== parsed.number)
+    missing("current PR.number/url consistency", {
+      number: reported,
+      urlNumber: parsed.number
+    });
+  if (requested !== null && reported !== requested)
+    missing("current PR.number/request consistency", {
+      requested,
+      number: reported
+    });
+  return parsed;
+}
 var GhGitHubReader = class {
-  async originRepo() {
-    const result = await run(["git", "remote", "get-url", "origin"]);
+  async originRepo(deadline) {
+    const result = await runWithDeadline(
+      ["git", "remote", "get-url", "origin"],
+      deadline
+    );
+    if (deadline?.expired())
+      throw new WatcherQueryError({
+        kind: "command-exit",
+        retryable: true,
+        code: 124,
+        detail: "git origin lookup exceeded the watch deadline"
+      });
     return result.code === 0 ? parseRemote(result.stdout) : null;
   }
-  async currentPr(pr) {
+  async currentPr(pr, deadline) {
     const argv = ["gh", "pr", "view"];
     if (pr !== null) argv.push(String(pr));
     argv.push("--json", "number,url");
-    const object = record(await runJson(argv), "current PR");
-    const parsed = parsePrUrl(string(object.url, "current PR.url"));
-    return {
-      ...parsed,
-      number: pr ?? parsePrNumber(object.number, "current PR.number")
-    };
+    return parseCurrentPr(await runJson(argv, deadline), pr);
   }
-  async pullRequest(context) {
+  async pullRequest(context, deadline) {
     return parsePullRequest(
       await runJson([
         "gh",
@@ -3987,11 +4100,11 @@ var GhGitHubReader = class {
         `${context.owner}/${context.repo}`,
         "--json",
         "mergeable,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,state,mergedAt,isDraft"
-      ]),
+      ], deadline),
       context
     );
   }
-  async openPullRequests(repository) {
+  async openPullRequests(repository, deadline) {
     const value = await runJson([
       "gh",
       "pr",
@@ -4003,21 +4116,24 @@ var GhGitHubReader = class {
       "--limit",
       String(OPEN_PULL_REQUEST_LIMIT),
       "--json",
-      "number,headRefName,baseRefName"
-    ]);
+      "number,headRefName,baseRefName,isCrossRepository"
+    ], deadline);
     return parseOpenPullRequests(value);
   }
-  async checksFastPath(context) {
-    const result = await run([
-      "gh",
-      "pr",
-      "checks",
-      String(context.number),
-      "--repo",
-      `${context.owner}/${context.repo}`,
-      "--json",
-      "name,state,description,link,workflow,bucket"
-    ]);
+  async checksFastPath(context, deadline) {
+    const result = await runWithDeadline(
+      [
+        "gh",
+        "pr",
+        "checks",
+        String(context.number),
+        "--repo",
+        `${context.owner}/${context.repo}`,
+        "--json",
+        "name,state,description,link,workflow,bucket"
+      ],
+      deadline
+    );
     if ([0, 1, 8].includes(result.code) && result.stdout.trim()) {
       try {
         const value = parseJson(result.stdout, "gh pr checks");
@@ -4029,10 +4145,10 @@ var GhGitHubReader = class {
     }
     return { kind: "unusable", exitCode: result.code, stderr: result.stderr };
   }
-  async checkRollupPage(context, after) {
+  async checkRollupPage(context, after, deadline) {
     const argv = graphqlArgs(PR_CHECK_ROLLUP_QUERY, context);
     if (after !== null) argv.push("-f", `after=${after}`);
-    const value = await runJson(argv);
+    const value = await runJson(argv, deadline);
     const commits = list(
       at(value, ["data", "repository", "pullRequest", "commits", "nodes"]),
       "commits.nodes"
@@ -4054,15 +4170,18 @@ var GhGitHubReader = class {
       endCursor: connectionEndCursor(contexts.pageInfo, "contexts.pageInfo")
     };
   }
-  async reviewThreads(context) {
+  async reviewThreads(context, deadline) {
     return collectReviewThreads(async (after) => {
       const argv = graphqlArgs(REVIEW_THREADS_QUERY, context);
       if (after !== null) argv.push("-f", `after=${after}`);
-      return runJson(argv);
+      return runJson(argv, deadline);
     });
   }
-  async commitRollups(context) {
-    const value = await runJson(graphqlArgs(PR_COMMIT_STATUS_QUERY, context));
+  async commitRollups(context, deadline) {
+    const value = await runJson(
+      graphqlArgs(PR_COMMIT_STATUS_QUERY, context),
+      deadline
+    );
     const commits = list(
       at(value, ["data", "repository", "pullRequest", "commits", "nodes"]),
       "commits.nodes"
@@ -4082,8 +4201,8 @@ var GhGitHubReader = class {
   }
 };
 var MAX_CHECK_ROLLUP_PAGES = 100;
-async function resolveChecks(reader, context) {
-  const fast = await reader.checksFastPath(context);
+async function resolveChecks(reader, context, deadline) {
+  const fast = await reader.checksFastPath(context, deadline);
   const direct = fast.kind === "checks" ? nonEmpty(fast.checks) : null;
   if (direct !== null) return { source: "gh-pr-checks", checks: direct };
   const checks = [];
@@ -4098,7 +4217,7 @@ async function resolveChecks(reader, context) {
         detail: `check rollup exceeded ${MAX_CHECK_ROLLUP_PAGES} pages; refusing to classify an incomplete check set`,
         ...after === null ? {} : { rawValue: after }
       });
-    const page = await reader.checkRollupPage(context, after);
+    const page = await reader.checkRollupPage(context, after, deadline);
     pages += 1;
     checks.push(...page.checks);
     if (page.endCursor !== null && cursors.has(page.endCursor))
@@ -4117,23 +4236,43 @@ async function resolveChecks(reader, context) {
   throw new ChecksUnavailable(`could not read PR checks: ${suffix}`);
 }
 async function resolveContext(args) {
+  if (args.owner === null !== (args.repo === null))
+    throw new WatcherQueryError({
+      kind: "invalid-context",
+      retryable: false,
+      detail: "owner and repo must be provided together; refusing to combine an explicit coordinate with an inferred repository",
+      rawValue: JSON.stringify({ owner: args.owner, repo: args.repo })
+    });
   if (args.pr !== null && args.owner !== null && args.repo !== null)
     return { owner: args.owner, repo: args.repo, number: args.pr };
   if (args.pr !== null) {
-    const origin = await args.reader.originRepo();
+    const origin = await args.reader.originRepo(args.deadline);
     if (origin !== null)
       return {
-        owner: args.owner ?? origin.owner,
-        repo: args.repo ?? origin.repo,
+        owner: origin.owner,
+        repo: origin.repo,
         number: args.pr
       };
   }
-  const inferred = await args.reader.currentPr(args.pr);
-  return {
-    owner: args.owner ?? inferred.owner,
-    repo: args.repo ?? inferred.repo,
-    number: args.pr ?? inferred.number
-  };
+  const inferred = await args.reader.currentPr(args.pr, args.deadline);
+  if (args.pr !== null && inferred.number !== args.pr)
+    throw new WatcherQueryError({
+      kind: "invalid-context",
+      retryable: false,
+      detail: `inferred PR #${inferred.number} does not match requested PR #${args.pr}`,
+      rawValue: JSON.stringify({ requested: args.pr, inferred })
+    });
+  if (args.owner !== null && args.repo !== null && (args.owner !== inferred.owner || args.repo !== inferred.repo))
+    throw new WatcherQueryError({
+      kind: "invalid-context",
+      retryable: false,
+      detail: `explicit repository ${args.owner}/${args.repo} does not match inferred PR repository ${inferred.owner}/${inferred.repo}; pass --pr to select the explicit repository safely`,
+      rawValue: JSON.stringify({
+        explicit: { owner: args.owner, repo: args.repo },
+        inferred
+      })
+    });
+  return inferred;
 }
 function orderStack(context, open) {
   const byNumber = /* @__PURE__ */ new Map();
@@ -4146,15 +4285,17 @@ function orderStack(context, open) {
         detail: `open PR list contains duplicate PR number ${pr.number}; refusing ambiguous stack discovery`,
         rawValue: String(pr.number)
       });
-    if (byHead.has(pr.headRefName))
-      throw new WatcherQueryError({
-        kind: "missing-key",
-        retryable: true,
-        detail: `open PR list contains duplicate headRefName ${pr.headRefName}; refusing ambiguous stack discovery`,
-        rawValue: pr.headRefName
-      });
     byNumber.set(pr.number, pr);
-    byHead.set(pr.headRefName, pr);
+    if (!pr.isCrossRepository) {
+      if (byHead.has(pr.headRefName))
+        throw new WatcherQueryError({
+          kind: "missing-key",
+          retryable: true,
+          detail: `open PR list contains duplicate base-repository headRefName ${pr.headRefName}; refusing ambiguous stack discovery`,
+          rawValue: pr.headRefName
+        });
+      byHead.set(pr.headRefName, pr);
+    }
   }
   const visiting = /* @__PURE__ */ new Set();
   const visited = /* @__PURE__ */ new Set();
@@ -4173,7 +4314,7 @@ function orderStack(context, open) {
     visiting.delete(pr.headRefName);
     visited.add(pr.headRefName);
   };
-  for (const pr of open) proveAcyclic(pr);
+  for (const pr of byHead.values()) proveAcyclic(pr);
   const children = /* @__PURE__ */ new Map();
   for (const pr of open)
     children.set(pr.baseRefName, [...children.get(pr.baseRefName) ?? [], pr]);
@@ -4181,6 +4322,7 @@ function orderStack(context, open) {
     values.sort((a, b) => a.number - b.number);
   const start = byNumber.get(context.number);
   if (start === void 0) return [context];
+  if (start.isCrossRepository) return [context];
   const down = [];
   let current = start;
   while (byHead.has(current.baseRefName)) {
@@ -4195,7 +4337,9 @@ function orderStack(context, open) {
   ]);
   const up = [];
   const visit = (parent) => {
+    if (parent.isCrossRepository) return;
     for (const child of children.get(parent.headRefName) ?? []) {
+      if (child.isCrossRepository) continue;
       if (seen.has(child.number)) continue;
       seen.add(child.number);
       up.push(child);
@@ -4210,8 +4354,11 @@ function orderStack(context, open) {
     }))
   ) ?? [context];
 }
-async function discoverStack(reader, context) {
-  return orderStack(context, await reader.openPullRequests(context));
+async function discoverStack(reader, context, deadline) {
+  return orderStack(
+    context,
+    await reader.openPullRequests(context, deadline)
+  );
 }
 
 // watch-pr/policy.ts
@@ -4255,8 +4402,8 @@ function assessGitHubMerge(args) {
     headRollupState: args.headRollupState
   };
 }
-async function mergeAssessment(reader, facts, allowDraft) {
-  const commits = await reader.commitRollups(facts.context);
+async function mergeAssessment(reader, facts, allowDraft, deadline) {
+  const commits = await reader.commitRollups(facts.context, deadline);
   const headCommit = facts.headRefOid === null ? void 0 : commits.find((commit) => commit.oid === facts.headRefOid);
   const headRollupState = headCommit?.state ?? null;
   return {
@@ -4299,16 +4446,28 @@ function assertRequestedContext(facts, context) {
       rawValue: JSON.stringify(facts.context)
     });
 }
+var SNAPSHOT_FACT_KEYS = [
+  "state",
+  "mergedAt",
+  "headRefOid",
+  "headRefName",
+  "baseRefName",
+  "mergeable",
+  "mergeStateStatus",
+  "reviewDecision",
+  "isDraft"
+];
+var changedFactKeys = (before, after) => SNAPSHOT_FACT_KEYS.filter((key) => after[key] !== before[key]);
 async function readSnapshot(args) {
-  const facts = await args.reader.pullRequest(args.context);
+  const facts = await args.reader.pullRequest(args.context, args.deadline);
   assertRequestedContext(facts, args.context);
   assertConsistentLifecycle(facts);
   if (facts.state === "MERGED")
     return { kind: "merged", context: args.context, facts };
   if (facts.state === "CLOSED")
     return { kind: "closed", context: args.context, facts };
-  const threads = await args.reader.reviewThreads(args.context);
-  const checks = await resolveChecks(args.reader, args.context);
+  const threads = await args.reader.reviewThreads(args.context, args.deadline);
+  const checks = await resolveChecks(args.reader, args.context, args.deadline);
   const failed = nonEmpty(
     checks.checks.filter(
       (check) => check.kind === "failed"
@@ -4319,64 +4478,54 @@ async function readSnapshot(args) {
       (check) => check.kind === "pending"
     )
   );
+  const merge = await mergeAssessment(
+    args.reader,
+    facts,
+    args.allowDraft,
+    args.deadline
+  );
+  const exactHeadCanStillBePending = merge.github.exactHead === "observed" && (merge.github.headRollupState === "EXPECTED" || merge.github.headRollupState === "PENDING" || merge.github.headRollupState === "SUCCESS");
+  const base = {
+    source: checks.source,
+    all: checks.checks,
+    hadPreviousPassingCi: args.pendingHistory === "include" ? merge.hadPreviousPassingCi : false
+  };
   let ci;
-  if (failed === null && pending !== null && args.pendingHistory === "omit")
+  if (failed !== null)
     ci = {
-      kind: "ci-pending",
-      source: checks.source,
-      all: checks.checks,
+      ...base,
+      kind: "ci-failing",
+      failed,
+      pending: pending ?? [],
+      github: merge.github
+    };
+  else if (pending !== null && exactHeadCanStillBePending)
+    ci = { ...base, kind: "ci-pending", failed: [], pending };
+  else if (merge.github.kind === "refused")
+    ci = {
+      ...base,
+      kind: "ci-github-rejected",
       failed: [],
-      pending,
-      hadPreviousPassingCi: false
+      pending: pending ?? [],
+      github: merge.github
     };
-  else {
-    const merge = await mergeAssessment(args.reader, facts, args.allowDraft);
-    const base = {
-      source: checks.source,
-      all: checks.checks,
-      hadPreviousPassingCi: merge.hadPreviousPassingCi
+  else if (pending !== null)
+    ci = { ...base, kind: "ci-pending", failed: [], pending };
+  else
+    ci = {
+      ...base,
+      kind: "ci-clean",
+      failed: [],
+      pending: [],
+      github: merge.github
     };
-    if (failed !== null)
-      ci = {
-        ...base,
-        kind: "ci-failing",
-        failed,
-        pending: pending ?? [],
-        github: merge.github
-      };
-    else if (merge.github.kind === "refused")
-      ci = {
-        ...base,
-        kind: "ci-github-rejected",
-        failed: [],
-        pending: pending ?? [],
-        github: merge.github
-      };
-    else if (pending !== null)
-      ci = { ...base, kind: "ci-pending", failed: [], pending };
-    else
-      ci = {
-        ...base,
-        kind: "ci-clean",
-        failed: [],
-        pending: [],
-        github: merge.github
-      };
-  }
-  const confirmedFacts = await args.reader.pullRequest(args.context);
+  const confirmedFacts = await args.reader.pullRequest(
+    args.context,
+    args.deadline
+  );
   assertRequestedContext(confirmedFacts, args.context);
   assertConsistentLifecycle(confirmedFacts);
-  const changed = [
-    "state",
-    "mergedAt",
-    "headRefOid",
-    "headRefName",
-    "baseRefName",
-    "mergeable",
-    "mergeStateStatus",
-    "reviewDecision",
-    "isDraft"
-  ].filter((key) => confirmedFacts[key] !== facts[key]);
+  const changed = changedFactKeys(facts, confirmedFacts);
   if (changed.length > 0)
     throw new WatcherQueryError({
       kind: "missing-key",
@@ -4425,7 +4574,8 @@ function gateReason(row, allowDraft) {
 }
 function gateBlocker(row, allowDraft) {
   const reason = gateReason(row, allowDraft);
-  return reason === null || reason === "draft-pr" && row.kind === "open" && row.ci.kind === "ci-pending" ? null : { kind: "merge-gate", pr: row.context, reason };
+  const pendingTransientGate = row.kind === "open" && row.ci.kind === "ci-pending" && (reason === "draft-pr" || reason === "mergeability-unproven" || reason === "merge-state-unproven");
+  return reason === null || pendingTransientGate ? null : { kind: "merge-gate", pr: row.context, reason };
 }
 function readyContribution(row, allowDraft) {
   if (row.kind === "merged")
@@ -4531,15 +4681,78 @@ function statusQueryVerdict(stamp, failures, failure) {
   });
 }
 var deadlinePassed = (started, options, now) => options.timeout > 0 && now - started >= options.timeout;
+var MAX_TIMER_DELAY_MS = 2147483647;
+function createWatchDeadline(clock, timeoutSeconds) {
+  const controller = new AbortController();
+  if (timeoutSeconds === 0)
+    return {
+      deadline: {
+        signal: controller.signal,
+        remainingSeconds: () => null,
+        remainingMilliseconds: () => null,
+        expired: () => false
+      },
+      dispose() {
+      }
+    };
+  const logicalExpiresAt = clock.now() + timeoutSeconds;
+  const wallExpiresAt = performance.now() + timeoutSeconds * 1e3;
+  let timer;
+  const abort = () => {
+    if (!controller.signal.aborted) controller.abort();
+  };
+  const scheduleWallAbort = () => {
+    const remaining = wallExpiresAt - performance.now();
+    if (remaining <= 0) {
+      abort();
+      return;
+    }
+    timer = setTimeout(
+      scheduleWallAbort,
+      Math.min(MAX_TIMER_DELAY_MS, Math.max(1, Math.ceil(remaining)))
+    );
+  };
+  const remainingSeconds = () => {
+    const remaining = Math.max(0, logicalExpiresAt - clock.now());
+    if (remaining === 0) abort();
+    return remaining;
+  };
+  const remainingMilliseconds = () => {
+    const remaining = Math.max(
+      0,
+      Math.min(
+        remainingSeconds() * 1e3,
+        wallExpiresAt - performance.now()
+      )
+    );
+    if (remaining === 0) abort();
+    return remaining;
+  };
+  const deadline = {
+    signal: controller.signal,
+    remainingSeconds,
+    remainingMilliseconds,
+    expired: () => controller.signal.aborted || remainingMilliseconds() === 0
+  };
+  scheduleWallAbort();
+  return {
+    deadline,
+    dispose() {
+      if (timer !== void 0) clearTimeout(timer);
+      timer = void 0;
+    }
+  };
+}
 async function pollUntilTerminal(args) {
   let failures = 0;
-  const started = args.dependencies.clock.now();
   while (true) {
+    if (args.deadline.expired()) return args.onDeadline();
     let result;
     try {
       result = await args.step();
       failures = 0;
     } catch (error) {
+      if (args.deadline.expired()) return args.onDeadline();
       if (!(error instanceof WatcherQueryError)) throw error;
       failures += 1;
       if (!error.failure.retryable || failures >= args.options.maxQueryErrors)
@@ -4563,29 +4776,32 @@ async function pollUntilTerminal(args) {
         exitCode: 5,
         reason: { kind: "status-unavailable", failure: error.failure }
       });
-      const now = args.dependencies.clock.now();
-      if (deadlinePassed(started, args.options, now)) return timeoutVerdict();
-      const remaining = args.options.timeout > 0 ? Math.max(0, args.options.timeout - (now - started)) : retryInSeconds;
+      const remaining = args.deadline.remainingSeconds() ?? retryInSeconds;
       await args.dependencies.clock.sleep(Math.min(retryInSeconds, remaining));
-      if (deadlinePassed(started, args.options, args.dependencies.clock.now()))
-        return timeoutVerdict();
+      if (args.deadline.expired()) return timeoutVerdict();
       continue;
     }
+    if (args.deadline.expired()) {
+      if ((result.kind === "sleep" || result.kind === "continue") && result.onDeadline !== void 0)
+        return result.onDeadline();
+      return args.onDeadline();
+    }
     if (result.kind === "terminal") return result.verdict;
+    if (result.kind === "continue") continue;
     if (result.kind === "sleep") {
-      const now = args.dependencies.clock.now();
-      if (result.onDeadline !== void 0 && deadlinePassed(started, args.options, now))
-        return result.onDeadline();
-      const remaining = args.options.timeout > 0 ? Math.max(0, args.options.timeout - (now - started)) : result.seconds;
+      const remaining = args.deadline.remainingSeconds() ?? result.seconds;
       await args.dependencies.clock.sleep(Math.min(result.seconds, remaining));
-      if (result.onDeadline !== void 0 && deadlinePassed(started, args.options, args.dependencies.clock.now()))
-        return result.onDeadline();
+      if (args.deadline.expired())
+        return result.onDeadline?.() ?? args.onDeadline();
     }
   }
 }
 async function runSimple(args) {
+  const ownedDeadline = args.deadline === void 0 ? createWatchDeadline(args.dependencies.clock, args.options.timeout) : null;
+  const deadline = args.deadline ?? ownedDeadline?.deadline;
+  if (deadline === void 0) throw new Error("watch deadline is unavailable");
   const stamp = verdictFactory(args.dependencies.clock, args.mode);
-  const step = async () => {
+  const readRows = async () => {
     const rows = [];
     for (const context of args.contexts)
       rows.push(
@@ -4593,11 +4809,16 @@ async function runSimple(args) {
           reader: args.dependencies.reader,
           context,
           pendingHistory: "include",
-          allowDraft: args.options.allowDraft
+          allowDraft: args.options.allowDraft,
+          deadline
         })
       );
     const complete = nonEmpty(rows);
     if (complete === null) throw new Error("watch context cannot be empty");
+    return complete;
+  };
+  const step = async () => {
+    let complete = await readRows();
     if (args.statusOnly)
       return {
         kind: "terminal",
@@ -4618,7 +4839,36 @@ async function runSimple(args) {
           args.mode
         )
       );
-    const decision = args.mode === "single" ? classifyPr(complete[0], args.options.allowDraft) : selectTierMajorStackDecision(complete, args.options.allowDraft);
+    let decision = args.mode === "single" ? classifyPr(complete[0], args.options.allowDraft) : selectTierMajorStackDecision(complete, args.options.allowDraft);
+    if (args.mode === "stack" && decision.kind === "clear") {
+      const revalidated = await readRows();
+      if (JSON.stringify(revalidated) !== JSON.stringify(complete))
+        throw new WatcherQueryError({
+          kind: "missing-key",
+          retryable: true,
+          detail: "stack changed during readiness verification; retrying a complete fresh sweep"
+        });
+      complete = revalidated;
+      decision = selectTierMajorStackDecision(
+        complete,
+        args.options.allowDraft
+      );
+      for (const row of complete) {
+        const finalFacts = await args.dependencies.reader.pullRequest(
+          row.context,
+          deadline
+        );
+        assertRequestedContext(finalFacts, row.context);
+        assertConsistentLifecycle(finalFacts);
+        const changed = changedFactKeys(row.facts, finalFacts);
+        if (changed.length > 0)
+          throw new WatcherQueryError({
+            kind: "missing-key",
+            retryable: true,
+            detail: `stack PR #${row.context.number} changed during final readiness confirmation (${changed.join(", ")}); retrying a complete fresh sweep`
+          });
+      }
+    }
     if (decision.kind === "blocker")
       return {
         kind: "terminal",
@@ -4669,12 +4919,23 @@ async function runSimple(args) {
       })
     };
   };
-  return pollUntilTerminal({
-    dependencies: args.dependencies,
-    options: args.options,
-    stamp,
-    step
-  });
+  try {
+    return await pollUntilTerminal({
+      dependencies: args.dependencies,
+      options: args.options,
+      stamp,
+      deadline,
+      step,
+      onDeadline: () => stamp({
+        kind: "TIMEOUT",
+        terminal: true,
+        exitCode: 5,
+        reason: { kind: "watch-deadline" }
+      })
+    });
+  } finally {
+    ownedDeadline?.dispose();
+  }
 }
 var createQueueState = (queue, now) => ({
   queue,
@@ -4784,11 +5045,26 @@ function evaluateQueue(state, now, options) {
   };
 }
 async function runQueued(args) {
+  const ownedDeadline = args.deadline === void 0 ? createWatchDeadline(args.dependencies.clock, args.options.timeout) : null;
+  const deadline = args.deadline ?? ownedDeadline?.deadline;
+  if (deadline === void 0) throw new Error("watch deadline is unavailable");
   let state = createQueueState(args.contexts, args.dependencies.clock.now());
   const stamp = verdictFactory(args.dependencies.clock, "queued-stack");
-  args.dependencies.emit(
-    stamp({ kind: "QUEUE", terminal: false, queue: args.contexts })
-  );
+  const queueTimeoutVerdict = () => {
+    const unresolved = state.queue.filter(
+      (context) => state.snapshots.get(context.number)?.kind !== "merged"
+    );
+    return stamp({
+      kind: "TIMEOUT",
+      terminal: true,
+      exitCode: 5,
+      reason: {
+        kind: "queued-stack",
+        frontier: unresolved[0] ?? state.queue[0],
+        unmergedCount: unresolved.length
+      }
+    });
+  };
   const step = async () => {
     state = planQueue(state, args.dependencies.clock.now());
     if (state.work === null) {
@@ -4815,7 +5091,8 @@ async function runQueued(args) {
       reader: args.dependencies.reader,
       context,
       pendingHistory: "omit",
-      allowDraft: args.options.allowDraft
+      allowDraft: args.options.allowDraft,
+      deadline
     });
     const applied = applyQueueSnapshot(
       state,
@@ -4833,7 +5110,8 @@ async function runQueued(args) {
           rows: applied.completedSweepRows
         })
       );
-    if (state.work !== null) return { kind: "continue" };
+    if (state.work !== null)
+      return { kind: "continue", onDeadline: queueTimeoutVerdict };
     const evaluation = evaluateQueue(
       state,
       args.dependencies.clock.now(),
@@ -4867,7 +5145,7 @@ async function runQueued(args) {
             remaining: evaluation.remaining
           })
         );
-        return { kind: "continue" };
+        return { kind: "continue", onDeadline: queueTimeoutVerdict };
       case "timeout":
         return {
           kind: "terminal",
@@ -4912,17 +5190,34 @@ async function runQueued(args) {
       }
     }
   };
-  return pollUntilTerminal({
-    dependencies: args.dependencies,
-    options: args.options,
-    stamp,
-    step
-  });
+  try {
+    args.dependencies.emit(
+      stamp({ kind: "QUEUE", terminal: false, queue: args.contexts })
+    );
+    return await pollUntilTerminal({
+      dependencies: args.dependencies,
+      options: args.options,
+      stamp,
+      deadline,
+      step,
+      onDeadline: queueTimeoutVerdict
+    });
+  } finally {
+    ownedDeadline?.dispose();
+  }
 }
 
 // watch-pr/render.ts
-var renderJson = (verdict) => `${JSON.stringify(verdict)}
+var escapeJsonTerminalControls = (value) => value.replace(
+  /[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+  (character) => `\\u${character.codePointAt(0)?.toString(16).padStart(4, "0")}`
+);
+var renderJson = (verdict) => `${escapeJsonTerminalControls(JSON.stringify(verdict))}
 `;
+var terminalText = (value, limit = 240) => value.replace(
+  /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+  ""
+).replace(/[\t\r\n]+/gu, " ").replace(/ {2,}/gu, " ").trim().slice(0, limit);
 function ciCell(row) {
   if (row.kind !== "open") return "\u2014";
   const was = row.ci.hadPreviousPassingCi ? ", was \u2705" : "";
@@ -4972,13 +5267,13 @@ function renderStatusTable(rows) {
 function threadLine(thread) {
   const comment = thread.firstComment;
   return [
-    thread.id,
-    comment?.path ?? "None",
+    terminalText(thread.id),
+    terminalText(comment?.path ?? "None"),
     comment?.line ?? "None",
-    comment?.authorLogin ?? "None",
+    terminalText(comment?.authorLogin ?? "None"),
     `isAutomatedReview=${thread.isAutomatedReview}`,
     `automatedReviewPasses=${thread.automatedReviewPasses}`,
-    (comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? ""
+    terminalText(comment?.body ?? "", 180)
   ].join(" ");
 }
 function renderBlocker(blocker) {
@@ -5001,7 +5296,7 @@ function renderBlocker(blocker) {
     case "failing-checks": {
       const failed = blocker.ci.kind === "ci-failing" ? blocker.ci.failed : [];
       const details = failed.map(
-        (check) => `${check.name} ${check.reportedState} ${check.description} ${check.link}`
+        (check) => `${terminalText(check.name)} ${terminalText(check.reportedState)} ${terminalText(check.description)} ${terminalText(check.link)}`
       );
       if (blocker.ci.kind === "ci-github-rejected")
         details.push(
@@ -5029,7 +5324,7 @@ function renderBlocker(blocker) {
       return [
         "BLOCKER: status-query",
         `failures=${blocker.failures}`,
-        `detail=${blocker.failure.detail}`,
+        `detail=${terminalText(blocker.failure.detail)}`,
         "action=verify current PR context, GitHub authentication, and API availability, then rearm"
       ].join("\n");
     default: {
@@ -5054,7 +5349,7 @@ function renderPretty(verdict) {
 `;
     case "RETRY":
       return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s
-detail=${verdict.failure.detail}
+detail=${terminalText(verdict.failure.detail)}
 `;
     case "BLOCKER":
       return `${renderBlocker(verdict.blocker)}
@@ -5075,6 +5370,8 @@ isDraft=${verdict.scope.pr.proof.gate.draft === "draft-allowed"}${verdict.scope.
         return "TIMEOUT: checks still pending\n";
       if (verdict.reason.kind === "status-unavailable")
         return "TIMEOUT: GitHub status remained unavailable\n";
+      if (verdict.reason.kind === "watch-deadline")
+        return "TIMEOUT: status collection exceeded the watch deadline\n";
       return `TIMEOUT: queued stack still has ${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged; frontier=#${verdict.reason.frontier.number}
 `;
     default: {
@@ -5108,7 +5405,9 @@ function prNumber(value) {
   try {
     return parsePrNumber(Number(value.replace(/^#/, "")));
   } catch {
-    throw new InvalidArgumentError("must be a positive integer");
+    throw new InvalidArgumentError(
+      `must be an integer from 1 through ${MAX_GITHUB_PR_NUMBER}`
+    );
   }
 }
 function stackPrList(value) {
@@ -5139,7 +5438,7 @@ function parseArgs(argv, io) {
     300
   ).option(
     "--timeout <seconds>",
-    "watch deadline; 0 is an explicit unbounded override",
+    "watch deadline; 0 disables the overall deadline (commands keep a 120s safety cap)",
     nonNegativeNumber,
     DEFAULT_TIMEOUT_SECONDS
   ).option(
@@ -5152,6 +5451,8 @@ function parseArgs(argv, io) {
   const raw2 = program2.opts();
   if (raw2.stackPrs !== void 0 && !raw2.queuedStack)
     program2.error("error: --stack-prs requires --queued-stack");
+  if (raw2.owner === void 0 !== (raw2.repo === void 0))
+    program2.error("error: --owner and --repo must be provided together");
   return {
     owner: raw2.owner ?? null,
     repo: raw2.repo ?? null,
@@ -5191,37 +5492,63 @@ async function main(argv, runtime = realRuntime()) {
     if (!(error instanceof CommanderError)) throw error;
     return error.exitCode === 0 ? 0 : 64;
   }
-  const render = options.pretty ? renderPretty : renderJson;
-  const emit = (verdict2) => runtime.stdout(render(verdict2));
-  let contexts;
+  const deadlineHandle = createWatchDeadline(
+    runtime.clock,
+    options.polling.timeout
+  );
+  const { deadline } = deadlineHandle;
   try {
-    const seed = await resolveContext({
-      reader: runtime.reader,
-      owner: options.owner,
-      repo: options.repo,
-      pr: options.pr ?? options.stackPrs[0] ?? null
+    const render = options.pretty ? renderPretty : renderJson;
+    const emit = (verdict2) => runtime.stdout(render(verdict2));
+    let contexts;
+    try {
+      const seed = await resolveContext({
+        reader: runtime.reader,
+        owner: options.owner,
+        repo: options.repo,
+        pr: options.pr ?? options.stackPrs[0] ?? null,
+        deadline
+      });
+      contexts = nonEmpty(options.stackPrs.map((number) => ({ ...seed, number }))) ?? (options.mode === "single" ? [seed] : await discoverStack(runtime.reader, seed, deadline));
+    } catch (error) {
+      if (deadline.expired()) {
+        const verdict3 = verdictFactory(runtime.clock, options.mode)({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "watch-deadline" }
+        });
+        runtime.stdout(render(verdict3));
+        return verdict3.exitCode;
+      }
+      if (!(error instanceof WatcherQueryError)) throw error;
+      const verdict2 = statusQueryVerdict(
+        verdictFactory(runtime.clock, options.mode),
+        1,
+        error.failure
+      );
+      runtime.stdout(render(verdict2));
+      return verdict2.exitCode;
+    }
+    const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
+    const verdict = options.mode === "queued-stack" && !options.statusOnly ? await runQueued({
+      dependencies,
+      contexts,
+      options: options.polling,
+      deadline
+    }) : await runSimple({
+      dependencies,
+      contexts,
+      mode: options.mode,
+      statusOnly: options.statusOnly,
+      options: options.polling,
+      deadline
     });
-    contexts = nonEmpty(options.stackPrs.map((number) => ({ ...seed, number }))) ?? (options.mode === "single" ? [seed] : await discoverStack(runtime.reader, seed));
-  } catch (error) {
-    if (!(error instanceof WatcherQueryError)) throw error;
-    const verdict2 = statusQueryVerdict(
-      verdictFactory(runtime.clock, options.mode),
-      1,
-      error.failure
-    );
-    runtime.stdout(render(verdict2));
-    return verdict2.exitCode;
+    runtime.stdout(render(verdict));
+    return verdict.exitCode;
+  } finally {
+    deadlineHandle.dispose();
   }
-  const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
-  const verdict = options.mode === "queued-stack" && !options.statusOnly ? await runQueued({ dependencies, contexts, options: options.polling }) : await runSimple({
-    dependencies,
-    contexts,
-    mode: options.mode,
-    statusOnly: options.statusOnly,
-    options: options.polling
-  });
-  runtime.stdout(render(verdict));
-  return verdict.exitCode;
 }
 
 // watch-pr/entry.ts

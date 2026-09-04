@@ -19,8 +19,8 @@ Evals test how a change affects agent behavior before promoting it: a new skill 
 1. **Frame.** State what variant is under test and what behavior counts as success. Write the rubric (3-6 concrete criteria) for the judge only. Hold it back from candidates.
 2. **Set up sanitized environments.** Per-candidate working dir with the variant in place. Plant any context an organic task would have: a project skeleton, the skills the candidate would naturally read.
 3. **Author one organic prompt.** What a user would type. No leakage of what's being measured.
-4. **Run N candidates** per `$arena` Phase B. Use host collaboration tools for parallel, isolated work when available; otherwise run the candidates sequentially in separate sanitized directories. Give each the same prompt and do not require particular models.
-5. **Run one blinded judge** per `$arena` Phase C. Prefer a reviewer that did not author any candidate output. The judge sees outputs by sanitized label and the rubric, never a provider, model, or author identity.
+4. **Run N candidates** per `$deepwright:arena` Phase B. Use host collaboration tools for parallel, isolated work when available; otherwise run the candidates sequentially in separate sanitized directories. Give each the same prompt and do not require particular models.
+5. **Run one blinded judge** per `$deepwright:arena` Phase C. Prefer a reviewer that did not author any candidate output. The judge sees outputs by sanitized label and the rubric, never a provider, model, or author identity.
 6. **Verify from artifacts, not hidden transcripts or self-report.** Grade the files, diffs, test receipts, tool outputs, and other artifacts produced inside the explicitly scoped evaluation directories. Do not search Codex application data, unrelated conversations, or private transcript stores. If interaction traces are essential, collect them as an explicit evaluation artifact with the user's consent.
 7. **Read every candidate output yourself** end to end. Compare to the judge's verdict. Disagreement means a model is biased or the rubric is ambiguous. Synthesize.
 

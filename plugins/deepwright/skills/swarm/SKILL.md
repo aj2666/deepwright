@@ -1,6 +1,6 @@
 ---
 name: swarm
-description: "Coordinate parallel workers into one checked result. Use for $swarm."
+description: "Coordinate parallel workers into one checked result. Use for $deepwright:swarm."
 ---
 
 # Swarm

@@ -3,12 +3,14 @@ import { once } from "node:events";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   mkdtemp,
+  mkdir,
   readFile,
   readdir,
   rm,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -58,6 +60,15 @@ async function initializedStore(): Promise<{
   const store = useStore(directory);
   await store.init();
   return { directory, store };
+}
+
+async function seedLock(directory: string, pid: number): Promise<void> {
+  const lockDirectory = join(directory, ".orch.lock");
+  await mkdir(lockDirectory, { recursive: true });
+  await writeFile(
+    join(lockDirectory, `${pid}-${randomUUID()}.claim`),
+    `${pid}\n`
+  );
 }
 
 function runCli(
@@ -114,7 +125,7 @@ describe("Store", () => {
     ]);
 
     await store.close();
-    expect(await readdir(directory)).not.toContain(".orch.lock");
+    expect(await readdir(join(directory, ".orch.lock"))).toEqual([]);
   });
 
   it("composes unit add, set, get, list, and counts", async () => {
@@ -237,12 +248,13 @@ describe("Store", () => {
   });
 
   it("replaces a stale lock whose holder pid is dead", async () => {
-    const { directory } = await initializedStore();
+    const { directory, store } = await initializedStore();
+    await store.close();
     const exited = spawn("true");
     const exitedPid = exited.pid;
     if (exitedPid === undefined) throw new Error("failed to start test process");
     await once(exited, "close");
-    await writeFile(join(directory, ".orch.lock"), `${exitedPid}\n`);
+    await seedLock(directory, exitedPid);
 
     const stale: string[] = [];
     const recovered = useStore(directory, {
@@ -253,13 +265,11 @@ describe("Store", () => {
     ).toMatchObject({ id: "u1" });
     expect(stale).toEqual([String(exitedPid)]);
     await recovered.close();
-    expect(await readdir(directory)).not.toContain(".orch.lock");
+    expect(await readdir(join(directory, ".orch.lock"))).toEqual([]);
   });
 
-  it("blocks a writer and steals the pid lock only with force", async () => {
+  it("blocks a writer, steals only with force, and releases by ownership", async () => {
     const { directory, store } = await initializedStore();
-    await store.close();
-    await writeFile(join(directory, ".orch.lock"), `${process.pid}\n`);
 
     const blocked = useStore(directory);
     await expect(
@@ -275,8 +285,85 @@ describe("Store", () => {
       await forced.units.add({ id: "u1", track: "build" })
     ).toMatchObject({ id: "u1" });
     expect(stolen).toEqual([String(process.pid)]);
+
+    // Closing the displaced owner must not remove the force claimant's unique
+    // lock. A third writer remains blocked until the actual owner closes.
+    await expect(
+      store.units.add({ id: "displaced", track: "build" })
+    ).rejects.toThrow("store lock ownership was lost");
+    await store.close();
+    const stillBlocked = useStore(directory);
+    await expect(
+      stillBlocked.units.add({ id: "u2", track: "build" })
+    ).rejects.toThrow(`store lock held by pid ${process.pid}`);
+
     await forced.close();
-    expect(await readdir(directory)).not.toContain(".orch.lock");
+    expect(await readdir(join(directory, ".orch.lock"))).toEqual([]);
+  });
+
+  it("never grants two simultaneous stale-lock takeovers", async () => {
+    const { directory, store } = await initializedStore();
+    await store.close();
+    const exited = spawn("true");
+    const exitedPid = exited.pid;
+    if (exitedPid === undefined) throw new Error("failed to start test process");
+    await once(exited, "close");
+    await seedLock(directory, exitedPid);
+
+    const left = useStore(directory);
+    const right = useStore(directory);
+    const results = await Promise.allSettled([
+      left.units.add({ id: "left", track: "build" }),
+      right.units.add({ id: "right", track: "build" }),
+    ]);
+    const fulfilled = results.filter((result) => result.status === "fulfilled");
+    expect(fulfilled.length).toBeLessThanOrEqual(1);
+
+    const rows = await left.units.list();
+    expect(rows).toHaveLength(fulfilled.length);
+  });
+
+  it("serializes concurrent mutations admitted through one Store", async () => {
+    const { store } = await initializedStore();
+    const ids = Array.from({ length: 12 }, (_, index) => `parallel-${index}`);
+
+    const added = await Promise.all(
+      ids.map((id) => store.units.add({ id, track: "build" }))
+    );
+
+    expect(added.map((unit) => unit.id)).toEqual(ids);
+    expect((await store.units.list()).map((unit) => unit.id)).toEqual(ids);
+  });
+
+  it("drains admitted mutations before close releases ownership", async () => {
+    const { directory, store } = await initializedStore();
+    const seeded = Array.from(
+      { length: 20_000 },
+      (_, index) => `seed-${index}\tbuild\tpending\t\t\t\t`
+    );
+    await writeFile(
+      join(directory, "units.tsv"),
+      `id\ttrack\tstate\tbranch\tpr\tsha\tbrief\n${seeded.join("\n")}\n`
+    );
+    const completionOrder: string[] = [];
+
+    const mutation = store.units
+      .add({ id: "before-close", track: "build" })
+      .then(() => completionOrder.push("mutation"));
+    const closing = store.close().then(() => completionOrder.push("close"));
+    await expect(
+      store.units.add({ id: "after-close", track: "build" })
+    ).rejects.toThrow("store is closed");
+    await Promise.all([mutation, closing]);
+
+    expect(completionOrder).toEqual(["mutation", "close"]);
+    const successor = useStore(directory);
+    await successor.units.add({ id: "successor", track: "build" });
+    expect(
+      (await successor.units.list()).filter((unit) =>
+        ["before-close", "successor"].includes(unit.id)
+      )
+    ).toHaveLength(2);
   });
 
   it("parks gates, stores standing orders, and renders status", async () => {

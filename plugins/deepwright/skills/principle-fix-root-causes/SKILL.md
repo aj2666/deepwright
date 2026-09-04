@@ -1,6 +1,6 @@
 ---
 name: principle-fix-root-causes
-description: "Reproduce symptoms and fix their underlying mechanism. Use for $principle-fix-root-causes."
+description: "Reproduce symptoms and fix their underlying mechanism. Use for $deepwright:principle-fix-root-causes."
 ---
 
 # Fix Root Causes

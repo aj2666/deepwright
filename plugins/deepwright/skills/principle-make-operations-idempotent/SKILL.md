@@ -1,6 +1,6 @@
 ---
 name: principle-make-operations-idempotent
-description: "Make retries converge on the same end state. Use for $principle-make-operations-idempotent."
+description: "Make retries converge on the same end state. Use for $deepwright:principle-make-operations-idempotent."
 ---
 
 # Make Operations Idempotent

@@ -1,6 +1,6 @@
 ---
 name: automate-me
-description: "Capture working preferences as a reusable mode skill. Use for $automate-me."
+description: "Capture working preferences as a reusable mode skill. Use for $deepwright:automate-me."
 ---
 
 # Automate me
@@ -48,6 +48,6 @@ Useful sections include response style, autonomy, investigation, delegation, cod
 
 ## 4. Review and land
 
-Apply `$unslop`, show the draft, and incorporate feedback. Run the skill validator supplied by `$skill-creator`. If the repository has a normal review workflow, offer a branch or PR; do not push or open one without authorization.
+Apply `$deepwright:unslop`, show the draft, and incorporate feedback. Run the skill validator supplied by `$skill-creator`. If the repository has a normal review workflow, offer a branch or PR; do not push or open one without authorization.
 
 The result should feel recognizably like the user's working style without exposing private history.

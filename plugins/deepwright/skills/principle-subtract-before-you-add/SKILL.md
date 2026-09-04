@@ -1,6 +1,6 @@
 ---
 name: principle-subtract-before-you-add
-description: "Remove dead weight before adding new structure. Use for $principle-subtract-before-you-add."
+description: "Remove dead weight before adding new structure. Use for $deepwright:principle-subtract-before-you-add."
 ---
 
 # Subtract Before You Add

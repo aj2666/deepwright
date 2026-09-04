@@ -16,7 +16,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            node: 20
+            node: 20.19.0
           - os: macos-14
             node: 24
     runs-on: ${{ matrix.os }}
@@ -51,3 +51,115 @@ jobs:
           codex plugin add deepwright@deepwright --json
           codex plugin list --json > installed.json
           node -e 'const v=require("./installed.json"); const a=Array.isArray(v)?v:v.installed??[]; if(!a.some(x=>x.name==="deepwright"||x.pluginId==="deepwright@deepwright")) process.exit(1)'
+
+  release:
+    name: Release manifest version
+    needs: codex-compatibility
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Publish version release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          version="$(node -e '
+            const fs = require("node:fs");
+            const value = JSON.parse(
+              fs.readFileSync(
+                "plugins/deepwright/.codex-plugin/plugin.json",
+                "utf8"
+              )
+            ).version;
+            if (typeof value !== "string") process.exit(1);
+            process.stdout.write(value);
+          ')"
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Manifest version is not stable semver: $version"
+            exit 1
+          fi
+
+          tag="v${version}"
+          release_error="${RUNNER_TEMP}/release-get.err"
+
+          if release_state="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" \
+            --jq '"\(.draft) \(.prerelease)"' \
+            2>"$release_error")"; then
+            if [[ "$release_state" != "false false" ]]; then
+              echo "::error::${tag} exists, but is draft or prerelease."
+              exit 1
+            fi
+            echo "Published release ${tag} already exists; skipping."
+            exit 0
+          elif ! grep -Fq "(HTTP 404)" "$release_error"; then
+            cat "$release_error" >&2
+            exit 1
+          fi
+
+          notes="${RUNNER_TEMP}/deepwright-${tag}-notes.md"
+          VERSION="$version" NOTES="$notes" node <<'NODE'
+          const fs = require("node:fs");
+          const lines = fs.readFileSync("CHANGELOG.md", "utf8")
+            .replace(/\r\n/g, "\n").split("\n");
+          const prefix = `## ${process.env.VERSION}`;
+          const matches = lines
+            .map((line, index) =>
+              line === prefix || line.startsWith(`${prefix} `) ? index : -1)
+            .filter(index => index >= 0);
+          if (matches.length !== 1) {
+            throw new Error(`Expected exactly one ${prefix} changelog section`);
+          }
+          const start = matches[0] + 1;
+          let end = lines.findIndex((line, index) =>
+            index >= start && line.startsWith("## "));
+          if (end < 0) end = lines.length;
+          const body = lines.slice(start, end).join("\n").trim();
+          if (!body) throw new Error(`${prefix} changelog section is empty`);
+          fs.writeFileSync(process.env.NOTES, `${body}\n`);
+          NODE
+
+          tag_error="${RUNNER_TEMP}/tag-get.err"
+          if tag_object="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" \
+            --jq '.object.type + ":" + .object.sha' \
+            2>"$tag_error")"; then
+            :
+          elif grep -Fq "(HTTP 404)" "$tag_error"; then
+            gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="refs/tags/${tag}" \
+              -f sha="${GITHUB_SHA}" >/dev/null || true
+            tag_object="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" \
+              --jq '.object.type + ":" + .object.sha')"
+          else
+            cat "$tag_error" >&2
+            exit 1
+          fi
+
+          if [[ "$tag_object" != "commit:${GITHUB_SHA}" ]]; then
+            echo "::error::${tag} already targets ${tag_object}, not commit:${GITHUB_SHA}."
+            exit 1
+          fi
+
+          if ! gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Deepwright ${tag}" \
+            --notes-file "$notes"; then
+            release_state="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" \
+              --jq '"\(.draft) \(.prerelease)"')" || exit 1
+            [[ "$release_state" == "false false" ]] || exit 1
+            echo "Published release ${tag} was created concurrently."
+          fi

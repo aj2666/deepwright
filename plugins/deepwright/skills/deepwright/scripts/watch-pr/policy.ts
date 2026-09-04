@@ -60,9 +60,10 @@ export function assessGitHubMerge(args: {
 async function mergeAssessment(
   reader: T.GitHubReader,
   facts: T.PullRequestFacts,
-  allowDraft: boolean
+  allowDraft: boolean,
+  deadline?: T.WatchDeadline
 ) {
-  const commits = await reader.commitRollups(facts.context);
+  const commits = await reader.commitRollups(facts.context, deadline);
   const headCommit =
     facts.headRefOid === null
       ? undefined
@@ -115,21 +116,38 @@ function assertRequestedContext(
       rawValue: JSON.stringify(facts.context),
     });
 }
+const SNAPSHOT_FACT_KEYS = [
+  "state",
+  "mergedAt",
+  "headRefOid",
+  "headRefName",
+  "baseRefName",
+  "mergeable",
+  "mergeStateStatus",
+  "reviewDecision",
+  "isDraft",
+] as const;
+const changedFactKeys = (
+  before: T.PullRequestFacts,
+  after: T.PullRequestFacts
+): readonly (typeof SNAPSHOT_FACT_KEYS)[number][] =>
+  SNAPSHOT_FACT_KEYS.filter((key) => after[key] !== before[key]);
 export async function readSnapshot(args: {
   readonly reader: T.GitHubReader;
   readonly context: T.PrContext;
   readonly pendingHistory: "include" | "omit";
   readonly allowDraft: boolean;
+  readonly deadline?: T.WatchDeadline;
 }): Promise<T.PrSnapshot> {
-  const facts = await args.reader.pullRequest(args.context);
+  const facts = await args.reader.pullRequest(args.context, args.deadline);
   assertRequestedContext(facts, args.context);
   assertConsistentLifecycle(facts);
   if (facts.state === "MERGED")
     return { kind: "merged", context: args.context, facts };
   if (facts.state === "CLOSED")
     return { kind: "closed", context: args.context, facts };
-  const threads = await args.reader.reviewThreads(args.context);
-  const checks = await resolveChecks(args.reader, args.context);
+  const threads = await args.reader.reviewThreads(args.context, args.deadline);
+  const checks = await resolveChecks(args.reader, args.context, args.deadline);
   const failed = nonEmpty(
     checks.checks.filter(
       (check): check is T.FailedCheck => check.kind === "failed"
@@ -140,66 +158,59 @@ export async function readSnapshot(args: {
       (check): check is T.PendingCheck => check.kind === "pending"
     )
   );
+  const merge = await mergeAssessment(
+    args.reader,
+    facts,
+    args.allowDraft,
+    args.deadline
+  );
+  const exactHeadCanStillBePending =
+    merge.github.exactHead === "observed" &&
+    (merge.github.headRollupState === "EXPECTED" ||
+      merge.github.headRollupState === "PENDING" ||
+      merge.github.headRollupState === "SUCCESS");
+  const base = {
+    source: checks.source,
+    all: checks.checks,
+    hadPreviousPassingCi:
+      args.pendingHistory === "include" ? merge.hadPreviousPassingCi : false,
+  };
   let ci: T.CiState;
-  if (failed === null && pending !== null && args.pendingHistory === "omit")
+  if (failed !== null)
     ci = {
-      kind: "ci-pending",
-      source: checks.source,
-      all: checks.checks,
+      ...base,
+      kind: "ci-failing",
+      failed,
+      pending: pending ?? [],
+      github: merge.github,
+    };
+  else if (pending !== null && exactHeadCanStillBePending)
+    ci = { ...base, kind: "ci-pending", failed: [], pending };
+  else if (merge.github.kind === "refused")
+    ci = {
+      ...base,
+      kind: "ci-github-rejected",
       failed: [],
-      pending,
-      hadPreviousPassingCi: false,
+      pending: pending ?? [],
+      github: merge.github,
     };
-  else {
-    const merge = await mergeAssessment(args.reader, facts, args.allowDraft);
-    const base = {
-      source: checks.source,
-      all: checks.checks,
-      hadPreviousPassingCi: merge.hadPreviousPassingCi,
+  else if (pending !== null)
+    ci = { ...base, kind: "ci-pending", failed: [], pending };
+  else
+    ci = {
+      ...base,
+      kind: "ci-clean",
+      failed: [],
+      pending: [],
+      github: merge.github,
     };
-    if (failed !== null)
-      ci = {
-        ...base,
-        kind: "ci-failing",
-        failed,
-        pending: pending ?? [],
-        github: merge.github,
-      };
-    else if (merge.github.kind === "refused")
-      ci = {
-        ...base,
-        kind: "ci-github-rejected",
-        failed: [],
-        pending: pending ?? [],
-        github: merge.github,
-      };
-    else if (pending !== null)
-      ci = { ...base, kind: "ci-pending", failed: [], pending };
-    else
-      ci = {
-        ...base,
-        kind: "ci-clean",
-        failed: [],
-        pending: [],
-        github: merge.github,
-      };
-  }
-  const confirmedFacts = await args.reader.pullRequest(args.context);
+  const confirmedFacts = await args.reader.pullRequest(
+    args.context,
+    args.deadline
+  );
   assertRequestedContext(confirmedFacts, args.context);
   assertConsistentLifecycle(confirmedFacts);
-  const changed = (
-    [
-      "state",
-      "mergedAt",
-      "headRefOid",
-      "headRefName",
-      "baseRefName",
-      "mergeable",
-      "mergeStateStatus",
-      "reviewDecision",
-      "isDraft",
-    ] as const
-  ).filter((key) => confirmedFacts[key] !== facts[key]);
+  const changed = changedFactKeys(facts, confirmedFacts);
   if (changed.length > 0)
     throw new WatcherQueryError({
       kind: "missing-key",
@@ -269,10 +280,14 @@ function gateBlocker(
   allowDraft: boolean
 ): T.MergeBlocker | null {
   const reason = gateReason(row, allowDraft);
+  const pendingTransientGate =
+    row.kind === "open" &&
+    row.ci.kind === "ci-pending" &&
+    (reason === "draft-pr" ||
+      reason === "mergeability-unproven" ||
+      reason === "merge-state-unproven");
   return reason === null ||
-    (reason === "draft-pr" &&
-      row.kind === "open" &&
-      row.ci.kind === "ci-pending")
+    pendingTransientGate
     ? null
     : { kind: "merge-gate", pr: row.context, reason };
 }
@@ -454,6 +469,75 @@ const deadlinePassed = (
   options: T.PollingOptions,
   now: number
 ): boolean => options.timeout > 0 && now - started >= options.timeout;
+export interface WatchDeadlineHandle {
+  readonly deadline: T.WatchDeadline;
+  dispose(): void;
+}
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
+export function createWatchDeadline(
+  clock: Pick<WatchClock, "now">,
+  timeoutSeconds: number
+): WatchDeadlineHandle {
+  const controller = new AbortController();
+  if (timeoutSeconds === 0)
+    return {
+      deadline: {
+        signal: controller.signal,
+        remainingSeconds: () => null,
+        remainingMilliseconds: () => null,
+        expired: () => false,
+      },
+      dispose() {},
+    };
+  const logicalExpiresAt = clock.now() + timeoutSeconds;
+  const wallExpiresAt = performance.now() + timeoutSeconds * 1_000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const abort = (): void => {
+    if (!controller.signal.aborted) controller.abort();
+  };
+  const scheduleWallAbort = (): void => {
+    const remaining = wallExpiresAt - performance.now();
+    if (remaining <= 0) {
+      abort();
+      return;
+    }
+    timer = setTimeout(
+      scheduleWallAbort,
+      Math.min(MAX_TIMER_DELAY_MS, Math.max(1, Math.ceil(remaining)))
+    );
+  };
+  const remainingSeconds = (): number => {
+    const remaining = Math.max(0, logicalExpiresAt - clock.now());
+    if (remaining === 0) abort();
+    return remaining;
+  };
+  const remainingMilliseconds = (): number => {
+    const remaining = Math.max(
+      0,
+      Math.min(
+        remainingSeconds() * 1_000,
+        wallExpiresAt - performance.now()
+      )
+    );
+    if (remaining === 0) abort();
+    return remaining;
+  };
+  const deadline: T.WatchDeadline = {
+    signal: controller.signal,
+    remainingSeconds,
+    remainingMilliseconds,
+    expired: () =>
+      controller.signal.aborted || remainingMilliseconds() === 0,
+  };
+  scheduleWallAbort();
+  return {
+    deadline,
+    dispose() {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+    },
+  };
+}
 type StepResult<V> =
   | { readonly kind: "terminal"; readonly verdict: V }
   | {
@@ -461,21 +545,24 @@ type StepResult<V> =
       readonly seconds: number;
       readonly onDeadline?: () => V;
     }
-  | { readonly kind: "continue" };
+  | { readonly kind: "continue"; readonly onDeadline?: () => V };
 async function pollUntilTerminal<V>(args: {
   readonly dependencies: RunDependencies;
   readonly options: T.PollingOptions;
   readonly stamp: VerdictStamp;
+  readonly deadline: T.WatchDeadline;
   readonly step: () => Promise<StepResult<V>>;
+  readonly onDeadline: () => T.TimeoutVerdict;
 }): Promise<V | T.BlockerVerdict | T.TimeoutVerdict> {
   let failures = 0;
-  const started = args.dependencies.clock.now();
   while (true) {
+    if (args.deadline.expired()) return args.onDeadline();
     let result: StepResult<V>;
     try {
       result = await args.step();
       failures = 0;
     } catch (error) {
+      if (args.deadline.expired()) return args.onDeadline();
       if (!(error instanceof WatcherQueryError)) throw error;
       failures += 1;
       if (!error.failure.retryable || failures >= args.options.maxQueryErrors)
@@ -500,34 +587,28 @@ async function pollUntilTerminal<V>(args: {
           exitCode: 5,
           reason: { kind: "status-unavailable", failure: error.failure },
         });
-      const now = args.dependencies.clock.now();
-      if (deadlinePassed(started, args.options, now)) return timeoutVerdict();
       const remaining =
-        args.options.timeout > 0
-          ? Math.max(0, args.options.timeout - (now - started))
-          : retryInSeconds;
+        args.deadline.remainingSeconds() ?? retryInSeconds;
       await args.dependencies.clock.sleep(Math.min(retryInSeconds, remaining));
-      if (
-        deadlinePassed(started, args.options, args.dependencies.clock.now())
-      )
-        return timeoutVerdict();
+      if (args.deadline.expired()) return timeoutVerdict();
       continue;
     }
-    if (result.kind === "terminal") return result.verdict;
-    if (result.kind === "sleep") {
-      const now = args.dependencies.clock.now();
-      if (result.onDeadline !== undefined && deadlinePassed(started, args.options, now))
-        return result.onDeadline();
-      const remaining =
-        args.options.timeout > 0
-          ? Math.max(0, args.options.timeout - (now - started))
-          : result.seconds;
-      await args.dependencies.clock.sleep(Math.min(result.seconds, remaining));
+    if (args.deadline.expired()) {
       if (
-        result.onDeadline !== undefined &&
-        deadlinePassed(started, args.options, args.dependencies.clock.now())
+        (result.kind === "sleep" || result.kind === "continue") &&
+        result.onDeadline !== undefined
       )
         return result.onDeadline();
+      return args.onDeadline();
+    }
+    if (result.kind === "terminal") return result.verdict;
+    if (result.kind === "continue") continue;
+    if (result.kind === "sleep") {
+      const remaining =
+        args.deadline.remainingSeconds() ?? result.seconds;
+      await args.dependencies.clock.sleep(Math.min(result.seconds, remaining));
+      if (args.deadline.expired())
+        return result.onDeadline?.() ?? args.onDeadline();
     }
   }
 }
@@ -537,9 +618,16 @@ export async function runSimple(args: {
   readonly mode: T.WatchMode;
   readonly statusOnly: boolean;
   readonly options: T.PollingOptions;
+  readonly deadline?: T.WatchDeadline;
 }): Promise<T.TerminalVerdict> {
+  const ownedDeadline =
+    args.deadline === undefined
+      ? createWatchDeadline(args.dependencies.clock, args.options.timeout)
+      : null;
+  const deadline = args.deadline ?? ownedDeadline?.deadline;
+  if (deadline === undefined) throw new Error("watch deadline is unavailable");
   const stamp = verdictFactory(args.dependencies.clock, args.mode);
-  const step = async (): Promise<StepResult<T.TerminalVerdict>> => {
+  const readRows = async (): Promise<T.NonEmpty<T.PrSnapshot>> => {
     const rows: T.PrSnapshot[] = [];
     for (const context of args.contexts)
       rows.push(
@@ -548,10 +636,15 @@ export async function runSimple(args: {
           context,
           pendingHistory: "include",
           allowDraft: args.options.allowDraft,
+          deadline,
         })
       );
     const complete = nonEmpty(rows);
     if (complete === null) throw new Error("watch context cannot be empty");
+    return complete;
+  };
+  const step = async (): Promise<StepResult<T.TerminalVerdict>> => {
+    let complete = await readRows();
     if (args.statusOnly)
       return {
         kind: "terminal",
@@ -572,10 +665,40 @@ export async function runSimple(args: {
           args.mode
         )
       );
-    const decision =
+    let decision =
       args.mode === "single"
         ? classifyPr(complete[0], args.options.allowDraft)
         : selectTierMajorStackDecision(complete, args.options.allowDraft);
+    if (args.mode === "stack" && decision.kind === "clear") {
+      const revalidated = await readRows();
+      if (JSON.stringify(revalidated) !== JSON.stringify(complete))
+        throw new WatcherQueryError({
+          kind: "missing-key",
+          retryable: true,
+          detail:
+            "stack changed during readiness verification; retrying a complete fresh sweep",
+        });
+      complete = revalidated;
+      decision = selectTierMajorStackDecision(
+        complete,
+        args.options.allowDraft
+      );
+      for (const row of complete) {
+        const finalFacts = await args.dependencies.reader.pullRequest(
+          row.context,
+          deadline
+        );
+        assertRequestedContext(finalFacts, row.context);
+        assertConsistentLifecycle(finalFacts);
+        const changed = changedFactKeys(row.facts, finalFacts);
+        if (changed.length > 0)
+          throw new WatcherQueryError({
+            kind: "missing-key",
+            retryable: true,
+            detail: `stack PR #${row.context.number} changed during final readiness confirmation (${changed.join(", ")}); retrying a complete fresh sweep`,
+          });
+      }
+    }
     if (decision.kind === "blocker")
       return {
         kind: "terminal",
@@ -627,12 +750,24 @@ export async function runSimple(args: {
         }),
     };
   };
-  return pollUntilTerminal({
-    dependencies: args.dependencies,
-    options: args.options,
-    stamp,
-    step,
-  });
+  try {
+    return await pollUntilTerminal({
+      dependencies: args.dependencies,
+      options: args.options,
+      stamp,
+      deadline,
+      step,
+      onDeadline: () =>
+        stamp({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "watch-deadline" },
+        }),
+    });
+  } finally {
+    ownedDeadline?.dispose();
+  }
 }
 export type QueueWork =
   | {
@@ -825,12 +960,31 @@ export async function runQueued(args: {
   readonly dependencies: RunDependencies;
   readonly contexts: T.NonEmpty<T.PrContext>;
   readonly options: T.PollingOptions;
+  readonly deadline?: T.WatchDeadline;
 }): Promise<T.QueueTerminalVerdict> {
+  const ownedDeadline =
+    args.deadline === undefined
+      ? createWatchDeadline(args.dependencies.clock, args.options.timeout)
+      : null;
+  const deadline = args.deadline ?? ownedDeadline?.deadline;
+  if (deadline === undefined) throw new Error("watch deadline is unavailable");
   let state = createQueueState(args.contexts, args.dependencies.clock.now());
   const stamp = verdictFactory(args.dependencies.clock, "queued-stack");
-  args.dependencies.emit(
-    stamp({ kind: "QUEUE", terminal: false, queue: args.contexts })
-  );
+  const queueTimeoutVerdict = (): T.TimeoutVerdict => {
+    const unresolved = state.queue.filter(
+      (context) => state.snapshots.get(context.number)?.kind !== "merged"
+    );
+    return stamp({
+      kind: "TIMEOUT",
+      terminal: true,
+      exitCode: 5,
+      reason: {
+        kind: "queued-stack",
+        frontier: unresolved[0] ?? state.queue[0],
+        unmergedCount: unresolved.length,
+      },
+    });
+  };
   const step = async (): Promise<StepResult<T.QueueTerminalVerdict>> => {
     state = planQueue(state, args.dependencies.clock.now());
     if (state.work === null) {
@@ -861,6 +1015,7 @@ export async function runQueued(args: {
       context,
       pendingHistory: "omit",
       allowDraft: args.options.allowDraft,
+      deadline,
     });
     const applied = applyQueueSnapshot(
       state,
@@ -878,7 +1033,8 @@ export async function runQueued(args: {
           rows: applied.completedSweepRows,
         })
       );
-    if (state.work !== null) return { kind: "continue" };
+    if (state.work !== null)
+      return { kind: "continue", onDeadline: queueTimeoutVerdict };
     const evaluation = evaluateQueue(
       state,
       args.dependencies.clock.now(),
@@ -912,7 +1068,7 @@ export async function runQueued(args: {
             remaining: evaluation.remaining,
           })
         );
-        return { kind: "continue" };
+        return { kind: "continue", onDeadline: queueTimeoutVerdict };
       case "timeout":
         return {
           kind: "terminal",
@@ -961,10 +1117,19 @@ export async function runQueued(args: {
       }
     }
   };
-  return pollUntilTerminal({
-    dependencies: args.dependencies,
-    options: args.options,
-    stamp,
-    step,
-  });
+  try {
+    args.dependencies.emit(
+      stamp({ kind: "QUEUE", terminal: false, queue: args.contexts })
+    );
+    return await pollUntilTerminal({
+      dependencies: args.dependencies,
+      options: args.options,
+      stamp,
+      deadline,
+      step,
+      onDeadline: queueTimeoutVerdict,
+    });
+  } finally {
+    ownedDeadline?.dispose();
+  }
 }

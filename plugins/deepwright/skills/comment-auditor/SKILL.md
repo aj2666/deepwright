@@ -1,6 +1,6 @@
 ---
 name: comment-auditor
-description: "Audit comments and suppressions without logic changes. Use for $comment-auditor."
+description: "Audit comments and suppressions without logic changes. Use for $deepwright:comment-auditor."
 ---
 
 # Comment auditor

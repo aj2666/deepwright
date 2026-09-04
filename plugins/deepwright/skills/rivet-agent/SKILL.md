@@ -1,6 +1,6 @@
 ---
 name: rivet-agent
-description: "Deepwright's rigorous engineering foreman. Use for $rivet-agent."
+description: "Deepwright's rigorous engineering foreman. Use for $deepwright:rivet-agent."
 ---
 
 # Rivet agent

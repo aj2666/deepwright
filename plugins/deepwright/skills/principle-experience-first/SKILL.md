@@ -1,6 +1,6 @@
 ---
 name: principle-experience-first
-description: "Optimize product choices for the user's experience. Use for $principle-experience-first."
+description: "Optimize product choices for the user's experience. Use for $deepwright:principle-experience-first."
 ---
 
 # Experience First

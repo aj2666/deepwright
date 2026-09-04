@@ -1,6 +1,6 @@
 ---
 name: interrogate
-description: "Run independent adversarial reviews of a design or diff. Use for $interrogate."
+description: "Run independent adversarial reviews of a design or diff. Use for $deepwright:interrogate."
 ---
 
 # Interrogate

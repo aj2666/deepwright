@@ -1,12 +1,20 @@
 declare const prNumberBrand: unique symbol;
 export type PrNumber = number & { readonly [prNumberBrand]: "PrNumber" };
+export const MAX_GITHUB_PR_NUMBER = 2_147_483_647;
 export type NonEmpty<T> = readonly [T, ...T[]];
 export function nonEmpty<T>(items: readonly T[]): NonEmpty<T> | null {
   return items.length === 0 ? null : [items[0], ...items.slice(1)];
 }
 export function parsePrNumber(value: unknown, label = "PR number"): PrNumber {
-  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0)
-    throw new Error(`${label} must be a positive integer`);
+  if (
+    typeof value !== "number" ||
+    !Number.isSafeInteger(value) ||
+    value <= 0 ||
+    value > MAX_GITHUB_PR_NUMBER
+  )
+    throw new Error(
+      `${label} must be a positive 32-bit GitHub GraphQL integer`
+    );
   return value as PrNumber;
 }
 export interface Repository {
@@ -54,6 +62,7 @@ export interface OpenPullRequest {
   readonly number: PrNumber;
   readonly headRefName: string;
   readonly baseRefName: string;
+  readonly isCrossRepository: boolean;
 }
 export interface ReviewComment {
   readonly authorLogin: string | null;
@@ -243,6 +252,18 @@ export type QueryFailure =
       readonly retryable: false;
       readonly detail: string;
       readonly rawValue: string;
+    }
+  | {
+      readonly kind: "invalid-context";
+      readonly retryable: false;
+      readonly detail: string;
+      readonly rawValue: string;
+    }
+  | {
+      readonly kind: "response-too-large";
+      readonly retryable: false;
+      readonly detail: string;
+      readonly limitBytes: number;
     };
 /**
  * `frontier` names the lowest unmerged PR that is actually waiting, and
@@ -352,6 +373,7 @@ export type TimeoutVerdict = Terminal<"TIMEOUT", 5> & {
         readonly pending: NonEmpty<PendingCheck>;
       }
     | { readonly kind: "status-unavailable"; readonly failure: QueryFailure }
+    | { readonly kind: "watch-deadline" }
     | {
         readonly kind: "queued-stack";
         readonly frontier: PrContext;
@@ -394,18 +416,45 @@ export interface RollupPage {
   readonly checks: readonly Check[];
   readonly endCursor: string | null;
 }
+export interface WatchDeadline {
+  readonly signal: AbortSignal;
+  /** Remaining overall watcher budget using the injected clock. */
+  remainingSeconds(): number | null;
+  /** Remaining wall-clock budget for clamping an external command. */
+  remainingMilliseconds(): number | null;
+  expired(): boolean;
+}
 export interface GitHubReader {
-  originRepo(): Promise<Repository | null>;
-  currentPr(pr: PrNumber | null): Promise<PrContext>;
-  pullRequest(context: PrContext): Promise<PullRequestFacts>;
-  openPullRequests(repository: Repository): Promise<readonly OpenPullRequest[]>;
-  checksFastPath(context: PrContext): Promise<ChecksFastPath>;
+  originRepo(deadline: WatchDeadline | undefined): Promise<Repository | null>;
+  currentPr(
+    pr: PrNumber | null,
+    deadline: WatchDeadline | undefined
+  ): Promise<PrContext>;
+  pullRequest(
+    context: PrContext,
+    deadline: WatchDeadline | undefined
+  ): Promise<PullRequestFacts>;
+  openPullRequests(
+    repository: Repository,
+    deadline: WatchDeadline | undefined
+  ): Promise<readonly OpenPullRequest[]>;
+  checksFastPath(
+    context: PrContext,
+    deadline: WatchDeadline | undefined
+  ): Promise<ChecksFastPath>;
   checkRollupPage(
     context: PrContext,
-    after: string | null
+    after: string | null,
+    deadline: WatchDeadline | undefined
   ): Promise<RollupPage>;
-  reviewThreads(context: PrContext): Promise<readonly ReviewThread[]>;
-  commitRollups(context: PrContext): Promise<readonly CommitRollup[]>;
+  reviewThreads(
+    context: PrContext,
+    deadline: WatchDeadline | undefined
+  ): Promise<readonly ReviewThread[]>;
+  commitRollups(
+    context: PrContext,
+    deadline: WatchDeadline | undefined
+  ): Promise<readonly CommitRollup[]>;
 }
 export interface PollingOptions {
   readonly interval: number;

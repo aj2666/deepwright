@@ -1,6 +1,6 @@
 ---
 name: show-me-your-work
-description: "Keep an evidence-backed decision trail for a run. Use for $show-me-your-work."
+description: "Keep an evidence-backed decision trail for a run. Use for $deepwright:show-me-your-work."
 ---
 
 # Show me your work

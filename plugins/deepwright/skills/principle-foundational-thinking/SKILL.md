@@ -1,6 +1,6 @@
 ---
 name: principle-foundational-thinking
-description: "Choose data structures and invariants before logic. Use for $principle-foundational-thinking."
+description: "Choose data structures and invariants before logic. Use for $deepwright:principle-foundational-thinking."
 ---
 
 # Foundational Thinking

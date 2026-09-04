@@ -1,6 +1,6 @@
 # Deepwright tools
 
-The committed files in `dist/` are self-contained Node.js 20+ bundles. Running
+The committed files in `dist/` are self-contained Node.js 20.19+ bundles. Running
 the plugin does not install packages, write into the plugin directory, or need
 `node_modules`.
 

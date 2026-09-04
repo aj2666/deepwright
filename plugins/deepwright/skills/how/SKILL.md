@@ -1,6 +1,6 @@
 ---
 name: how
-description: "Explain code behavior, ownership, and data flow. Use for $how."
+description: "Explain code behavior, ownership, and data flow. Use for $deepwright:how."
 ---
 
 # How

@@ -36,6 +36,8 @@ interface Io {
   readonly stderr: (value: string) => void;
 }
 
+const MINIMUM_NODE_VERSION = "20.19.0";
+
 const USAGE = `Usage: deepwright doctor [--json]
 
 Run read-only environment and installation checks.
@@ -70,6 +72,19 @@ function firstLine(value: string): string {
   return value.split(/\r?\n/, 1)[0] ?? value;
 }
 
+export function supportsNodeVersion(value: string): boolean {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-([^+]+))?(?:\+.+)?$/.exec(value);
+  if (match === null) return false;
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+  if (![major, minor, patch].every(Number.isSafeInteger)) return false;
+  if (major !== 20) return major > 20;
+  if (minor !== 19) return minor > 19;
+  if (patch !== 0) return patch > 0;
+  return match[4] === undefined;
+}
+
 async function hasExecutable(path: string): Promise<boolean> {
   try {
     const details = await stat(path);
@@ -96,8 +111,7 @@ async function createReport(): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
 
   const nodeVersion = process.versions.node;
-  const nodeMajor = Number(nodeVersion.split(".", 1)[0]);
-  const supportedNode = Number.isInteger(nodeMajor) && nodeMajor >= 20;
+  const supportedNode = supportsNodeVersion(nodeVersion);
   checks.push({
     id: "node",
     label: "Node.js",
@@ -105,7 +119,7 @@ async function createReport(): Promise<DoctorReport> {
     required: true,
     detail: supportedNode
       ? `Node.js ${nodeVersion}`
-      : `Node.js ${nodeVersion} is unsupported; version 20 or newer is required`,
+      : `Node.js ${nodeVersion} is unsupported; version ${MINIMUM_NODE_VERSION} or newer is required`,
   });
 
   const git = commandProbe("git", ["--version"]);

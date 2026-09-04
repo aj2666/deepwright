@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import type * as T from "./types.ts";
 import { nonEmpty, parsePrNumber } from "./types.ts";
 export const REVIEW_THREADS_QUERY =
-  "\nquery ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      reviewThreads(first: 100, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        nodes {\n          id\n          isResolved\n          comments(first: 10) {\n            nodes {\n              body\n              createdAt\n              path\n              line\n              author { login }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+  "\nquery ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      reviewThreads(first: 100, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        nodes {\n          id\n          isResolved\n          comments(first: 1) {\n            nodes {\n              body\n              createdAt\n              path\n              line\n              author { login }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 export const PR_COMMIT_STATUS_QUERY =
   "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 export const PR_CHECK_ROLLUP_QUERY =
@@ -14,6 +14,8 @@ export interface CommandResult {
   readonly stderr: string;
 }
 export const COMMAND_TIMEOUT_MS = 120_000;
+export const COMMAND_OUTPUT_LIMIT_BYTES = 16 * 1024 * 1024;
+export const COMMAND_OUTPUT_LIMIT_EXIT = 125;
 export class WatcherQueryError extends Error {
   readonly failure: T.QueryFailure;
   constructor(failure: T.QueryFailure) {
@@ -32,36 +34,75 @@ const firstLine = (value: string): string =>
   value.trim().split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
 export function run(
   argv: readonly [string, ...string[]],
-  timeoutMs = COMMAND_TIMEOUT_MS
+  timeoutMs = COMMAND_TIMEOUT_MS,
+  maxOutputBytes = COMMAND_OUTPUT_LIMIT_BYTES,
+  signal?: AbortSignal
 ): Promise<CommandResult> {
+  if (signal?.aborted)
+    return Promise.resolve({
+      code: 124,
+      stdout: "",
+      stderr: `${argv[0]} aborted at the watch deadline`,
+    });
   return new Promise((resolve) => {
     const child = spawn(argv[0], argv.slice(1), {
       stdio: ["ignore", "pipe", "pipe"],
     });
     let settled = false;
-    let timedOut = false;
+    let termination:
+      | "command-timeout"
+      | "output-limit"
+      | "watch-deadline"
+      | null = null;
     let timeoutHandle: NodeJS.Timeout | undefined;
     let stdout = "";
     let stderr = "";
+    let capturedBytes = 0;
     const finish = (result: CommandResult): void => {
       if (settled) return;
       settled = true;
       if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+      signal?.removeEventListener("abort", abortAtDeadline);
       resolve(result);
     };
-    if (timeoutMs > 0) {
+    const terminate = (cause: Exclude<typeof termination, null>): void => {
+      if (settled || termination !== null) return;
+      termination = cause;
+      if (timeoutHandle !== undefined) {
+        clearTimeout(timeoutHandle);
+        timeoutHandle = undefined;
+      }
+      child.kill("SIGKILL");
+    };
+    const abortAtDeadline = (): void => terminate("watch-deadline");
+    signal?.addEventListener("abort", abortAtDeadline, { once: true });
+    if (signal?.aborted) abortAtDeadline();
+    if (timeoutMs > 0 && termination === null) {
       timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGKILL");
+        terminate("command-timeout");
       }, timeoutMs);
       timeoutHandle.unref();
     }
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
+      if (termination !== null) return;
+      const bytes = Buffer.byteLength(chunk);
+      if (capturedBytes + bytes > maxOutputBytes) {
+        terminate("output-limit");
+        return;
+      }
+      capturedBytes += bytes;
       stdout += chunk;
     });
     child.stderr.on("data", (chunk: string) => {
+      if (termination !== null) return;
+      const bytes = Buffer.byteLength(chunk);
+      if (capturedBytes + bytes > maxOutputBytes) {
+        terminate("output-limit");
+        return;
+      }
+      capturedBytes += bytes;
       stderr += chunk;
     });
     child.on("error", (error: NodeJS.ErrnoException) =>
@@ -73,11 +114,21 @@ export function run(
     );
     child.on("close", (code) =>
       finish({
-        code: timedOut ? 124 : (code ?? -1),
+        code: termination === "output-limit"
+          ? COMMAND_OUTPUT_LIMIT_EXIT
+          : termination === "watch-deadline"
+            ? 124
+            : termination === "command-timeout"
+              ? 124
+              : (code ?? -1),
         stdout,
-        stderr: timedOut
-          ? `${stderr}${stderr && !stderr.endsWith("\n") ? "\n" : ""}${argv[0]} timed out after ${timeoutMs}ms`
-          : stderr,
+        stderr: termination === "output-limit"
+          ? `${argv[0]} output exceeded ${maxOutputBytes} byte limit`
+          : termination === "watch-deadline"
+            ? `${argv[0]} aborted at the watch deadline`
+            : termination === "command-timeout"
+              ? `${stderr}${stderr && !stderr.endsWith("\n") ? "\n" : ""}${argv[0]} timed out after ${timeoutMs}ms`
+              : stderr,
       })
     );
   });
@@ -93,12 +144,39 @@ function parseJson(text: string, label: string): unknown {
     });
   }
 }
-async function runJson(argv: readonly [string, ...string[]]): Promise<unknown> {
-  const result = await run(argv);
+function commandTimeoutMilliseconds(deadline?: T.WatchDeadline): number {
+  const remaining = deadline?.remainingMilliseconds();
+  return remaining === null || remaining === undefined
+    ? COMMAND_TIMEOUT_MS
+    : Math.min(COMMAND_TIMEOUT_MS, Math.max(0, Math.ceil(remaining)));
+}
+function runWithDeadline(
+  argv: readonly [string, ...string[]],
+  deadline?: T.WatchDeadline
+): Promise<CommandResult> {
+  const timeoutMs = commandTimeoutMilliseconds(deadline);
+  if (deadline !== undefined && timeoutMs === 0)
+    return Promise.resolve({
+      code: 124,
+      stdout: "",
+      stderr: `${argv[0]} aborted at the watch deadline`,
+    });
+  return run(
+    argv,
+    timeoutMs,
+    COMMAND_OUTPUT_LIMIT_BYTES,
+    deadline?.signal
+  );
+}
+async function runJson(
+  argv: readonly [string, ...string[]],
+  deadline?: T.WatchDeadline
+): Promise<unknown> {
+  const result = await runWithDeadline(argv, deadline);
   if (result.code !== 0)
     throw new WatcherQueryError({
       kind: "command-exit",
-      retryable: result.code !== 126 && result.code !== 127,
+      retryable: ![4, COMMAND_OUTPUT_LIMIT_EXIT, 126, 127].includes(result.code),
       code: result.code,
       detail: commandFailureDetail(argv, result),
     });
@@ -129,6 +207,13 @@ function missing(path: string, value?: unknown): never {
         : `invalid ${path}: ${raw(value)}`,
     ...(value === undefined ? {} : { rawValue: raw(value) }),
   });
+}
+function apiPrNumber(value: unknown, path: string): T.PrNumber {
+  try {
+    return parsePrNumber(value, path);
+  } catch {
+    return missing(path, value);
+  }
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -243,6 +328,7 @@ function parsePrUrl(value: string): T.PrContext {
   try {
     const url = new URL(value);
     const parts = url.pathname.split("/").filter(Boolean);
+    const numberText = parts[3] ?? "";
     if (
       url.protocol !== "https:" ||
       url.hostname !== "github.com" ||
@@ -252,13 +338,15 @@ function parsePrUrl(value: string): T.PrContext {
       url.search ||
       url.hash ||
       parts.length !== 4 ||
-      parts[2] !== "pull"
+      parts[2] !== "pull" ||
+      url.pathname !== `/${parts.join("/")}` ||
+      !/^[1-9][0-9]*$/u.test(numberText)
     )
       throw new Error("not a canonical GitHub pull URL");
     return {
       owner: parts[0],
       repo: parts[1],
-      number: parsePrNumber(Number(parts[3])),
+      number: parsePrNumber(Number(numberText), "PR URL number"),
     };
   } catch (error) {
     throw new WatcherQueryError({
@@ -424,6 +512,7 @@ interface ReviewThreadPage {
   readonly endCursor: string | null;
 }
 export const MAX_REVIEW_THREAD_PAGES = 100;
+export const MAX_REVIEW_THREAD_BODY_BYTES = 8 * 1024 * 1024;
 export function parseReviewThreadPage(value: unknown): ReviewThreadPage {
   const connection = record(
     at(value, ["data", "repository", "pullRequest", "reviewThreads"]),
@@ -490,12 +579,14 @@ export function parseReviewThreads(value: unknown): readonly T.ReviewThread[] {
   return parseReviewThreadNodes(page.nodes);
 }
 export async function collectReviewThreads(
-  fetchPage: (after: string | null) => Promise<unknown>
+  fetchPage: (after: string | null) => Promise<unknown>,
+  maxBodyBytes = MAX_REVIEW_THREAD_BODY_BYTES
 ): Promise<readonly T.ReviewThread[]> {
   const nodes: unknown[] = [];
   const cursors = new Set<string>();
   let after: string | null = null;
   let pages = 0;
+  let bodyBytes = 0;
   do {
     if (pages >= MAX_REVIEW_THREAD_PAGES)
       throw new WatcherQueryError({
@@ -506,6 +597,25 @@ export async function collectReviewThreads(
       });
     const page = parseReviewThreadPage(await fetchPage(after));
     pages += 1;
+    for (const node of page.nodes) {
+      const thread = record(node, "review thread");
+      const comments = list(
+        at(thread, ["comments", "nodes"]),
+        "review thread.comments.nodes"
+      );
+      if (comments.length === 0) continue;
+      const comment = record(comments[0], "review comment");
+      bodyBytes += Buffer.byteLength(
+        string(comment.body, "review comment.body")
+      );
+      if (bodyBytes > maxBodyBytes)
+        throw new WatcherQueryError({
+          kind: "response-too-large",
+          retryable: false,
+          detail: `review thread bodies exceeded the ${maxBodyBytes}-byte safety limit`,
+          limitBytes: maxBodyBytes,
+        });
+    }
     nodes.push(...page.nodes);
     if (page.endCursor !== null && cursors.has(page.endCursor))
       throw new WatcherQueryError({
@@ -588,8 +698,13 @@ export function parseOpenPullRequests(
     });
   return items.map((item, index) => {
     const object = record(item, `open PRs[${index}]`);
+    if (typeof object.isCrossRepository !== "boolean")
+      missing(
+        `open PRs[${index}].isCrossRepository`,
+        object.isCrossRepository
+      );
     return {
-      number: parsePrNumber(object.number, `open PRs[${index}].number`),
+      number: apiPrNumber(object.number, `open PRs[${index}].number`),
       headRefName: string(
         object.headRefName,
         `open PRs[${index}].headRefName`
@@ -598,27 +713,61 @@ export function parseOpenPullRequests(
         object.baseRefName,
         `open PRs[${index}].baseRefName`
       ),
+      isCrossRepository: object.isCrossRepository,
     };
   });
 }
 
+export function parseCurrentPr(
+  value: unknown,
+  requested: T.PrNumber | null
+): T.PrContext {
+  const object = record(value, "current PR");
+  const parsed = parsePrUrl(string(object.url, "current PR.url"));
+  const reported = apiPrNumber(object.number, "current PR.number");
+  if (reported !== parsed.number)
+    missing("current PR.number/url consistency", {
+      number: reported,
+      urlNumber: parsed.number,
+    });
+  if (requested !== null && reported !== requested)
+    missing("current PR.number/request consistency", {
+      requested,
+      number: reported,
+    });
+  return parsed;
+}
+
 export class GhGitHubReader implements T.GitHubReader {
-  async originRepo(): Promise<T.Repository | null> {
-    const result = await run(["git", "remote", "get-url", "origin"]);
+  async originRepo(
+    deadline: T.WatchDeadline | undefined
+  ): Promise<T.Repository | null> {
+    const result = await runWithDeadline(
+      ["git", "remote", "get-url", "origin"],
+      deadline
+    );
+    if (deadline?.expired())
+      throw new WatcherQueryError({
+        kind: "command-exit",
+        retryable: true,
+        code: 124,
+        detail: "git origin lookup exceeded the watch deadline",
+      });
     return result.code === 0 ? parseRemote(result.stdout) : null;
   }
-  async currentPr(pr: T.PrNumber | null): Promise<T.PrContext> {
+  async currentPr(
+    pr: T.PrNumber | null,
+    deadline: T.WatchDeadline | undefined
+  ): Promise<T.PrContext> {
     const argv: [string, ...string[]] = ["gh", "pr", "view"];
     if (pr !== null) argv.push(String(pr));
     argv.push("--json", "number,url");
-    const object = record(await runJson(argv), "current PR");
-    const parsed = parsePrUrl(string(object.url, "current PR.url"));
-    return {
-      ...parsed,
-      number: pr ?? parsePrNumber(object.number, "current PR.number"),
-    };
+    return parseCurrentPr(await runJson(argv, deadline), pr);
   }
-  async pullRequest(context: T.PrContext): Promise<T.PullRequestFacts> {
+  async pullRequest(
+    context: T.PrContext,
+    deadline: T.WatchDeadline | undefined
+  ): Promise<T.PullRequestFacts> {
     return parsePullRequest(
       await runJson([
         "gh",
@@ -629,12 +778,13 @@ export class GhGitHubReader implements T.GitHubReader {
         `${context.owner}/${context.repo}`,
         "--json",
         "mergeable,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,state,mergedAt,isDraft",
-      ]),
+      ], deadline),
       context
     );
   }
   async openPullRequests(
-    repository: T.Repository
+    repository: T.Repository,
+    deadline: T.WatchDeadline | undefined
   ): Promise<readonly T.OpenPullRequest[]> {
     const value = await runJson([
       "gh",
@@ -647,21 +797,27 @@ export class GhGitHubReader implements T.GitHubReader {
       "--limit",
       String(OPEN_PULL_REQUEST_LIMIT),
       "--json",
-      "number,headRefName,baseRefName",
-    ]);
+      "number,headRefName,baseRefName,isCrossRepository",
+    ], deadline);
     return parseOpenPullRequests(value);
   }
-  async checksFastPath(context: T.PrContext): Promise<T.ChecksFastPath> {
-    const result = await run([
-      "gh",
-      "pr",
-      "checks",
-      String(context.number),
-      "--repo",
-      `${context.owner}/${context.repo}`,
-      "--json",
-      "name,state,description,link,workflow,bucket",
-    ]);
+  async checksFastPath(
+    context: T.PrContext,
+    deadline: T.WatchDeadline | undefined
+  ): Promise<T.ChecksFastPath> {
+    const result = await runWithDeadline(
+      [
+        "gh",
+        "pr",
+        "checks",
+        String(context.number),
+        "--repo",
+        `${context.owner}/${context.repo}`,
+        "--json",
+        "name,state,description,link,workflow,bucket",
+      ],
+      deadline
+    );
     if ([0, 1, 8].includes(result.code) && result.stdout.trim()) {
       try {
         const value = parseJson(result.stdout, "gh pr checks");
@@ -675,11 +831,12 @@ export class GhGitHubReader implements T.GitHubReader {
   }
   async checkRollupPage(
     context: T.PrContext,
-    after: string | null
+    after: string | null,
+    deadline: T.WatchDeadline | undefined
   ): Promise<T.RollupPage> {
     const argv = graphqlArgs(PR_CHECK_ROLLUP_QUERY, context);
     if (after !== null) argv.push("-f", `after=${after}`);
-    const value = await runJson(argv);
+    const value = await runJson(argv, deadline);
     const commits = list(
       at(value, ["data", "repository", "pullRequest", "commits", "nodes"]),
       "commits.nodes"
@@ -702,18 +859,23 @@ export class GhGitHubReader implements T.GitHubReader {
     };
   }
   async reviewThreads(
-    context: T.PrContext
+    context: T.PrContext,
+    deadline: T.WatchDeadline | undefined
   ): Promise<readonly T.ReviewThread[]> {
     return collectReviewThreads(async (after) => {
       const argv = graphqlArgs(REVIEW_THREADS_QUERY, context);
       if (after !== null) argv.push("-f", `after=${after}`);
-      return runJson(argv);
+      return runJson(argv, deadline);
     });
   }
   async commitRollups(
-    context: T.PrContext
+    context: T.PrContext,
+    deadline: T.WatchDeadline | undefined
   ): Promise<readonly T.CommitRollup[]> {
-    const value = await runJson(graphqlArgs(PR_COMMIT_STATUS_QUERY, context));
+    const value = await runJson(
+      graphqlArgs(PR_COMMIT_STATUS_QUERY, context),
+      deadline
+    );
     const commits = list(
       at(value, ["data", "repository", "pullRequest", "commits", "nodes"]),
       "commits.nodes"
@@ -739,9 +901,10 @@ export class GhGitHubReader implements T.GitHubReader {
 export const MAX_CHECK_ROLLUP_PAGES = 100;
 export async function resolveChecks(
   reader: T.GitHubReader,
-  context: T.PrContext
+  context: T.PrContext,
+  deadline?: T.WatchDeadline
 ): Promise<T.CheckRead> {
-  const fast = await reader.checksFastPath(context);
+  const fast = await reader.checksFastPath(context, deadline);
   const direct = fast.kind === "checks" ? nonEmpty(fast.checks) : null;
   if (direct !== null) return { source: "gh-pr-checks", checks: direct };
   const checks: T.Check[] = [];
@@ -756,7 +919,7 @@ export async function resolveChecks(
         detail: `check rollup exceeded ${MAX_CHECK_ROLLUP_PAGES} pages; refusing to classify an incomplete check set`,
         ...(after === null ? {} : { rawValue: after }),
       });
-    const page = await reader.checkRollupPage(context, after);
+    const page = await reader.checkRollupPage(context, after, deadline);
     pages += 1;
     checks.push(...page.checks);
     if (page.endCursor !== null && cursors.has(page.endCursor))
@@ -782,24 +945,49 @@ export async function resolveContext(args: {
   readonly owner: string | null;
   readonly repo: string | null;
   readonly pr: T.PrNumber | null;
+  readonly deadline?: T.WatchDeadline;
 }): Promise<T.PrContext> {
+  if ((args.owner === null) !== (args.repo === null))
+    throw new WatcherQueryError({
+      kind: "invalid-context",
+      retryable: false,
+      detail: "owner and repo must be provided together; refusing to combine an explicit coordinate with an inferred repository",
+      rawValue: JSON.stringify({ owner: args.owner, repo: args.repo }),
+    });
   if (args.pr !== null && args.owner !== null && args.repo !== null)
     return { owner: args.owner, repo: args.repo, number: args.pr };
   if (args.pr !== null) {
-    const origin = await args.reader.originRepo();
+    const origin = await args.reader.originRepo(args.deadline);
     if (origin !== null)
       return {
-        owner: args.owner ?? origin.owner,
-        repo: args.repo ?? origin.repo,
+        owner: origin.owner,
+        repo: origin.repo,
         number: args.pr,
       };
   }
-  const inferred = await args.reader.currentPr(args.pr);
-  return {
-    owner: args.owner ?? inferred.owner,
-    repo: args.repo ?? inferred.repo,
-    number: args.pr ?? inferred.number,
-  };
+  const inferred = await args.reader.currentPr(args.pr, args.deadline);
+  if (args.pr !== null && inferred.number !== args.pr)
+    throw new WatcherQueryError({
+      kind: "invalid-context",
+      retryable: false,
+      detail: `inferred PR #${inferred.number} does not match requested PR #${args.pr}`,
+      rawValue: JSON.stringify({ requested: args.pr, inferred }),
+    });
+  if (
+    args.owner !== null &&
+    args.repo !== null &&
+    (args.owner !== inferred.owner || args.repo !== inferred.repo)
+  )
+    throw new WatcherQueryError({
+      kind: "invalid-context",
+      retryable: false,
+      detail: `explicit repository ${args.owner}/${args.repo} does not match inferred PR repository ${inferred.owner}/${inferred.repo}; pass --pr to select the explicit repository safely`,
+      rawValue: JSON.stringify({
+        explicit: { owner: args.owner, repo: args.repo },
+        inferred,
+      }),
+    });
+  return inferred;
 }
 export function orderStack(
   context: T.PrContext,
@@ -815,15 +1003,17 @@ export function orderStack(
         detail: `open PR list contains duplicate PR number ${pr.number}; refusing ambiguous stack discovery`,
         rawValue: String(pr.number),
       });
-    if (byHead.has(pr.headRefName))
-      throw new WatcherQueryError({
-        kind: "missing-key",
-        retryable: true,
-        detail: `open PR list contains duplicate headRefName ${pr.headRefName}; refusing ambiguous stack discovery`,
-        rawValue: pr.headRefName,
-      });
     byNumber.set(pr.number, pr);
-    byHead.set(pr.headRefName, pr);
+    if (!pr.isCrossRepository) {
+      if (byHead.has(pr.headRefName))
+        throw new WatcherQueryError({
+          kind: "missing-key",
+          retryable: true,
+          detail: `open PR list contains duplicate base-repository headRefName ${pr.headRefName}; refusing ambiguous stack discovery`,
+          rawValue: pr.headRefName,
+        });
+      byHead.set(pr.headRefName, pr);
+    }
   }
   const visiting = new Set<string>();
   const visited = new Set<string>();
@@ -842,7 +1032,10 @@ export function orderStack(
     visiting.delete(pr.headRefName);
     visited.add(pr.headRefName);
   };
-  for (const pr of open) proveAcyclic(pr);
+  // Fork heads are not members of the base repository's branch graph.  Walking
+  // them here would also let a same-named fork head pre-populate `visited` and
+  // mask a real cycle between base-repository branches.
+  for (const pr of byHead.values()) proveAcyclic(pr);
   const children = new Map<string, T.OpenPullRequest[]>();
   for (const pr of open)
     children.set(pr.baseRefName, [...(children.get(pr.baseRefName) ?? []), pr]);
@@ -850,6 +1043,7 @@ export function orderStack(
     values.sort((a, b) => a.number - b.number);
   const start = byNumber.get(context.number);
   if (start === undefined) return [context];
+  if (start.isCrossRepository) return [context];
   const down: T.OpenPullRequest[] = [];
   let current = start;
   while (byHead.has(current.baseRefName)) {
@@ -864,7 +1058,9 @@ export function orderStack(
   ]);
   const up: T.OpenPullRequest[] = [];
   const visit = (parent: T.OpenPullRequest): void => {
+    if (parent.isCrossRepository) return;
     for (const child of children.get(parent.headRefName) ?? []) {
+      if (child.isCrossRepository) continue;
       if (seen.has(child.number)) continue;
       seen.add(child.number);
       up.push(child);
@@ -883,7 +1079,11 @@ export function orderStack(
 }
 export async function discoverStack(
   reader: T.GitHubReader,
-  context: T.PrContext
+  context: T.PrContext,
+  deadline?: T.WatchDeadline
 ): Promise<T.NonEmpty<T.PrContext>> {
-  return orderStack(context, await reader.openPullRequests(context));
+  return orderStack(
+    context,
+    await reader.openPullRequests(context, deadline)
+  );
 }

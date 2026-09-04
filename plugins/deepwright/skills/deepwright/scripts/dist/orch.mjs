@@ -3481,7 +3481,6 @@ import { randomUUID } from "node:crypto";
 import {
   access,
   mkdir,
-  open,
   readFile,
   readdir,
   rename,
@@ -3493,6 +3492,7 @@ import { basename, dirname, join, resolve } from "node:path";
 var UNIT_HEADER = "id	track	state	branch	pr	sha	brief";
 var LEDGER_HEADER = "pr	sha	verdict	evidence	verifier	ts";
 var LOCK_FILE = ".orch.lock";
+var LOCK_CLAIM = /^([1-9]\d*)-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.claim$/;
 var UserError = class extends Error {
 };
 var UsageError = class extends UserError {
@@ -3613,57 +3613,80 @@ function holderIsDead(holder) {
   }
 }
 async function acquireLock(store, options) {
-  const path = join(store, LOCK_FILE);
+  const directory = join(store, LOCK_FILE);
   const pid = String(process.pid);
-  const create = async () => {
-    const handle = await open(path, "wx");
-    await handle.writeFile(`${pid}
-`);
-    await handle.close();
-  };
-  const takeOver = async () => {
-    await unlink(path);
+  try {
+    await mkdir(directory, { recursive: true });
+  } catch (error) {
+    if (errorCode(error) === "EEXIST") {
+      throw new UserError(
+        `${LOCK_FILE} must be a directory; close older orch processes and remove the legacy lock file`
+      );
+    }
+    throw error;
+  }
+  const claimName = `${pid}-${randomUUID()}.claim`;
+  const claimPath = join(directory, claimName);
+  try {
+    await writeFile(claimPath, `${pid}
+`, { flag: "wx" });
+  } catch (error) {
     try {
-      await create();
-    } catch (retryError) {
-      if (errorCode(retryError) === "EEXIST") {
-        const retryHolder = (await readFile(path, "utf8")).trim() || "unknown";
-        throw new UserError(`store lock held by pid ${retryHolder}`);
-      }
-      throw retryError;
+      await unlink(claimPath);
+    } catch (cleanupError) {
+      if (errorCode(cleanupError) !== "ENOENT") throw cleanupError;
+    }
+    throw error;
+  }
+  const claims = async () => {
+    const entries = await readdir(directory, { withFileTypes: true });
+    return entries.map((entry) => ({
+      name: entry.name,
+      path: join(directory, entry.name),
+      holder: LOCK_CLAIM.exec(entry.name)?.[1] ?? "unknown"
+    })).sort((left, right) => left.name.localeCompare(right.name));
+  };
+  const remove = async (path) => {
+    try {
+      await unlink(path);
+    } catch (error) {
+      if (errorCode(error) !== "ENOENT") throw error;
     }
   };
   try {
-    await create();
+    for (const claim of await claims()) {
+      if (claim.name === claimName) continue;
+      if (holderIsDead(claim.holder)) {
+        options.onStaleLock?.(claim.holder);
+        await remove(claim.path);
+      } else if (options.force) {
+        options.onLockStolen?.(claim.holder);
+        await remove(claim.path);
+      } else {
+        throw new UserError(`store lock held by pid ${claim.holder}`);
+      }
+    }
+    const remaining = await claims();
+    const ownsClaim = remaining.some((claim) => claim.name === claimName);
+    const competitor = remaining.find((claim) => claim.name !== claimName);
+    if (!ownsClaim) {
+      throw new UserError("store lock acquisition lost a concurrent race; retry");
+    }
+    if (competitor !== void 0) {
+      throw new UserError(`store lock held by pid ${competitor.holder}`);
+    }
   } catch (error) {
-    if (errorCode(error) !== "EEXIST") {
-      throw error;
-    }
-    let holder = "unknown";
-    try {
-      holder = (await readFile(path, "utf8")).trim() || "unknown";
-    } catch {
-      holder = "unknown";
-    }
-    if (holderIsDead(holder)) {
-      options.onStaleLock?.(holder);
-      await takeOver();
-    } else if (options.force) {
-      options.onLockStolen?.(holder);
-      await takeOver();
-    } else {
-      throw new UserError(`store lock held by pid ${holder}`);
-    }
+    await remove(claimPath);
+    throw error;
   }
-  return async () => {
-    try {
-      if ((await readFile(path, "utf8")).trim() === pid) {
-        await unlink(path);
+  return {
+    assertOwned: async () => {
+      if (!(await claims()).some((claim) => claim.name === claimName)) {
+        throw new UserError("store lock ownership was lost; retry the operation");
       }
-    } catch (error) {
-      if (errorCode(error) !== "ENOENT") {
-        throw error;
-      }
+    },
+    release: async () => {
+      await remove(claimPath);
     }
   };
 }
@@ -4034,22 +4057,28 @@ function countLine(value) {
 }
 function openStore(directory, options = {}) {
   const store = resolve(directory);
+  let closing = false;
   let closed = false;
-  let releaseLock = null;
+  let lockLease = null;
   let lockRequest = null;
+  let mutationTail = Promise.resolve();
+  let closeRequest = null;
   const ensureOpen = () => {
-    if (closed) {
+    if (closing || closed) {
       throw new UserError("store is closed");
     }
   };
   const ensureLock = async () => {
-    ensureOpen();
-    if (releaseLock !== null) {
+    if (closed) {
+      throw new UserError("store is closed");
+    }
+    if (lockLease !== null) {
+      await lockLease.assertOwned();
       return;
     }
     if (lockRequest === null) {
-      lockRequest = acquireLock(store, options).then((release) => {
-        releaseLock = release;
+      lockRequest = acquireLock(store, options).then((lease) => {
+        lockLease = lease;
       });
     }
     try {
@@ -4060,7 +4089,6 @@ function openStore(directory, options = {}) {
     }
   };
   const beginWrite = async () => {
-    ensureOpen();
     if (!await exists(store)) {
       throw new UserError(
         `store is not initialized at ${store}; run orch init`
@@ -4068,9 +4096,18 @@ function openStore(directory, options = {}) {
     }
     await ensureLock();
   };
+  const enqueueMutation = (operation) => {
+    ensureOpen();
+    const result = mutationTail.then(operation);
+    mutationTail = result.then(
+      () => void 0,
+      () => void 0
+    );
+    return result;
+  };
   return {
     units: {
-      add: async (params) => {
+      add: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const row = {
           id: requiredCell(params.id, "unit id"),
@@ -4088,8 +4125,8 @@ function openStore(directory, options = {}) {
         rows.push(row);
         await saveUnits(store, rows);
         return row;
-      },
-      set: async (params) => {
+      }),
+      set: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const id = requiredCell(params.id, "unit id");
         const state = requiredCell(params.state, "state");
@@ -4109,7 +4146,7 @@ function openStore(directory, options = {}) {
         rows[index] = row;
         await saveUnits(store, rows);
         return row;
-      },
+      }),
       get: async (id) => {
         ensureOpen();
         const cleanId = requiredCell(id, "unit id");
@@ -4137,7 +4174,7 @@ function openStore(directory, options = {}) {
       }
     },
     ledger: {
-      record: async (params) => {
+      record: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const verdict = parseVerdict(params.verdict);
         const row = {
@@ -4159,7 +4196,7 @@ function openStore(directory, options = {}) {
         }
         await saveLedger(store, rows);
         return row;
-      },
+      }),
       check: async (params) => {
         ensureOpen();
         const pr = String(positiveInteger(params.pr, "PR"));
@@ -4183,7 +4220,7 @@ function openStore(directory, options = {}) {
       }
     },
     inbox: {
-      push: async (params) => {
+      push: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const pointer = {
           ts: (/* @__PURE__ */ new Date()).toISOString(),
@@ -4204,8 +4241,8 @@ function openStore(directory, options = {}) {
 `;
         await atomicWrite(join(inbox, filename), contents);
         return { pointer, filename };
-      },
-      drain: async () => {
+      }),
+      drain: async () => enqueueMutation(async () => {
         await beginWrite();
         const inbox = join(store, "inbox");
         const rows = await readPointers(inbox);
@@ -4222,7 +4259,7 @@ function openStore(directory, options = {}) {
         }
         await rm(drained, { recursive: true, force: true });
         return rows;
-      },
+      }),
       peek: async () => {
         ensureOpen();
         return readPointers(join(store, "inbox"));
@@ -4233,7 +4270,7 @@ function openStore(directory, options = {}) {
       }
     },
     gates: {
-      park: async (params) => {
+      park: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const gate = {
           kind: "open",
@@ -4254,14 +4291,14 @@ function openStore(directory, options = {}) {
         }
         await atomicWrite(join(store, "gates.md"), renderGates(rows));
         return gate;
-      },
+      }),
       list: async () => {
         ensureOpen();
         return (await readGates(store)).filter(
           (gate) => gate.kind === "open"
         );
       },
-      resolve: async (params) => {
+      resolve: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const id = requiredLine(params.id, "gate id");
         const rows = [...await readGates(store)];
@@ -4281,14 +4318,14 @@ function openStore(directory, options = {}) {
         rows[index] = gate;
         await atomicWrite(join(store, "gates.md"), renderGates(rows));
         return gate;
-      }
+      })
     },
     standing: {
       show: async () => {
         ensureOpen();
         return readStanding(store);
       },
-      add: async (params) => {
+      add: async (params) => enqueueMutation(async () => {
         await beginWrite();
         const rows = [...await readStanding(store)];
         const item = {
@@ -4302,10 +4339,10 @@ function openStore(directory, options = {}) {
 `
         );
         return item;
-      }
+      })
     },
     status: {
-      render: async () => {
+      render: async () => enqueueMutation(async () => {
         await beginWrite();
         const unitRows = await readUnits(store);
         const ledgerRows = await readLedger(store);
@@ -4325,10 +4362,9 @@ function openStore(directory, options = {}) {
           summary: currentSummary,
           changed: change
         };
-      }
+      })
     },
-    init: async () => {
-      ensureOpen();
+    init: async () => enqueueMutation(async () => {
       await mkdir(store, { recursive: true });
       await ensureLock();
       await writeIfMissing(join(store, "units.tsv"), `${UNIT_HEADER}
@@ -4339,23 +4375,28 @@ function openStore(directory, options = {}) {
       await writeIfMissing(join(store, "gates.md"), "");
       await writeIfMissing(join(store, "preferences.md"), "");
       return { store };
-    },
-    close: async () => {
-      if (closed) {
-        return;
+    }),
+    close: () => {
+      if (closeRequest !== null) {
+        return closeRequest;
       }
-      if (lockRequest !== null) {
-        try {
-          await lockRequest;
-        } catch {
+      closing = true;
+      closeRequest = (async () => {
+        await mutationTail;
+        if (lockRequest !== null) {
+          try {
+            await lockRequest;
+          } catch {
+          }
         }
-      }
-      const release = releaseLock;
-      releaseLock = null;
-      closed = true;
-      if (release !== null) {
-        await release();
-      }
+        const lease = lockLease;
+        lockLease = null;
+        closed = true;
+        if (lease !== null) {
+          await lease.release();
+        }
+      })();
+      return closeRequest;
     }
   };
 }

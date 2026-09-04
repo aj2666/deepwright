@@ -1,6 +1,6 @@
 ---
 name: unslop
-description: "Remove generic AI phrasing and restore a human voice. Use for $unslop."
+description: "Remove generic AI phrasing and restore a human voice. Use for $deepwright:unslop."
 ---
 
 # Unslop

@@ -10,14 +10,14 @@ Deepwright began as a Codex-native adaptation of the MIT-licensed `pstack` direc
 | Cursor agents and slash commands | Standard Codex skills invoked with `$skill-name` |
 | Hard-coded provider model IDs | Host defaults or confirmed IDs in `.codex/deepwright.toml` |
 | Cursor `Task` syntax | Host collaboration or subagent capability |
-| Bun-only helper scripts | Node 20+ bundled executables |
+| Bun-only helper scripts | Node 20.19+ bundled executables |
 | Local transcript assumptions | Current conversation and `.deepwright/runs/` evidence |
 
 ## Deliberate removals
 
 - The dormant Benny scheduled automation was not copied. Scheduled work is account-level behavior and must be created explicitly by its owner.
 - The Grok bot UI helper was not copied. It depended on Cursor-specific UI and external tooling.
-- Cursor agent files were not disguised as Codex agents. Their useful behavior became `$rivet-agent`, `$comment-auditor`, and regular skills.
+- Cursor agent files were not disguised as Codex agents. Their useful behavior became `$deepwright:rivet-agent`, `$deepwright:comment-auditor`, and regular skills.
 - Vendor-specific control skills remain optional ideas, never undeclared dependencies.
 
 ## Compatibility principles

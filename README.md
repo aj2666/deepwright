@@ -16,10 +16,10 @@ This repository is a native Codex package—not a compatibility wrapper. It uses
 - **23 playbooks:** bugs, features, refactors, performance, runtime and trace forensics, visual parity, PRs, shipping, and multi-phase programs.
 - **Focused tools:** `$deepwright:architect`, `$deepwright:arena`, `$deepwright:interrogate`, `$deepwright:swarm`, `$deepwright:tdd`, and more.
 - **21 engineering principles:** loaded only when they change a decision.
-- **Portable helpers:** optional Node 20+ orchestration and PR-watching CLIs with no Bun dependency.
+- **Portable helpers:** optional Node 20.19+ orchestration and PR-watching CLIs with no Bun dependency.
 - **Safe defaults:** no bundled credentials, MCP server, background automation, deployment, merge, or external write without the authority supplied by the task.
 
-The plugin is skills-only. Rivet's `$deepwright:deepwright` router is the single implicit entry point for natural, non-trivial engineering requests; focused leaf skills stay explicit so a narrow question cannot accidentally start a wide workflow. Skills are the portable workflow layer supported by Codex CLI and the Codex experience in the ChatGPT desktop app; they progressively load when invoked instead of flooding the initial context. See OpenAI's [skill documentation](https://developers.openai.com/codex/build-skills).
+The plugin is skills-only. Rivet's `$deepwright:deepwright` router is the single implicit entry point for natural, non-trivial engineering requests; focused leaf skills stay explicit so a narrow question cannot accidentally start a wide workflow. Skills are the portable workflow layer supported by Codex CLI and the Codex experience in the ChatGPT desktop app; they progressively load when invoked instead of flooding the initial context. See OpenAI's [skill documentation](https://learn.chatgpt.com/docs/build-skills).
 
 ## Install in Codex CLI
 
@@ -31,15 +31,18 @@ codex plugin add deepwright@deepwright --json
 codex plugin list --json
 ```
 
+Start a new Codex CLI session after installation so the bundled skills are
+loaded.
+
 GitHub HTTPS works too when your Git credential helper can authenticate:
 
 ```bash
 codex plugin marketplace add https://github.com/aj2666/deepwright.git --ref main --json
 ```
 
-Codex accepts local directories, GitHub shorthand, HTTPS URLs, and SSH URLs as marketplace sources. See the [Codex plugin CLI reference](https://developers.openai.com/codex/developer-commands#cli-codex-plugin-marketplace).
+Codex accepts local directories, GitHub shorthand, HTTPS URLs, and SSH URLs as marketplace sources. See the [Codex plugin CLI reference](https://learn.chatgpt.com/docs/developer-commands).
 
-Start a task with:
+In Codex CLI, start a task with:
 
 ```text
 $deepwright:deepwright investigate this bug, fix the root cause, and prove it on the real surface
@@ -51,15 +54,33 @@ Or invoke Rivet directly:
 $deepwright:rivet-agent take this feature from design through verified delivery
 ```
 
+## Update in Codex CLI
+
+Refresh the Git marketplace, reinstall the plugin, and then start a new Codex
+session:
+
+```bash
+codex plugin marketplace upgrade deepwright --json
+codex plugin add deepwright@deepwright --json
+codex plugin list --json
+```
+
 ## Install in the macOS desktop app
 
 1. Clone the private repository with your normal GitHub credentials.
 2. Open the cloned folder as the project in Codex.
 3. Restart the ChatGPT desktop app so it discovers `.agents/plugins/marketplace.json`.
 4. Open the Plugins Directory, choose the **Deepwright** source, and install **Deepwright**.
-5. Open **Skills** and confirm Deepwright appears, then start a fresh Codex chat and invoke `$deepwright:deepwright`.
+5. Start a fresh Codex chat, type `@`, select **Deepwright** or one of its bundled skills, and ask it to inspect a harmless sample repository without editing.
 
-Repo marketplaces and plugin skills are supported in the desktop app; OpenAI documents the discovery flow in [Build plugins](https://developers.openai.com/plugins/build/plugins) and [Build skills](https://developers.openai.com/codex/build-skills).
+The `$deepwright:...` examples in this repository are Codex CLI syntax. In the
+desktop app, use the `@` picker and the displayed **Deepwright** and **Rivet**
+names. OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins)
+documents the fresh-chat and `@` invocation behavior. After pulling an update
+to the checkout, restart the app, complete any update or reinstall offered in
+the Plugins Directory, and start a new chat.
+
+Repo marketplaces and plugin skills are supported in the desktop app; OpenAI documents the discovery flow in [Build plugins](https://developers.openai.com/plugins/build/plugins) and [Build skills](https://learn.chatgpt.com/docs/build-skills).
 
 ## Optional configuration
 

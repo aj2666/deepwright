@@ -1,6 +1,22 @@
 import type * as T from "./types.ts";
+const escapeJsonTerminalControls = (value: string): string =>
+  value.replace(
+    /[\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+    (character) =>
+      `\\u${character.codePointAt(0)?.toString(16).padStart(4, "0")}`
+  );
 export const renderJson = (verdict: T.WatcherVerdict): string =>
-  `${JSON.stringify(verdict)}\n`;
+  `${escapeJsonTerminalControls(JSON.stringify(verdict))}\n`;
+const terminalText = (value: string, limit = 240): string =>
+  value
+    .replace(
+      /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu,
+      ""
+    )
+    .replace(/[\t\r\n]+/gu, " ")
+    .replace(/ {2,}/gu, " ")
+    .trim()
+    .slice(0, limit);
 function ciCell(row: T.PrSnapshot): string {
   if (row.kind !== "open") return "\u2014";
   const was = row.ci.hadPreviousPassingCi ? ", was ✅" : "";
@@ -62,13 +78,13 @@ export function renderStatusTable(rows: T.NonEmpty<T.PrSnapshot>): string {
 function threadLine(thread: T.ReviewThread): string {
   const comment = thread.firstComment;
   return [
-    thread.id,
-    comment?.path ?? "None",
+    terminalText(thread.id),
+    terminalText(comment?.path ?? "None"),
     comment?.line ?? "None",
-    comment?.authorLogin ?? "None",
+    terminalText(comment?.authorLogin ?? "None"),
     `isAutomatedReview=${thread.isAutomatedReview}`,
     `automatedReviewPasses=${thread.automatedReviewPasses}`,
-    (comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? "",
+    terminalText(comment?.body ?? "", 180),
   ].join(" ");
 }
 type StatusQueryBlocker = {
@@ -97,7 +113,7 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
       const failed = blocker.ci.kind === "ci-failing" ? blocker.ci.failed : [];
       const details = failed.map(
         (check) =>
-          `${check.name} ${check.reportedState} ${check.description} ${check.link}`
+          `${terminalText(check.name)} ${terminalText(check.reportedState)} ${terminalText(check.description)} ${terminalText(check.link)}`
       );
       if (blocker.ci.kind === "ci-github-rejected")
         details.push(
@@ -140,7 +156,7 @@ function renderBlocker(blocker: T.MergeBlocker | StatusQueryBlocker): string {
       return [
         "BLOCKER: status-query",
         `failures=${blocker.failures}`,
-        `detail=${blocker.failure.detail}`,
+        `detail=${terminalText(blocker.failure.detail)}`,
         "action=verify current PR context, GitHub authentication, and API availability, then rearm",
       ].join("\n");
     default: {
@@ -162,7 +178,7 @@ export function renderPretty(verdict: T.WatcherVerdict): string {
     case "ADVANCE":
       return `ADVANCE: merged #${verdict.merged.number}; next=#${verdict.frontier.number}; remaining=${verdict.remaining}\n`;
     case "RETRY":
-      return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s\ndetail=${verdict.failure.detail}\n`;
+      return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s\ndetail=${terminalText(verdict.failure.detail)}\n`;
     case "BLOCKER":
       return `${renderBlocker(verdict.blocker)}\n`;
     case "READY": {
@@ -179,6 +195,8 @@ export function renderPretty(verdict: T.WatcherVerdict): string {
         return "TIMEOUT: checks still pending\n";
       if (verdict.reason.kind === "status-unavailable")
         return "TIMEOUT: GitHub status remained unavailable\n";
+      if (verdict.reason.kind === "watch-deadline")
+        return "TIMEOUT: status collection exceeded the watch deadline\n";
       return `TIMEOUT: queued stack still has ${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged; frontier=#${verdict.reason.frontier.number}\n`;
     default: {
       const exhaustive: never = verdict;

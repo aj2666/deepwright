@@ -1,6 +1,6 @@
 ---
 name: principle-separate-before-serializing-shared-state
-description: "Separate writers before adding synchronization. Use for $principle-separate-before-serializing-shared-state."
+description: "Separate writers before adding synchronization. Use for $deepwright:principle-separate-before-serializing-shared-state."
 ---
 
 # Separate Before Serializing Shared State

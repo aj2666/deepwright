@@ -1,6 +1,6 @@
 ---
 name: principle-minimize-reader-load
-description: "Reduce layers and hidden state for future readers. Use for $principle-minimize-reader-load."
+description: "Reduce layers and hidden state for future readers. Use for $deepwright:principle-minimize-reader-load."
 ---
 
 # Minimize Reader Load

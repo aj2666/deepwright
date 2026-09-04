@@ -9,6 +9,7 @@ import type {
   Repository,
   ReviewThread,
   RollupPage,
+  WatchDeadline,
 } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
 
@@ -58,8 +59,12 @@ export function failedCheck(name = "ci"): Check {
 
 export function fakeReader(
   options: FakeReaderOptions = {}
-): GitHubReader & { readonly calls: readonly string[] } {
+): GitHubReader & {
+  readonly calls: readonly string[];
+  readonly deadlines: readonly (WatchDeadline | undefined)[];
+} {
   const calls: string[] = [];
+  const deadlines: (WatchDeadline | undefined)[] = [];
   const context = options.current ?? {
     owner: "owner",
     repo: "repo",
@@ -80,38 +85,47 @@ export function fakeReader(
   let page = 0;
   return {
     calls,
-    async originRepo() {
+    deadlines,
+    async originRepo(deadline: WatchDeadline | undefined) {
       calls.push("originRepo");
+      deadlines.push(deadline);
       return options.origin === undefined
         ? { owner: "owner", repo: "repo" }
         : options.origin;
     },
-    async currentPr(pr) {
+    async currentPr(pr, deadline) {
       calls.push("currentPr");
+      deadlines.push(deadline);
       return { ...context, number: pr ?? context.number };
     },
-    async pullRequest(requested) {
+    async pullRequest(requested, deadline) {
       calls.push("pullRequest");
+      deadlines.push(deadline);
       return { ...defaults, ...options.facts, context: requested };
     },
-    async openPullRequests() {
+    async openPullRequests(_repository, deadline) {
       calls.push("openPullRequests");
+      deadlines.push(deadline);
       return options.openPullRequests ?? [];
     },
-    async checksFastPath() {
+    async checksFastPath(_requested, deadline) {
       calls.push("checksFastPath");
+      deadlines.push(deadline);
       return options.fastPath ?? { kind: "checks", checks: [passingCheck()] };
     },
-    async checkRollupPage(_requested, after) {
+    async checkRollupPage(_requested, after, deadline) {
       calls.push(`checkRollupPage:${after ?? "null"}`);
+      deadlines.push(deadline);
       return options.rollupPages?.[page++] ?? { checks: [], endCursor: null };
     },
-    async reviewThreads() {
+    async reviewThreads(_requested, deadline) {
       calls.push("reviewThreads");
+      deadlines.push(deadline);
       return options.threads ?? [];
     },
-    async commitRollups() {
+    async commitRollups(_requested, deadline) {
       calls.push("commitRollups");
+      deadlines.push(deadline);
       return options.commitRollups ?? [{ oid: "head", state: "SUCCESS" }];
     },
   };

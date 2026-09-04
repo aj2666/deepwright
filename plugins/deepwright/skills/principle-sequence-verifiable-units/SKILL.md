@@ -1,6 +1,6 @@
 ---
 name: principle-sequence-verifiable-units
-description: "Break work into independently checkable units. Use for $principle-sequence-verifiable-units."
+description: "Break work into independently checkable units. Use for $deepwright:principle-sequence-verifiable-units."
 ---
 
 # Sequence work into verifiable units
@@ -18,4 +18,4 @@ Order work as a sequence of small units, each ending in a state you can check, a
 - Verify before advancing. Red to green per unit, never deferred to a final batch.
 - Order the units so the sequence builds confidence on its own, for you while executing and for a reviewer reading the stack.
 
-This complements `$principle-prove-it-works`, which keeps each check real, and `$principle-build-the-lever`, which makes each unit cheap to verify.
+This complements `$deepwright:principle-prove-it-works`, which keeps each check real, and `$deepwright:principle-build-the-lever`, which makes each unit cheap to verify.

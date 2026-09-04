@@ -1,6 +1,6 @@
 ---
 name: principle-boundary-discipline
-description: "Validate boundaries and trust typed internals. Use for $principle-boundary-discipline."
+description: "Validate boundaries and trust typed internals. Use for $deepwright:principle-boundary-discipline."
 ---
 
 # Boundary Discipline

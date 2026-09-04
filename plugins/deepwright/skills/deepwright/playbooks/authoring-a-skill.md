@@ -7,6 +7,6 @@
 3. Test cases if structural; skip if subjective.
 4. Run **Opening a PR** only when the user asked to publish the skill change as a PR.
 
-When in doubt, delete; prose earns its keep by changing a decision. Tell it to do the thing and skip the reason. Explain only when the rule is confusing without one. Match tone to scope. Point at structural sources (types, READMEs, config); hardcoded details go stale (the `$principle-encode-lessons-in-structure` skill). Delegate to other skills with `$skill-name` and a relative resource path; do not restate them. A workflow you keep hitting but is not captured can become a proposed skill, but do not create or install it without the user's request.
+When in doubt, delete; prose earns its keep by changing a decision. Tell it to do the thing and skip the reason. Explain only when the rule is confusing without one. Match tone to scope. Point at structural sources (types, READMEs, config); hardcoded details go stale (the `$deepwright:principle-encode-lessons-in-structure` skill). Delegate to other skills with `$skill-name` and a relative resource path; do not restate them. A workflow you keep hitting but is not captured can become a proposed skill, but do not create or install it without the user's request.
 
 **Reply:** summary of the skill, key design decisions, validation notes.

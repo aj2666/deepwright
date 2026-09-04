@@ -14,7 +14,7 @@ One unit updates the example safely.
 ## How to read this
 
 One box is one unit of work. Every box names the evidence. Check a box only when the evidence exists.
-Run this plan by invoking \`$deepwright\` and following \`playbooks/orchestrate.md\`.
+Run this plan by invoking \`$deepwright:deepwright\` and following \`playbooks/orchestrate.md\`.
 Push, PR, review, retarget or rebase, and merge permissions all require explicit user authorization.
 ${RULE}
 
@@ -103,6 +103,14 @@ describe("check-plan", () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain("1 unit section, 0 problems");
     expect(result.stderr).toBe("");
+  });
+
+  it("rejects an unqualified Deepwright router invocation", () => {
+    const result = validate(
+      validPlan.replace("$deepwright:deepwright", "$" + "deepwright")
+    );
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('How to read this lacks "/\\$deepwright:deepwright/"');
   });
 
   it("rejects fixed numbered lanes in place of risk-based lanes", () => {

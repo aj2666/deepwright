@@ -1,6 +1,6 @@
 ---
 name: principle-model-the-domain
-description: "Encode domain rules in explicit structures and types. Use for $principle-model-the-domain."
+description: "Encode domain rules in explicit structures and types. Use for $deepwright:principle-model-the-domain."
 ---
 
 # Model the Domain

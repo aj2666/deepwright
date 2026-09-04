@@ -12,6 +12,7 @@ import {
   resolveContext,
 } from "./github.ts";
 import {
+  createWatchDeadline,
   runQueued,
   runSimple,
   statusQueryVerdict,
@@ -20,7 +21,7 @@ import {
 } from "./policy.ts";
 import { renderJson, renderPretty } from "./render.ts";
 import type * as T from "./types.ts";
-import { nonEmpty, parsePrNumber } from "./types.ts";
+import { MAX_GITHUB_PR_NUMBER, nonEmpty, parsePrNumber } from "./types.ts";
 export const DEFAULT_TIMEOUT_SECONDS = 3_600;
 export interface CliOptions {
   readonly owner: string | null;
@@ -54,7 +55,9 @@ function prNumber(value: string): T.PrNumber {
   try {
     return parsePrNumber(Number(value.replace(/^#/, "")));
   } catch {
-    throw new InvalidArgumentError("must be a positive integer");
+    throw new InvalidArgumentError(
+      `must be an integer from 1 through ${MAX_GITHUB_PR_NUMBER}`
+    );
   }
 }
 function stackPrList(value: string): T.NonEmpty<T.PrNumber> {
@@ -117,7 +120,7 @@ export function parseArgs(
     )
     .option(
       "--timeout <seconds>",
-      "watch deadline; 0 is an explicit unbounded override",
+      "watch deadline; 0 disables the overall deadline (commands keep a 120s safety cap)",
       nonNegativeNumber,
       DEFAULT_TIMEOUT_SECONDS
     )
@@ -134,6 +137,8 @@ export function parseArgs(
   const raw = program.opts<RawOptions>();
   if (raw.stackPrs !== undefined && !raw.queuedStack)
     program.error("error: --stack-prs requires --queued-stack");
+  if ((raw.owner === undefined) !== (raw.repo === undefined))
+    program.error("error: --owner and --repo must be provided together");
   return {
     owner: raw.owner ?? null,
     repo: raw.repo ?? null,
@@ -182,43 +187,69 @@ export async function main(
     if (!(error instanceof CommanderError)) throw error;
     return error.exitCode === 0 ? 0 : 64;
   }
-  const render = options.pretty ? renderPretty : renderJson;
-  const emit = (verdict: T.ProgressVerdict): void =>
-    runtime.stdout(render(verdict));
-  let contexts: T.NonEmpty<T.PrContext>;
+  const deadlineHandle = createWatchDeadline(
+    runtime.clock,
+    options.polling.timeout
+  );
+  const { deadline } = deadlineHandle;
   try {
-    const seed = await resolveContext({
-      reader: runtime.reader,
-      owner: options.owner,
-      repo: options.repo,
-      pr: options.pr ?? options.stackPrs[0] ?? null,
-    });
-    contexts =
-      nonEmpty(options.stackPrs.map((number) => ({ ...seed, number }))) ??
-      (options.mode === "single"
-        ? [seed]
-        : await discoverStack(runtime.reader, seed));
-  } catch (error) {
-    if (!(error instanceof WatcherQueryError)) throw error;
-    const verdict = statusQueryVerdict(
-      verdictFactory(runtime.clock, options.mode),
-      1,
-      error.failure
-    );
+    const render = options.pretty ? renderPretty : renderJson;
+    const emit = (verdict: T.ProgressVerdict): void =>
+      runtime.stdout(render(verdict));
+    let contexts: T.NonEmpty<T.PrContext>;
+    try {
+      const seed = await resolveContext({
+        reader: runtime.reader,
+        owner: options.owner,
+        repo: options.repo,
+        pr: options.pr ?? options.stackPrs[0] ?? null,
+        deadline,
+      });
+      contexts =
+        nonEmpty(options.stackPrs.map((number) => ({ ...seed, number }))) ??
+        (options.mode === "single"
+          ? [seed]
+          : await discoverStack(runtime.reader, seed, deadline));
+    } catch (error) {
+      if (deadline.expired()) {
+        const verdict = verdictFactory(runtime.clock, options.mode)({
+          kind: "TIMEOUT",
+          terminal: true,
+          exitCode: 5,
+          reason: { kind: "watch-deadline" },
+        });
+        runtime.stdout(render(verdict));
+        return verdict.exitCode;
+      }
+      if (!(error instanceof WatcherQueryError)) throw error;
+      const verdict = statusQueryVerdict(
+        verdictFactory(runtime.clock, options.mode),
+        1,
+        error.failure
+      );
+      runtime.stdout(render(verdict));
+      return verdict.exitCode;
+    }
+    const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
+    const verdict =
+      options.mode === "queued-stack" && !options.statusOnly
+        ? await runQueued({
+            dependencies,
+            contexts,
+            options: options.polling,
+            deadline,
+          })
+        : await runSimple({
+            dependencies,
+            contexts,
+            mode: options.mode,
+            statusOnly: options.statusOnly,
+            options: options.polling,
+            deadline,
+          });
     runtime.stdout(render(verdict));
     return verdict.exitCode;
+  } finally {
+    deadlineHandle.dispose();
   }
-  const dependencies = { reader: runtime.reader, clock: runtime.clock, emit };
-  const verdict =
-    options.mode === "queued-stack" && !options.statusOnly
-      ? await runQueued({ dependencies, contexts, options: options.polling })
-      : await runSimple({
-          dependencies,
-          contexts,
-          mode: options.mode,
-          statusOnly: options.statusOnly,
-          options: options.polling,
-        });
-  runtime.stdout(render(verdict));
-  return verdict.exitCode;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { main } from "./doctor.ts";
+import { main, supportsNodeVersion } from "./doctor.ts";
 
 function capture(): {
   readonly stdout: string[];
@@ -22,6 +22,18 @@ function capture(): {
 }
 
 describe("deepwright doctor", () => {
+  it.each([
+    ["19.99.99", false],
+    ["20.18.99", false],
+    ["20.19.0-rc.1", false],
+    ["20.19.0", true],
+    ["20.19.1", true],
+    ["21.0.0", true],
+    ["unknown", false],
+  ] as const)("classifies Node.js %s support as %s", (version, supported) => {
+    expect(supportsNodeVersion(version)).toBe(supported);
+  });
+
   it("prints help without running checks", async () => {
     const output = capture();
     expect(await main(["--help"], output.io)).toBe(0);

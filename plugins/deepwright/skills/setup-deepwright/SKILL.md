@@ -1,6 +1,6 @@
 ---
 name: setup-deepwright
-description: "Configure Deepwright role models and parallelism. Use for $setup-deepwright."
+description: "Configure Deepwright role models and parallelism. Use for $deepwright:setup-deepwright."
 ---
 
 # Set up Deepwright

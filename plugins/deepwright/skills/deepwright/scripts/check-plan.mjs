@@ -37,7 +37,7 @@ const HOW_TO_READ_MARKERS = [
 	"One box is one unit of work",
 	"Every box names the evidence",
 	/Check a box only when (?:the|its) evidence exists/,
-	/\$deepwright/,
+	/\$deepwright:deepwright/,
 	/playbooks\/(?:autopilot-full|autopilot-stack|orchestrate)\.md/,
 	RULE,
 ];

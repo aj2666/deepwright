@@ -1,6 +1,6 @@
 ---
 name: principle-prove-it-works
-description: "Verify behavior against the real artifact. Use for $principle-prove-it-works."
+description: "Verify behavior against the real artifact. Use for $deepwright:principle-prove-it-works."
 ---
 
 # Prove It Works
@@ -30,4 +30,4 @@ When verifying delegated work, inspect the actual output artifact (git diff, fil
 
 The strongest proof is often a deterministic check that re-runs the same comparison. Reuse an existing check first. Add a repository script only when code changes are in scope; otherwise use an ephemeral task-owned scratch check or describe the proposed command. A comparison of old and new compiled output can catch what a glance misses without touching live data.
 
-Keep the artifact visible for the human. When the user authorized commits and a large or complex change needs a durable audit trail, use `$show-me-your-work` and commit the proof. Most work needs the artifact visible, not committed.
+Keep the artifact visible for the human. When the user authorized commits and a large or complex change needs a durable audit trail, use `$deepwright:show-me-your-work` and commit the proof. Most work needs the artifact visible, not committed.

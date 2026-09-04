@@ -1,14 +1,19 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   ChecksUnavailable,
+  COMMAND_OUTPUT_LIMIT_EXIT,
   MAX_CHECK_ROLLUP_PAGES,
   OPEN_PULL_REQUEST_LIMIT,
+  REVIEW_THREADS_QUERY,
   WatcherQueryError,
   collectReviewThreads,
   commandFailureDetail,
   connectionEndCursor,
   mapRollupNode,
   orderStack,
+  parseCurrentPr,
   parseOpenPullRequests,
   parsePullRequest,
   parseReviewThreads,
@@ -22,7 +27,7 @@ import {
   passingCheck,
   pendingCheck,
 } from "./fakes.test-helper.ts";
-import { parsePrNumber } from "./types.ts";
+import { MAX_GITHUB_PR_NUMBER, parsePrNumber } from "./types.ts";
 
 const context = {
   owner: "owner",
@@ -52,6 +57,29 @@ function reviewThreadResponse(args: {
   };
 }
 
+async function readFileEventually(
+  path: string,
+  timeoutMilliseconds: number
+): Promise<string> {
+  const expiresAt = performance.now() + timeoutMilliseconds;
+  while (performance.now() < expiresAt) {
+    try {
+      return await readFile(path, "utf8");
+    } catch (error) {
+      if (
+        !(
+          error instanceof Error &&
+          "code" in error &&
+          error.code === "ENOENT"
+        )
+      )
+        throw error;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+  throw new Error(`timed out waiting for ${path}`);
+}
+
 it("reports a missing command as a normal command result", async () => {
   const result = await run(["deepwright-command-that-does-not-exist"]);
   expect(result).toMatchObject({ code: 127, stdout: "" });
@@ -65,6 +93,84 @@ it("bounds each external status command", async () => {
   );
   expect(result.code).toBe(124);
   expect(result.stderr).toContain("timed out after 25ms");
+});
+
+it("kills an in-flight child promptly when the watch deadline aborts", async () => {
+  const directory = await mkdtemp(
+    join(process.cwd(), "deepwright-deadline-child-")
+  );
+  const pidFile = join(directory, "pid");
+  const controller = new AbortController();
+  let running: ReturnType<typeof run> | null = null;
+  let childPid: number | null = null;
+  try {
+    running = run(
+      [
+        process.execPath,
+        "-e",
+        "require('node:fs').writeFileSync(process.argv[1], String(process.pid)); setInterval(() => {}, 1000)",
+        pidFile,
+      ],
+      1_500,
+      1_000_000,
+      controller.signal
+    );
+    childPid = Number(await readFileEventually(pidFile, 1_000));
+    expect(Number.isInteger(childPid)).toBe(true);
+    const abortedAt = performance.now();
+    controller.abort();
+    const result = await running;
+    expect(performance.now() - abortedAt).toBeLessThan(500);
+    expect(result.code).toBe(124);
+    expect(result.stderr).toContain("aborted at the watch deadline");
+    let childStillExists = true;
+    try {
+      process.kill(childPid, 0);
+    } catch {
+      childStillExists = false;
+    }
+    expect(childStillExists).toBe(false);
+  } finally {
+    controller.abort();
+    if (running !== null) await running.catch(() => undefined);
+    if (childPid !== null)
+      try {
+        process.kill(childPid, "SIGKILL");
+      } catch {
+        // The expected path already reaped the child before resolving.
+      }
+    await rm(directory, { recursive: true, force: true });
+  }
+
+  const alreadyAborted = new AbortController();
+  alreadyAborted.abort();
+  await expect(
+    run(
+      ["deepwright-command-that-must-not-spawn"],
+      1_000,
+      1_000,
+      alreadyAborted.signal
+    )
+  ).resolves.toMatchObject({
+    code: 124,
+    stderr: expect.stringContaining("aborted at the watch deadline"),
+  });
+});
+
+it("bounds combined command output before parsing it", async () => {
+  const result = await run(
+    [process.execPath, "-e", "process.stdout.write('x'.repeat(1024))"],
+    1_000,
+    128
+  );
+  expect(result.code).toBe(COMMAND_OUTPUT_LIMIT_EXIT);
+  expect(result.stdout.length).toBeLessThanOrEqual(128);
+  expect(result.stderr).toContain("output exceeded 128 byte limit");
+});
+
+it("requests only the first review comment needed by the classifier", () => {
+  expect(REVIEW_THREADS_QUERY).toContain("comments(first: 1)");
+  expect(REVIEW_THREADS_QUERY).not.toContain("comments(first: 10)");
 });
 
 it("explains that gh is optional for the skill but required by the watcher", () => {
@@ -416,6 +522,40 @@ it("paginates every review thread before classifying unresolved threads", async 
   expect(threads.map((thread) => thread.automatedReviewPasses)).toEqual([2, 2]);
 });
 
+it("fails closed when aggregate review bodies exceed their memory budget", async () => {
+  await expect(
+    collectReviewThreads(
+      async () =>
+        reviewThreadResponse({
+          nodes: [
+            {
+              id: "large",
+              isResolved: false,
+              comments: {
+                nodes: [
+                  {
+                    body: "123456789",
+                    createdAt: "now",
+                    path: null,
+                    line: null,
+                    author: null,
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      8
+    )
+  ).rejects.toMatchObject({
+    failure: {
+      kind: "response-too-large",
+      retryable: false,
+      limitBytes: 8,
+    },
+  });
+});
+
 it("fails closed when review-thread pagination has no usable cursor", async () => {
   await expect(
     collectReviewThreads(async () =>
@@ -487,22 +627,92 @@ describe("context and stack discovery", () => {
     expect(reader.calls).toEqual(["originRepo"]);
   });
 
+  it("rejects partial or mismatched inferred repository coordinates", async () => {
+    const reader = fakeReader({
+      current: {
+        owner: "local",
+        repo: "checkout",
+        number: parsePrNumber(7),
+      },
+    });
+    await expect(
+      resolveContext({ reader, owner: "target", repo: null, pr: null })
+    ).rejects.toMatchObject({
+      failure: { kind: "invalid-context", retryable: false },
+    });
+    await expect(
+      resolveContext({ reader, owner: "target", repo: "repo", pr: null })
+    ).rejects.toMatchObject({
+      failure: { kind: "invalid-context", retryable: false },
+    });
+  });
+
+  it("validates PR numbers from GitHub as structured query failures", () => {
+    expect(() =>
+      parseOpenPullRequests([
+        {
+          number: "42",
+          headRefName: "feature",
+          baseRefName: "main",
+          isCrossRepository: false,
+        },
+      ])
+    ).toThrow(WatcherQueryError);
+    expect(() =>
+      parseOpenPullRequests([
+        {
+          number: MAX_GITHUB_PR_NUMBER + 1,
+          headRefName: "feature",
+          baseRefName: "main",
+          isCrossRepository: false,
+        },
+      ])
+    ).toThrow(WatcherQueryError);
+    expect(() =>
+      parseCurrentPr(
+        {
+          number: "42",
+          url: "https://github.com/owner/repo/pull/42",
+        },
+        null
+      )
+    ).toThrow(WatcherQueryError);
+    for (const [number, url] of [
+      [1_000, "https://github.com/owner/repo/pull/1e3"],
+      [42, "https://github.com/owner/repo/pull/0x2a"],
+      [42, "https://github.com/owner/repo/pull/42/"],
+      [
+        MAX_GITHUB_PR_NUMBER + 1,
+        `https://github.com/owner/repo/pull/${MAX_GITHUB_PR_NUMBER + 1}`,
+      ],
+    ] as const)
+      expect(() => parseCurrentPr({ number, url }, null)).toThrow(
+        WatcherQueryError
+      );
+    expect(() => parsePrNumber(Number.MAX_SAFE_INTEGER + 1)).toThrow(
+      "positive 32-bit GitHub GraphQL integer"
+    );
+  });
+
   it("orders the connected stack bottom-to-top", () => {
     const ordered = orderStack(context, [
       {
         number: parsePrNumber(41),
         headRefName: "base-feature",
         baseRefName: "main",
+        isCrossRepository: false,
       },
       {
         number: context.number,
         headRefName: "feature",
         baseRefName: "base-feature",
+        isCrossRepository: false,
       },
       {
         number: parsePrNumber(43),
         headRefName: "upstack",
         baseRefName: "feature",
+        isCrossRepository: false,
       },
     ]);
     expect(ordered.map((item) => Number(item.number))).toEqual([41, 42, 43]);
@@ -513,6 +723,7 @@ describe("context and stack discovery", () => {
       number: index + 1,
       headRefName: `head-${index + 1}`,
       baseRefName: index === 0 ? "main" : `head-${index}`,
+      isCrossRepository: false,
     }));
     expect(() => parseOpenPullRequests(rows)).toThrow(
       `open PR list reached the ${OPEN_PULL_REQUEST_LIMIT}-row gh limit`
@@ -524,6 +735,7 @@ describe("context and stack discovery", () => {
       number: parsePrNumber(1),
       headRefName: "one",
       baseRefName: "main",
+      isCrossRepository: false,
     };
     expect(() =>
       orderStack(context, [one, { ...one, headRefName: "other" }])
@@ -533,7 +745,7 @@ describe("context and stack discovery", () => {
         one,
         { ...one, number: parsePrNumber(2) },
       ])
-    ).toThrow("duplicate headRefName one");
+    ).toThrow("duplicate base-repository headRefName one");
   });
 
   it("rejects cyclic base/head graphs instead of looping", () => {
@@ -543,13 +755,90 @@ describe("context and stack discovery", () => {
           number: parsePrNumber(1),
           headRefName: "one",
           baseRefName: "two",
+          isCrossRepository: false,
         },
         {
           number: parsePrNumber(2),
           headRefName: "two",
           baseRefName: "one",
+          isCrossRepository: false,
         },
       ])
     ).toThrow("base/head graph contains a cycle");
+  });
+
+  it("does not let a same-named fork head mask a base-repository cycle", () => {
+    expect(() =>
+      orderStack(context, [
+        {
+          number: parsePrNumber(40),
+          headRefName: "one",
+          baseRefName: "main",
+          isCrossRepository: true,
+        },
+        {
+          number: context.number,
+          headRefName: "one",
+          baseRefName: "two",
+          isCrossRepository: false,
+        },
+        {
+          number: parsePrNumber(43),
+          headRefName: "two",
+          baseRefName: "one",
+          isCrossRepository: false,
+        },
+      ])
+    ).toThrow("base/head graph contains a cycle");
+  });
+
+  it("never treats a fork head name as a base-repository parent branch", () => {
+    const fork = {
+      number: parsePrNumber(41),
+      headRefName: "base-feature",
+      baseRefName: "main",
+      isCrossRepository: true,
+    };
+    const child = {
+      number: context.number,
+      headRefName: "child",
+      baseRefName: "base-feature",
+      isCrossRepository: false,
+    };
+    expect(orderStack(context, [fork, child]).map((pr) => pr.number)).toEqual([
+      context.number,
+    ]);
+    expect(
+      orderStack(
+        { ...context, number: fork.number },
+        [
+          fork,
+          {
+            ...child,
+            number: parsePrNumber(43),
+            baseRefName: fork.headRefName,
+          },
+        ]
+      ).map((pr) => pr.number)
+    ).toEqual([fork.number]);
+
+    const parent = {
+      number: parsePrNumber(44),
+      headRefName: "same-repo-parent",
+      baseRefName: "main",
+      isCrossRepository: false,
+    };
+    const forkChild = {
+      number: parsePrNumber(45),
+      headRefName: "fork-child",
+      baseRefName: parent.headRefName,
+      isCrossRepository: true,
+    };
+    expect(
+      orderStack(
+        { ...context, number: parent.number },
+        [parent, forkChild]
+      ).map((pr) => pr.number)
+    ).toEqual([parent.number]);
   });
 });

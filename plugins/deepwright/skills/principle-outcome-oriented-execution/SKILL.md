@@ -1,6 +1,6 @@
 ---
 name: principle-outcome-oriented-execution
-description: "Converge on the target instead of preserving detours. Use for $principle-outcome-oriented-execution."
+description: "Converge on the target instead of preserving detours. Use for $deepwright:principle-outcome-oriented-execution."
 ---
 
 # Outcome-Oriented Execution

@@ -1,6 +1,6 @@
 ---
 name: principle-migrate-callers-then-delete-legacy-apis
-description: "Migrate all callers before deleting a legacy API. Use for $principle-migrate-callers-then-delete-legacy-apis."
+description: "Migrate all callers before deleting a legacy API. Use for $deepwright:principle-migrate-callers-then-delete-legacy-apis."
 ---
 
 # Migrate Callers Then Delete Legacy APIs

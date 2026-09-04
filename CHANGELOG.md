@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.1 — 2026-09-04
+
+- Use canonical plugin-qualified names for every bundled cross-skill invocation.
+- Correct pending-CI handling, pull-request identity resolution, and orchestration lock takeover.
+- Harden stacked-PR verification against fork collisions, mid-sweep head changes, malformed API data, deadline overruns, and terminal control sequences.
+- Serialize concurrent ledger mutations and drain admitted writes before releasing a store lock.
+- Make installed command wrappers safe when invoked through package-manager symlinks.
+- Set Node 20.19.0 as the tested minimum for optional helper tooling.
+- Align the documented orchestration schema with the bundled helper implementation.
+- Clarify CLI reinstall, fresh-session, and macOS desktop `@` invocation flows.
+- Publish a version tag and GitHub release only after both compatibility jobs pass.
+
 ## 1.0.0 — 2026-09-04
 
 - Launch Deepwright and the Rivet engineering foreman.

@@ -1,6 +1,6 @@
 ---
 name: why
-description: "Trace design rationale through authorized evidence. Use for $why."
+description: "Trace design rationale through authorized evidence. Use for $deepwright:why."
 ---
 
 # Why

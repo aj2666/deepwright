@@ -1,6 +1,6 @@
 ---
 name: technical-writing
-description: "Write precise, readable technical documentation. Use for $technical-writing."
+description: "Write precise, readable technical documentation. Use for $deepwright:technical-writing."
 ---
 
 # Technical writing
@@ -98,7 +98,7 @@ Source: Kohl, The Global English Style Guide (SAS Press). Guideline text fetched
 
 ## Voice and repo specifics
 
-- Apply `$unslop` to every document this skill touches. That skill owns the catalog of generic AI vocabulary, filler, hedging, and formatting tells.
+- Apply `$deepwright:unslop` to every document this skill touches. That skill owns the catalog of generic AI vocabulary, filler, hedging, and formatting tells.
 - PR descriptions and commit messages are writing too. Every layer except Diátaxis applies to them.
 - Product UI strings are not documentation. Use your product's copy guidelines for those.
 - Indent code snippets with tabs. Write real paths and real symbols. Make every count or tree claim true at the commit that lands it, and include the command that regenerates it.

@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: "Drive a change with a focused red-green-refactor loop. Use for $tdd."
+description: "Drive a change with a focused red-green-refactor loop. Use for $deepwright:tdd."
 ---
 
 # TDD Bug Fix

@@ -1,6 +1,6 @@
 {
   "name": "deepwright",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Evidence-first engineering workflows for Codex CLI and the Codex desktop app.",
   "author": {
     "name": "aj2666",
@@ -29,9 +29,9 @@
     ],
     "websiteURL": "https://github.com/aj2666/deepwright",
     "defaultPrompt": [
-      "Use $deepwright:deepwright to plan and ship this change.",
-      "Use $deepwright:rivet-agent to investigate this bug and prove the fix.",
-      "Use $deepwright:interrogate for an adversarial review."
+      "Use Deepwright to plan and ship this change.",
+      "Ask Rivet to investigate this bug and prove the fix.",
+      "Use Deepwright's adversarial review workflow on this change."
     ],
     "brandColor": "#FF713D",
     "composerIcon": "./assets/icon.png",

@@ -10,7 +10,7 @@ From Codex CLI, add the repository as a marketplace. An SSH URL is a good fit
 for a private GitHub repository when your Mac is already authenticated:
 
 ```bash
-codex plugin marketplace add git@github.com:OWNER/REPOSITORY.git --ref main --json
+codex plugin marketplace add git@github.com:aj2666/deepwright.git --ref main --json
 codex plugin marketplace list --json
 codex plugin list --available --json
 ```
@@ -32,9 +32,18 @@ codex plugin marketplace add /absolute/path/to/deepwright --json
 In Codex CLI, `/plugins` opens the interactive plugin browser. In the ChatGPT
 desktop app for macOS, open **Plugins**, select the marketplace, and install
 **Deepwright**. Start a new Codex session after installation so the bundled
-skills are loaded. If you update the marketplace later, refresh it with
-`codex plugin marketplace upgrade <marketplace-name>` and begin another new
-session.
+skills are loaded. In the desktop app, type `@` and select **Deepwright** or a
+bundled skill by its displayed name. The `$deepwright:...` examples below are
+Codex CLI syntax.
+
+If you update the Git marketplace later, refresh it, reinstall Deepwright, and
+start another new Codex session:
+
+```bash
+codex plugin marketplace upgrade deepwright --json
+codex plugin add deepwright@deepwright --json
+codex plugin list --json
+```
 
 Installation does not grant repository, network, GitHub, merge, or deployment
 permission. Connect the GitHub connector when you want Rivet to work with pull

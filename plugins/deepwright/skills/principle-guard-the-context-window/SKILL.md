@@ -1,6 +1,6 @@
 ---
 name: principle-guard-the-context-window
-description: "Keep bulk detail out of the main context. Use for $principle-guard-the-context-window."
+description: "Keep bulk detail out of the main context. Use for $deepwright:principle-guard-the-context-window."
 ---
 
 # Guard the Context Window

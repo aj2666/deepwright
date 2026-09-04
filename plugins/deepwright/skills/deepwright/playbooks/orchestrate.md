@@ -35,13 +35,15 @@ After the user authorizes execution and local workspace writes, create `.deepwri
 - `standing-orders.md`: one current constraint per line, including forbidden paths and verification rules.
 - `units.tsv`: unit id, track, state, owner, branch/worktree, PR, base SHA, head SHA, brief path.
 - `verdicts.tsv`: unit or PR, base SHA, head SHA, patch ID, verdict, evidence path, verifier.
-- `decisions.tsv`: the `$show-me-your-work` trail.
+- `decisions.tsv`: the `$deepwright:show-me-your-work` trail.
 - `inbox/`: small completion pointers or copied reports. Give each collaborator its own file.
 - `gates.md`: unresolved user decisions with options and the safe default.
 - `status.md`: regenerated summary derived from the tables at each drain.
 - `resume.md`: written when the active session cannot continue.
 
 Each state file has one writer. Workers return facts; the coordinator updates shared tables. Files stay plain text so a cold-start Codex CLI or macOS Desktop session can resume without a custom runtime.
+
+The optional `scripts/orch/orch` executable is a smaller scratch-bookkeeping tool, not the writer for this canonical program ledger. Its `units.tsv` contains `id`, `track`, `state`, `branch`, `pr`, `sha`, and `brief`; its `ledger.tsv` contains `pr`, `sha`, `verdict`, `evidence`, `verifier`, and `ts`. It also manages `inbox/`, `gates.md`, `preferences.md`, and a derived `status.md`. Point it at a separate scratch directory. Do not initialize it in `.deepwright/runs/<program-slug>/` or treat its narrower files as substitutes for the base-SHA, patch-ID, owner, permissions, and decision records above.
 
 #### Brief
 
@@ -64,8 +66,8 @@ Scale the brief to the unit. Missing scope, acceptance, verification, or permiss
 
 #### Steps
 
-1. **Frame.** State a countable done predicate, unit estimate, dependency graph, verification bar, available collaboration capacity, wall-clock or session budget, and authorization matrix. If one agent can finish within the budget, use Autonomous run instead. For a contested decomposition or one-way door, invoke `$arena`.
-2. **Initialize after execution authorization.** Create the run ledger, record the resolved default branch and current git/GitHub state, invoke `$show-me-your-work`, and write standing orders before assignments. A read-only planning pass stops before this step.
+1. **Frame.** State a countable done predicate, unit estimate, dependency graph, verification bar, available collaboration capacity, wall-clock or session budget, and authorization matrix. If one agent can finish within the budget, use Autonomous run instead. For a contested decomposition or one-way door, invoke `$deepwright:arena`.
+2. **Initialize after execution authorization.** Create the run ledger, record the resolved default branch and current git/GitHub state, invoke `$deepwright:show-me-your-work`, and write standing orders before assignments. A read-only planning pass stops before this step.
 3. **Pilot.** Run one representative unit through brief, implementation, verification, integration, and ledger update. Use a dedicated verifier for expensive, judgment-heavy, security-sensitive, or high-blast-radius units. Fix the contract from evidence before scaling.
 4. **Scale.** Fill a rolling window up to current host capacity. Parallelize only disjoint branches, worktrees, or read-only investigations. Serialize shared mutable state. Recompute ready work after every drain and pass upstream artifacts into dependent briefs.
 5. **Drain.** Collect completed reports in batches through host collaboration controls. Validate that each report matches the assigned scope and current git state. Update `units.tsv`, `verdicts.tsv`, `decisions.tsv`, and `status.md`. A failed result becomes a fix or re-scope unit; do not silently redo it.

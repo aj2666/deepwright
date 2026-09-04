@@ -1,6 +1,6 @@
 ---
 name: recall
-description: "Rebuild current work context from scoped evidence. Use for $recall."
+description: "Rebuild current work context from scoped evidence. Use for $deepwright:recall."
 ---
 
 # Recall

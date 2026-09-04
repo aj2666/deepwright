@@ -1,6 +1,6 @@
 ---
 name: principle-exhaust-the-design-space
-description: "Compare distinct designs before a one-way decision. Use for $principle-exhaust-the-design-space."
+description: "Compare distinct designs before a one-way decision. Use for $deepwright:principle-exhaust-the-design-space."
 ---
 
 # Exhaust the Design Space

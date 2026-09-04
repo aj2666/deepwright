@@ -1,6 +1,6 @@
 ---
 name: reflect
-description: "Turn task lessons into approved durable improvements. Use for $reflect."
+description: "Turn task lessons into approved durable improvements. Use for $deepwright:reflect."
 ---
 
 # Reflect

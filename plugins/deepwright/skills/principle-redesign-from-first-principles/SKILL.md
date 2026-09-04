@@ -1,6 +1,6 @@
 ---
 name: principle-redesign-from-first-principles
-description: "Integrate new requirements as foundations. Use for $principle-redesign-from-first-principles."
+description: "Integrate new requirements as foundations. Use for $deepwright:principle-redesign-from-first-principles."
 ---
 
 # Redesign From First Principles

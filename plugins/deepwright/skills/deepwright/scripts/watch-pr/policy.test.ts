@@ -5,6 +5,7 @@ import {
   assessGitHubMerge,
   classifyPr,
   createQueueState,
+  createWatchDeadline,
   evaluateQueue,
   planQueue,
   queryBackoffSeconds,
@@ -27,6 +28,7 @@ import type {
   ProgressVerdict,
   PullRequestFacts,
   RollupState,
+  WatchDeadline,
 } from "./types.ts";
 import { parsePrNumber } from "./types.ts";
 
@@ -42,6 +44,17 @@ const options = {
   maxQueryErrors: 5,
   allowDraft: false,
 } satisfies PollingOptions;
+
+it("keeps timeout zero unbounded at the watcher layer", () => {
+  let now = 0;
+  const handle = createWatchDeadline({ now: () => now }, 0);
+  now = 1_000_000;
+  expect(handle.deadline.remainingSeconds()).toBeNull();
+  expect(handle.deadline.remainingMilliseconds()).toBeNull();
+  expect(handle.deadline.expired()).toBe(false);
+  expect(handle.deadline.signal.aborted).toBe(false);
+  handle.dispose();
+});
 
 describe("readiness truth table", () => {
   it("allows only CLEAN with an observed exact head", () => {
@@ -172,9 +185,30 @@ describe("readiness truth table", () => {
 });
 
 describe("snapshot query planning", () => {
-  it("does not query commit rollups while queued checks are pending", async () => {
+  it("forwards one deadline through every snapshot reader call", async () => {
+    const reader = fakeReader();
+    const handle = createWatchDeadline({ now: () => 0 }, 0);
+    try {
+      await readSnapshot({
+        reader,
+        context: context(2),
+        pendingHistory: "include",
+        allowDraft: false,
+        deadline: handle.deadline,
+      });
+      expect(reader.deadlines).toHaveLength(5);
+      expect(reader.deadlines.every((item) => item === handle.deadline)).toBe(
+        true
+      );
+    } finally {
+      handle.dispose();
+    }
+  });
+
+  it("proves the exact head before treating queued checks as pending", async () => {
     const reader = fakeReader({
       fastPath: { kind: "checks", checks: [pendingCheck()] },
+      commitRollups: [{ oid: "head", state: "PENDING" }],
     });
     const snapshot = await readSnapshot({
       reader,
@@ -189,8 +223,55 @@ describe("snapshot query planning", () => {
       "pullRequest",
       "reviewThreads",
       "checksFastPath",
+      "commitRollups",
       "pullRequest",
     ]);
+  });
+
+  it.each([
+    ["include", "BLOCKED", "PENDING"],
+    ["include", "UNSTABLE", "EXPECTED"],
+    ["omit", "BLOCKED", "PENDING"],
+  ] as const)(
+    "keeps exact-head pending CI nonterminal (%s, %s, %s)",
+    async (pendingHistory, mergeStateStatus, headRollupState) => {
+      const snapshot = await readSnapshot({
+        reader: fakeReader({
+          facts: { mergeStateStatus },
+          fastPath: { kind: "checks", checks: [pendingCheck()] },
+          commitRollups: [{ oid: "head", state: headRollupState }],
+        }),
+        context: context(2),
+        pendingHistory,
+        allowDraft: false,
+      });
+      expect(snapshot).toMatchObject({
+        kind: "open",
+        ci: { kind: "ci-pending" },
+      });
+      expect(classifyPr(snapshot).kind).toBe("waiting");
+      expect(selectTierMajorStackDecision([snapshot]).kind).toBe("waiting");
+    }
+  );
+
+  it("blocks pending output when the exact head rollup is unproven", async () => {
+    const snapshot = await readSnapshot({
+      reader: fakeReader({
+        fastPath: { kind: "checks", checks: [pendingCheck()] },
+        commitRollups: [{ oid: "different", state: "PENDING" }],
+      }),
+      context: context(2),
+      pendingHistory: "include",
+      allowDraft: false,
+    });
+    expect(snapshot).toMatchObject({
+      kind: "open",
+      ci: {
+        kind: "ci-github-rejected",
+        github: { reason: "exact-head-unproven" },
+      },
+    });
+    expect(classifyPr(snapshot).kind).toBe("blocker");
   });
 
   it("queries rollups for settled and failed lists", async () => {
@@ -240,8 +321,8 @@ describe("snapshot query planning", () => {
     let reads = 0;
     const reader = {
       ...base,
-      async pullRequest(pr: PrContext) {
-        const facts = await base.pullRequest(pr);
+      async pullRequest(pr: PrContext, deadline: WatchDeadline | undefined) {
+        const facts = await base.pullRequest(pr, deadline);
         reads += 1;
         return { ...facts, headRefOid: reads === 1 ? "before" : "after" };
       },
@@ -424,6 +505,53 @@ it("makes the explicit draft override reachable without weakening other gates", 
   });
 });
 
+it("revalidates every stack row and confirms final identities before READY", async () => {
+  const first = context(14);
+  const second = context(15);
+  const base = fakeReader({
+    commitRollups: [
+      { oid: "head", state: "SUCCESS" },
+      { oid: "head-a", state: "SUCCESS" },
+      { oid: "head-b", state: "SUCCESS" },
+    ],
+  });
+  let firstReads = 0;
+  const reader = {
+    ...base,
+    async pullRequest(pr: PrContext, deadline: WatchDeadline | undefined) {
+      const facts = await base.pullRequest(pr, deadline);
+      if (pr.number !== first.number) return facts;
+      firstReads += 1;
+      return {
+        ...facts,
+        headRefOid: firstReads <= 4 ? "head-a" : "head-b",
+      };
+    },
+  } satisfies GitHubReader;
+  const emitted: ProgressVerdict[] = [];
+  const running = runSimple({
+    dependencies: {
+      reader,
+      clock: {
+        now: () => 0,
+        observedAt: () => "2026-07-26T00:00:00.000Z",
+        async sleep() {
+          throw new Error("stop after revalidation retry");
+        },
+      },
+      emit(verdict) {
+        emitted.push(verdict);
+      },
+    },
+    contexts: [first, second],
+    mode: "stack",
+    statusOnly: false,
+    options,
+  });
+  await expect(running).rejects.toThrow("stop after revalidation retry");
+  expect(emitted.some((event) => event.kind === "RETRY")).toBe(true);
+});
+
 describe("queued-stack cadence", () => {
   async function openSnapshot(pr: PrContext) {
     return readSnapshot({
@@ -462,7 +590,7 @@ describe("queued-stack cadence", () => {
     const timeline: string[] = [];
     const reader = {
       ...base,
-      async pullRequest(pr: PrContext) {
+      async pullRequest(pr: PrContext, deadline: WatchDeadline | undefined) {
         if (pr.number === middle.number && failNext) {
           failNext = false;
           timeline.push(`fail:${pr.number}`);
@@ -474,7 +602,7 @@ describe("queued-stack cadence", () => {
           });
         }
         timeline.push(`read:${pr.number}`);
-        return base.pullRequest(pr);
+        return base.pullRequest(pr, deadline);
       },
     } satisfies GitHubReader;
     let now = 0;
@@ -548,9 +676,9 @@ describe("queued-stack cadence", () => {
     const timeline: string[] = [];
     const reader = {
       ...base,
-      async pullRequest(pr: PrContext) {
+      async pullRequest(pr: PrContext, deadline: WatchDeadline | undefined) {
         timeline.push(`read:${pr.number}`);
-        const facts = await base.pullRequest(pr);
+        const facts = await base.pullRequest(pr, deadline);
         const count = (reads.get(pr.number) ?? 0) + 1;
         reads.set(pr.number, count);
         return pr.number === one.number && count > 2
@@ -659,6 +787,40 @@ it("caps a polling sleep at the watch deadline and does not query again", async 
   expect(reader.calls.filter((call) => call === "pullRequest")).toHaveLength(2);
 });
 
+it("does not return READY when status collection itself crosses the deadline", async () => {
+  const base = fakeReader();
+  let now = 0;
+  const reader = {
+    ...base,
+    async pullRequest(pr: PrContext, deadline: WatchDeadline | undefined) {
+      now += 10;
+      return base.pullRequest(pr, deadline);
+    },
+  } satisfies GitHubReader;
+  const verdict = await runSimple({
+    dependencies: {
+      reader,
+      clock: {
+        now: () => now,
+        observedAt: () => "2026-07-26T00:00:00.000Z",
+        async sleep() {
+          throw new Error("deadline should stop before sleep");
+        },
+      },
+      emit() {},
+    },
+    contexts: [context(71)],
+    mode: "single",
+    statusOnly: false,
+    options: { ...options, timeout: 15 },
+  });
+  expect(verdict).toMatchObject({
+    kind: "TIMEOUT",
+    exitCode: 5,
+    reason: { kind: "watch-deadline" },
+  });
+});
+
 it("caps queued-stack waiting at the same deadline", async () => {
   const reader = fakeReader();
   let now = 0;
@@ -686,4 +848,43 @@ it("caps queued-stack waiting at the same deadline", async () => {
   });
   expect(sleeps).toEqual([15]);
   expect(reader.calls.filter((call) => call === "pullRequest")).toHaveLength(2);
+});
+
+it("enforces the queued deadline between successful sweep rows", async () => {
+  const base = fakeReader();
+  let now = 0;
+  const reads: number[] = [];
+  const reader = {
+    ...base,
+    async pullRequest(pr: PrContext, deadline: WatchDeadline | undefined) {
+      reads.push(Number(pr.number));
+      now += 10;
+      return base.pullRequest(pr, deadline);
+    },
+  } satisfies GitHubReader;
+  const verdict = await runQueued({
+    dependencies: {
+      reader,
+      clock: {
+        now: () => now,
+        observedAt: () => "2026-07-26T00:00:00.000Z",
+        async sleep() {
+          throw new Error("deadline should stop before sleep");
+        },
+      },
+      emit() {},
+    },
+    contexts: [context(72), context(73)],
+    options: { ...options, timeout: 15 },
+  });
+  expect(verdict).toMatchObject({
+    kind: "TIMEOUT",
+    exitCode: 5,
+    reason: {
+      kind: "queued-stack",
+      frontier: { number: 72 },
+      unmergedCount: 2,
+    },
+  });
+  expect(reads).toEqual([72, 72]);
 });

@@ -1,13 +1,13 @@
 ---
 name: no-comments
-description: "Remove narrating comments and stale suppressions. Use for $no-comments."
+description: "Remove narrating comments and stale suppressions. Use for $deepwright:no-comments."
 ---
 
 # No comments
 
 Use the caller's files or diff. Otherwise compare the working tree with the repository's actual base branch.
 
-1. Invoke `$comment-auditor` with the exact diff or file scope.
+1. Invoke `$deepwright:comment-auditor` with the exact diff or file scope.
 2. When delegation is available, give one fresh reviewer the exact scope and the auditor instructions. The reviewer must not edit application code.
 3. Verify every proposed deletion against nearby code. Keep legal headers, public API contracts, proven external constraints, and precise issue links that code cannot express.
 4. Remove narration, commented-out code, stale warnings, and explanations of behavior the code can make obvious.

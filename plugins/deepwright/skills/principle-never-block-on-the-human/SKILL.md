@@ -1,6 +1,6 @@
 ---
 name: principle-never-block-on-the-human
-description: "Advance safe work and pause only for real choices. Use for $principle-never-block-on-the-human."
+description: "Advance safe work and pause only for real choices. Use for $deepwright:principle-never-block-on-the-human."
 ---
 
 # Never Block on the Human
