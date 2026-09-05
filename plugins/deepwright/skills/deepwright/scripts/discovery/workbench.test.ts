@@ -47,10 +47,10 @@ async function snapshot(root: string): Promise<unknown> {
 }
 
 describe("canonical playbook catalog", () => {
-  it("matches all 23 real router rows and every flat playbook file", async () => {
+  it("matches all 24 real router rows and every flat playbook file", async () => {
     const pluginRoot = defaultPluginRoot();
     const playbooks = await loadPlaybooks(pluginRoot);
-    expect(playbooks).toHaveLength(23);
+    expect(playbooks).toHaveLength(24);
     const source = await readFile(join(pluginRoot, "skills", "deepwright", "SKILL.md"), "utf8");
     const expected = source.split("\n").flatMap((line) => {
       const match = /\u0060playbooks\/([a-z0-9-]+)\.md\u0060/u.exec(line);

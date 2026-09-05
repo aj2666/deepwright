@@ -55,6 +55,7 @@ describe("specification package integration", () => {
       ["tdd/SKILL.md", "../spec/references/acceptance-contract.md"],
       ["interrogate/SKILL.md", "../spec/references/acceptance-contract.md"],
       ["deepwright/playbooks/feature.md", "../../spec/references/acceptance-contract.md"],
+      ["deepwright/playbooks/multi-phase-plan.md", "../../spec/references/acceptance-contract.md"],
     ];
     for (const [file, link] of consumers) {
       const path = join(pluginRoot, "skills", file);

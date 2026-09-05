@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Add Spec and a specification-only route that preserve settled decisions, identify consequential ambiguity, and draft in the conversation unless file output is authorized.
+- Share acceptance criteria and evidence states across specification, feature implementation, TDD, planning, and requirements-aware Interrogate review.
+- Extend TDD to feature development with behavioral slices, independent expected results, compatibility checks, and explicit verification gaps.
+- Tie multi-phase units to observable behavior and real dependencies; keep plan-only requests separate from file creation and execution.
+- Extend the observer corpus with specification and review boundary cases, and add a retry fixture whose acceptance checks have positive and mutation controls. These are tooling checks, not a live-agent improvement claim.
+- Preserve Matt Pocock's MIT license and pinned source attribution with the adapted guidance.
+
 ## 1.3.0 — 2026-09-05
 
 - Standardize Deepwright's engineering foreman on the Owl identity so the router matches the Investigator Owl product branding.
