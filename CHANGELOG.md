@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 — 2026-09-05
+
+- Rename Deepwright's engineering foreman from Rivet to Owl so the router matches the Investigator Owl product identity.
+- Replace the explicit `$deepwright:rivet-agent` skill with `$deepwright:owl-agent` and update plugin prompts, desktop display metadata, and user documentation.
+- Preserve the existing evidence-first routing, authorization, delegation, and verification behavior while changing the public name.
+
 ## 1.2.0 — 2026-09-05
 
 - Update the Vitest development dependency to 4.1.11 to resolve its critical security advisory; gate CI on high and critical dependency-audit findings.
@@ -33,7 +39,7 @@
 
 ## 1.0.0 — 2026-09-04
 
-- Launch Deepwright and the Rivet engineering foreman.
+- Launch Deepwright and the Owl engineering foreman.
 - Convert the upstream workflow into 46 standard Codex skills and 23 routed playbooks.
 - Add Codex plugin and marketplace manifests for CLI and desktop discovery.
 - Replace Cursor-specific agents, commands, models, transcript paths, and automation.
