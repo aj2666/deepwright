@@ -1,0 +1,47 @@
+# Terminal discovery and portable pointers
+
+The optional `deepwright` helper reads the installed plugin's existing Markdown and UI metadata. It does not maintain a second skill registry, decide which playbook a model should use, invoke a model, or install anything. Node 20.19+ is required; the skills themselves do not require Node.
+
+In the examples below, `deepwright` means the executable at `plugins/deepwright/skills/deepwright/scripts/deepwright` in your checkout, or its existing installed launcher. Use the full path when it is not on PATH. Quote executable paths containing spaces. Nothing adds it to PATH automatically.
+
+## Commands
+
+| Shell command | Result |
+|---|---|
+| `deepwright --help` | Available commands and options |
+| `deepwright skills` | All existing skills, sorted by name |
+| `deepwright skills review` | Metadata search; not semantic task routing |
+| `deepwright skill interrogate` | Summary, canonical file, invocation and policy |
+| `deepwright invoke interrogate` | Codex CLI token and desktop picker guidance |
+| `deepwright invoke deepwright --host agents` | Opt-in AGENTS.md pointer text |
+| `deepwright invoke deepwright --host claude` | Opt-in CLAUDE.md pointer text |
+| `deepwright status` | Local version, discovery policy and config-file presence |
+| `deepwright doctor` | Existing environment/installation checks |
+
+Discovery, invocation and status accept `--json`. Names may be plain slugs, such as `interrogate`; use the exact names from `skills`. Unknown names and options fail with a usage error. Shell quoting matters when typing a dollar-prefixed Codex token: the simplest approach is to use a plain slug in this helper and paste its result into Codex.
+
+All discovery commands are read-only. Human output escapes terminal control characters; JSON remains machine-readable. The helper never evaluates task text as shell commands and does not offer an execute flag.
+
+## Native invocation versus fallback
+
+For Codex, native plugin discovery is preferred. Paste `$deepwright:interrogate` into a CLI prompt, or select the displayed Interrogate skill with `@` in the desktop app. The terminal command only explains these actions; it does not activate a chat session.
+
+Use fallback pointers only when the target agent can read the same checkout and lacks native skill discovery. `--host agents` and `--host claude` translate instruction-file conventions, not engineering behavior. Both reuse the same canonical skill body, without copying playbooks or principles.
+
+The helper prints a short block for manual review. Merge a needed block into existing repository instructions; do not replace the file or duplicate an already-installed native plugin. Respect the target host's instruction precedence. No tool automatically writes AGENTS.md, CLAUDE.md, host configuration or global rules.
+
+The generated path is absolute and machine-local. Regenerate it after moving the checkout, and verify accessibility in remote containers or worker environments. If an agent cannot read the path, supply the required skill content explicitly or report the missing capability; do not claim it was loaded. These adapters do not register native slash commands, lifecycle hooks, worker types or MCP tools.
+
+## Configuration and status
+
+The existing `.codex/deepwright.toml` remains the only optional configuration convention. Invoke the Setup Deepwright skill to inspect or change it. Defaults and confirmed model availability are interpreted by the active host; this change introduces no environment override, global file or alternate format.
+
+Run `status` from the project root you intend to inspect. It checks only that working directory; it does not walk parent directories or infer another session's workspace. Missing configuration is valid. Present means readable local configuration exists, not that it is valid TOML or has been applied. The helper deliberately does not implement a partial TOML parser or expose the file's contents.
+
+Status reports local plugin metadata, not active-session state. Model availability, MCP connections and actual implicit invocation cannot be observed by this standalone process. Use `doctor` for environment checks and a harmless fresh-session invocation for host-level verification. Neither output grants authorization or changes the user's task scope.
+
+## Maintenance
+
+Edit `SKILL.md` and `agents/openai.yaml` as the source of truth. Discovery reads their current values. Keep their supported one-line metadata shape; malformed or unsupported metadata fails clearly rather than silently inventing catalog entries. The catalog does not read every playbook or inject all skills into model context.
+
+Run `npm run test:tools`, `npm run test:evals`, and `npm run validate` after changes. Commit rebuilt helper bundles using the existing build workflow. See [compatibility checks](COMPATIBILITY.md) for the manual CLI, desktop and fallback verification boundaries.

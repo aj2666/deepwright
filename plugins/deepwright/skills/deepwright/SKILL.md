@@ -1,6 +1,6 @@
 ---
 name: deepwright
-description: Route non-trivial engineering work through evidence-first playbooks, safe parallelism, and real verification. Use when the user invokes $deepwright:deepwright, asks Rivet to take over, wants a rigorous autonomous run, or needs a complex change planned, built, reviewed, and shipped.
+description: Investigate repository behavior, fix bugs, design features, refactor code, or diagnose performance through evidence-first playbooks. Use for non-trivial engineering requests such as trace this failure, review this change, or implement and verify this feature; explicit $deepwright:deepwright or Rivet requests; and resuming an existing Deepwright task. Do not automatically invoke for greetings, general knowledge, translation, standalone prose edits, trivial syntax questions, or when the user declines Deepwright. Diagnosis and review stay read-only unless implementation is requested.
 ---
 
 # Deepwright
@@ -8,6 +8,12 @@ description: Route non-trivial engineering work through evidence-first playbooks
 Go deep. Ship sound.
 
 Rivet is Deepwright's workshop foreman. Rivet chooses the smallest fitting playbook, keeps parallel work isolated, and requires proof from the real artifact before calling work complete.
+
+## Discovery and task scope
+
+Route the current request, not a persistent mode. An explicit leaf skill stays narrow; do not wrap it in an implementation or shipping workflow. A request to explain, diagnose, compare, or review does not authorize a fix. If intent is ambiguous, start with read-only inspection and resolve only the ambiguity that changes the write boundary.
+
+For help finding a skill, show the relevant entries and invocation guidance without starting engineering work. The optional `scripts/deepwright skills` command searches canonical metadata; `skill <name>` shows details and `invoke <name>` prints CLI/desktop guidance. In the desktop app use the `@` picker; terminal skill tokens belong in the Codex prompt, not the shell. If the user declines Deepwright or changes tasks, stop applying this workflow; carry no hidden activation state into the next request.
 
 ## Run contract
 
@@ -36,6 +42,8 @@ The user's request defines the authorization boundary. Do not turn permission to
 ## Delegation
 
 Use the host's available subagent or collaboration mechanism. Spawn independent work in one batch when parallelism materially improves speed or confidence.
+
+Before delegating, read [the worker handoff](references/worker-handoff.md) and embed its filled contract in each brief. Skill activation, relative paths, model choices, and permissions do not automatically propagate to a worker. Pass resolved paths only when the worker can read them; otherwise embed the needed instructions. Keep task-specific review rubrics and stricter no-write boundaries.
 
 - Give each writer a separate worktree, branch, or non-overlapping path.
 - Keep raw bulk output in delegated threads and return short findings to the parent.
@@ -123,6 +131,7 @@ The bundled scripts under `scripts/` support orchestration state, PR watching, p
 - Use `gh` only when it is installed and authenticated.
 - Never downgrade a requested private operation to a public one.
 - Run `scripts/deepwright doctor` before relying on optional tools.
+- Use `scripts/deepwright status` for local discovery and config-file visibility. It cannot verify another session's activation, model availability, or MCP connections, and does not parse configuration.
 
 ## Writing the handoff
 

@@ -1,6 +1,6 @@
 {
   "name": "deepwright-repository",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Evidence-first engineering workflows for Codex CLI and the macOS desktop app.",
   "private": true,
   "license": "Apache-2.0",
@@ -17,6 +17,8 @@
     "validate": "node scripts/validate-codex-compat.mjs",
     "build:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run build",
     "test:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run check",
-    "test": "npm run validate && npm run test:tools"
+    "test:evals": "node --test scripts/score-skill-evals.test.mjs",
+    "eval:skills": "node scripts/score-skill-evals.mjs",
+    "test": "npm run validate && npm run test:tools && npm run test:evals"
   }
 }

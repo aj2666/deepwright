@@ -2,7 +2,7 @@ name: Validate
 
 on:
   push:
-    branches: [main]
+    branches: [main, "work/**"]
   pull_request:
 
 permissions:
@@ -31,6 +31,8 @@ jobs:
         run: npm ci --prefix plugins/deepwright/skills/deepwright/scripts
       - name: Build and test helpers
         run: npm run test:tools
+      - name: Test skill evaluation receipts
+        run: npm run test:evals
       - name: Verify generated bundles and launchers
         shell: bash
         run: |

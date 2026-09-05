@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — Unreleased
+
+- Add read-only terminal skill search, details, invocation guidance, and local status derived from canonical skill metadata.
+- Offer print-only AGENTS.md and CLAUDE.md fallback pointers without installing adapters or duplicating skill logic.
+- Clarify positive and negative router triggers, task-local scope, and explicit worker propagation; retain all 46 skills and the single implicit router.
+- Add shared worker handoff guidance, discovery regressions, and a fail-closed offline evaluation-receipt scorer with a separated prompt/rubric corpus.
+- Document the selective Ponytail review, configuration and status limitations, and honest benchmark methodology.
+- Check work branches in CI without publishing a release; main-only release gates remain unchanged.
+
 ## 1.0.1 — 2026-09-04
 
 - Use canonical plugin-qualified names for every bundled cross-skill invocation.
