@@ -8,4 +8,6 @@ The distributed Node.js helper bundles include Commander, Copyright (c) 2011 TJ 
 
 The discovery helper bundles [smol-toml 1.8.0](https://github.com/squirrelchat/smol-toml/tree/v1.8.0), Copyright (c) Squirrel Chat et al., under the BSD-3-Clause License preserved at [`plugins/deepwright/third_party/smol-toml-LICENSE`](plugins/deepwright/third_party/smol-toml-LICENSE). It is pinned at build time; users install no runtime dependencies.
 
-The Deepwright name, Investigator Owl identity, Codex manifests, portability changes, policies, documentation, validation, and branding were created for this project.
+Specification, feature-testing, task-slicing, and requirements-review guidance includes adaptations from [mattpocock/skills](https://github.com/mattpocock/skills/tree/3cca18b368ae95cdbdebbff572ccafa662551015), Copyright (c) 2026 Matt Pocock, at commit `3cca18b368ae95cdbdebbff572ccafa662551015`. The MIT License is preserved in [`plugins/deepwright/third_party/mattpocock-skills-LICENSE`](plugins/deepwright/third_party/mattpocock-skills-LICENSE); the distributed plugin's notice identifies the adapted source areas. No upstream installation scripts, dependencies, or host-specific runtime are copied.
+
+The Deepwright name, Investigator Owl identity, Codex manifests, portability changes, policies, documentation, validation, and branding were created for this project, with adapted material attributed above.

@@ -1,6 +1,6 @@
 ---
 name: deepwright
-description: Investigate repository behavior, fix bugs, design features, refactor code, or diagnose performance through evidence-first playbooks. Use for non-trivial engineering requests such as trace this failure, review this change, or implement and verify this feature; explicit $deepwright:deepwright or Owl requests; and resuming an existing Deepwright task. Do not automatically invoke for greetings, general knowledge, translation, standalone prose edits, trivial syntax questions, or when the user declines Deepwright. Diagnosis and review stay read-only unless implementation is requested.
+description: Investigate repository behavior, specify and build features, fix bugs, refactor code, or diagnose performance through evidence-first playbooks. Use for non-trivial engineering requests such as trace this failure, define acceptance criteria, review this change, or implement and verify this feature; explicit $deepwright:deepwright or Owl requests; and resuming an existing Deepwright task. Do not automatically invoke for greetings, general knowledge, translation, standalone prose edits, trivial syntax questions, or when the user declines Deepwright. Diagnosis, specification, planning, and review do not authorize implementation.
 ---
 
 # Deepwright
@@ -11,9 +11,11 @@ Owl is Deepwright's engineering foreman. Owl chooses the smallest fitting playbo
 
 ## Discovery and task scope
 
-Route the current request, not a persistent mode. An explicit leaf skill stays narrow; do not wrap it in an implementation or shipping workflow. A request to explain, diagnose, compare, or review does not authorize a fix. If intent is ambiguous, start with read-only inspection and resolve only the ambiguity that changes the write boundary.
+Route the current request, not a persistent mode. An explicit leaf skill stays narrow; do not wrap it in an implementation or shipping workflow. A request to explain, diagnose, compare, specify, plan, or review does not authorize a fix. If intent is ambiguous, start with read-only inspection and resolve only the ambiguity that changes the write boundary.
 
 For help finding a skill, show relevant entries and invocation guidance without starting engineering work. The optional `scripts/deepwright` command shows a compact start page; `skills [query] --compact` searches canonical metadata, `playbooks [query]` browses the router table, `skill <name>` shows details, and `invoke <name>` prints CLI/desktop guidance. In the desktop app use the `@` picker; terminal skill tokens belong in the Codex prompt, not the shell. If the user declines Deepwright or changes tasks, stop applying this workflow; carry no hidden activation state into the next request.
+
+Use the Specification playbook when the deliverable is requirements or acceptance criteria. For an authorized build, Feature carries the same acceptance contract through design, implementation, and review. Clear, small work needs a compact checklist, not an interview or a mandatory specification file.
 
 ## Run contract
 
@@ -98,6 +100,7 @@ Read only the selected playbook plus any leaf skills it calls.
 | Request shape | Playbook |
 |---|---|
 | Read-only explanation or confidence check | `playbooks/investigation.md` |
+| Define requirements or acceptance criteria without implementation | `playbooks/specification.md` |
 | Reproduce and fix a defect | `playbooks/bug-fix.md` |
 | Improve measured performance | `playbooks/perf-issue.md` |
 | Iteratively improve one metric | `playbooks/hillclimb.md` |

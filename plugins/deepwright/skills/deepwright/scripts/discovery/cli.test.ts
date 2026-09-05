@@ -56,9 +56,9 @@ async function snapshot(root: string): Promise<unknown> {
 }
 
 describe("read-only skill discovery", () => {
-  it("derives the real 46-skill catalog and its single implicit router", async () => {
+  it("derives the real 47-skill catalog and its single implicit router", async () => {
     const skills = await loadCatalog(defaultPluginRoot());
-    expect(skills).toHaveLength(46);
+    expect(skills).toHaveLength(47);
     expect(skills.filter((skill) => skill.implicit).map((skill) => skill.name)).toEqual(["deepwright"]);
     expect(skills.map((skill) => skill.name)).toEqual(skills.map((skill) => skill.name).sort());
   });
@@ -187,7 +187,7 @@ describe("read-only skill discovery", () => {
     const home = await run([], context);
     expect(home.code).toBe(0);
     expect(home.stdout.split("\n").length).toBeLessThan(22);
-    expect(home.stdout).toContain("46 skills · 23 playbooks");
+    expect(home.stdout).toContain("47 skills · 24 playbooks");
     expect(home.stdout).toContain("$deepwright:deepwright");
     const json = JSON.parse((await run(["home", "--json"], context)).stdout);
     expect(json.entrypoints.map((skill: { name: string }) => skill.name)).toEqual(["deepwright"]);

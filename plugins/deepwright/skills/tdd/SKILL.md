@@ -1,43 +1,88 @@
 ---
 name: tdd
-description: "Drive a change with a focused red-green-refactor loop. Use for $deepwright:tdd."
+description: "Build features or fix bugs through a focused red-green-refactor loop. Use for $deepwright:tdd; preserve the requested behavior, compatibility, and delivery boundary."
 ---
 
-# TDD Bug Fix
+# TDD
 
-When fixing a bug with a clear, cheap test path, make the broken behavior executable before changing production code. The goal is a focused regression test that fails before the fix and passes after it.
+Make one required behavior executable, observe it fail for the right reason,
+implement just enough to pass, then refactor while keeping the check green.
+This workflow covers both new features and bug fixes; it does not authorize
+commits, publication, merges, or unrelated changes.
 
-Do not force a test when it would be impractical. If the available test would require broad harness setup, brittle mocks, slow end-to-end infrastructure, production-only state, vague reproduction steps, or large unrelated fixture churn, skip adding a new test and use the closest useful verification instead.
+## Select the contract and test boundary
 
-## Workflow
+Read [the acceptance contract](../spec/references/acceptance-contract.md).
+Reuse the request's criteria and identify the behavior for this slice. For a
+bug, first establish the intended behavior and smallest actual reproduction.
+For a feature, preserve existing defaults and identify the next missing
+capability. For read-only diagnosis or test review, inspect and report only;
+do not start an implementation loop.
 
-1. **Understand the bug.** Identify the intended behavior, current behavior, affected path, and smallest observable reproduction.
-2. **Choose the narrowest executable check.** Prefer the closest unit, component, integration, or regression test already used for that codepath. If no practical test path is obvious, do not create one from scratch just to satisfy the workflow.
-3. **Write the failing test first.** Add the smallest focused test that would have caught the bug. The test should encode intended behavior, not mirror the current implementation.
-4. **Run the new test before fixing.** Confirm it fails for the intended reason. If it passes or fails for an unrelated reason, correct the test or reproduction before editing the implementation.
-5. **Fix the bug.** Make the smallest production change that satisfies the intended behavior while preserving nearby contracts.
-6. **Rerun the regression test.** Confirm the test now passes.
-7. **Run nearby validation.** Run relevant adjacent tests, type checks, lint, or scenario checks when the change has broader risk.
+Use an existing public interface and the narrowest test that exercises the
+real behavior, including multiple callers or persistence when the defect
+requires them. Infer routine test choices from the project. Ask only when a
+new interface or test environment changes an unsettled compatibility, data,
+cost, security, or product decision. A test boundary is not required to be a
+unit test: an integration, CLI, browser, or other real-surface check may be
+more appropriate.
 
-## If a Failing Test Is Impractical
+## One vertical slice
 
-Do not silently skip the regression step. Before fixing, explicitly explain why a failing test is impossible or not worth the cost, then choose the closest executable regression check available. Examples include a targeted script, manual reproduction command, browser automation, snapshot comparison, log assertion, or focused integration check.
+1. Write the smallest test for one criterion. Derive the expected outcome from
+   the contract, a worked example, or an independent reference, not a copy of
+   the implementation algorithm. Run existing nearby checks to distinguish
+   pre-existing failures from the new failure when needed.
+2. Run the new test before changing production behavior. Confirm the observed
+   failure is the missing or broken behavior, not an import error, missing
+   dependency, skipped test, or defective harness. A passing test does not
+   demonstrate red; investigate before proceeding.
+3. Implement only the required behavior. Keep defaults, unrelated callers, and
+   rejected-input behavior compatible unless the contract says otherwise.
+4. Run the same check and observe green. Refactor duplication or unclear
+   structure within scope, then rerun it. Keep the test behavioral so internal
+   restructuring does not require rewriting its expected outcome.
+5. Record which criterion the evidence supports and what remains blocked.
+   Repeat for the next behavior. Run relevant typechecking and adjacent tests
+   as the change grows, and the appropriate full suite before handoff.
 
-Prefer no new test over a bad test. A bad test is one that mostly tests mocks, encodes current implementation details, depends on timing or unrelated global state, needs expensive infrastructure for a small fix, or would be deleted immediately after proving the fix.
+Do not write all imagined tests and then all implementation. Each slice must
+respond to what the preceding run established. A previously implemented
+behavior can receive additional regression coverage, but do not fabricate
+failing-before evidence by deliberately breaking production code.
 
-## Guardrails
+## Test quality
 
-- Do not change tests merely to match a wrong implementation.
-- Do not weaken existing assertions unless the expected behavior has genuinely changed and the reason is clear.
-- Keep the regression test focused on the bug; avoid broad fixture churn or unrelated coverage expansion.
-- Do not add tests when the practical signal is weak; use manual or scripted verification and say why.
-- If the bug is flaky, make the test deterministic where possible and document the signal being locked down.
-- If the bug exposes a broader class of failures, first land the focused regression path, then consider additional sibling coverage.
+Use real internal behavior by default. Substitute external services, time,
+randomness, or unsafe I/O at an established boundary when necessary; verify
+the real integration separately where the contract requires it. Prefer a
+local disposable database to mocking persistence away. Avoid mock-heavy
+tests that only prove their own setup.
 
-## Final Response
+Assert outcomes rather than private methods or incidental call order. Call
+counts and ordering are valid when they are the actual contract, as with
+retry limits or idempotency. Storage checks are valid when stored state is
+part of the required outcome. Do not delete existing tests until their
+important behavioral coverage is demonstrably preserved.
 
-Report the evidence, not just the outcome:
+## When a failing test is impractical
 
-- Name the failing-before test or executable check and the failure it produced.
-- Name the passing-after test run and any nearby validation performed.
-- If failing-before evidence could not be demonstrated, state why and describe the closest regression check used instead.
+Name the specific obstacle before fixing: inaccessible production-only state,
+no reproducible trigger, disproportionate fixture setup, or an unsuitable
+existing interface. Use the closest trustworthy executable check, such as a
+fixture script, browser drive, replay, or targeted integration check. Do not
+skip evidence merely because it requires integration rather than a unit test.
+Do not build broad unrelated infrastructure to satisfy the ritual.
+
+For intermittent bugs, record the repetition count and observed reproduction
+rate; one successful run does not prove the bug is gone. A blocked or weak
+signal stays visible as a limitation. Never weaken assertions to match a
+wrong implementation, count skipped tests as passes, or rewrite criteria to
+make the result green.
+
+## Handoff
+
+Report the behavior delivered, genuine failing-before and passing-after
+commands/results, the tested revision or snapshot, refactoring performed,
+adjacent validation, and remaining failed or blocked criteria. The enclosing
+Feature or Bug Fix workflow owns broader review and delivery.

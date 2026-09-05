@@ -60,7 +60,7 @@ test("sealing and verification bind complete receipts and deduplicated evidence 
   const result = await verifyRun(run.manifest);
   assert.equal(result.ok, true);
   assert.equal(result.artifactIntegrity, true);
-  assert.equal(result.score.total, 16);
+  assert.equal(result.score.total, expected.length);
   assert.equal(result.limitation, LIMITATION);
 });
 
