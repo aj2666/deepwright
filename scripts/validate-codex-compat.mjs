@@ -91,8 +91,8 @@ const prompts = Array.isArray(manifest.interface?.defaultPrompt)
 if (prompts.length > 3 || prompts.some((value) => value.length > 128)) {
   fail("defaultPrompt must contain at most three entries of 128 characters or fewer");
 }
-if (!prompts.some((value) => /\b(?:Deepwright|Rivet)\b/.test(value))) {
-  fail("one default prompt must name Deepwright or Rivet");
+if (!prompts.some((value) => /\b(?:Deepwright|Owl)\b/.test(value))) {
+  fail("one default prompt must name Deepwright or Owl");
 }
 if (prompts.some((value) => /\$deepwright(?::[a-z0-9-]+)?/i.test(value))) {
   fail("plugin defaultPrompt entries must be surface-neutral; keep CLI skill syntax in the CLI docs");
