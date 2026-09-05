@@ -110,16 +110,20 @@ From this checkout, use the optional helper in your shell:
 
 ```bash
 plugins/deepwright/skills/deepwright/scripts/deepwright skills review
+plugins/deepwright/skills/deepwright/scripts/deepwright playbooks performance
 plugins/deepwright/skills/deepwright/scripts/deepwright skill interrogate
 plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
 plugins/deepwright/skills/deepwright/scripts/deepwright status --json
+plugins/deepwright/skills/deepwright/scripts/deepwright config show
 ```
 
 These commands only read files and print results. They do not launch an agent or modify the project. Paste the printed skill token into a **Codex prompt**, not your shell; use the `@` picker in the desktop app. Search reads current skill metadata, not a separately maintained catalog. See the [terminal and adapter guide](docs/TERMINAL.md).
 
 For a host without native plugin discovery, `invoke deepwright --host agents` or `--host claude` prints an opt-in pointer block. Review it before manually merging it into existing repository instructions. No adapters, hooks, MCP server, or global settings are installed.
 
-`status` reports local metadata and whether `.codex/deepwright.toml` exists in the current working directory. It does not parse that file or claim the active Codex session has loaded the plugin, confirmed models, or connected MCP tools. Configuration remains optional and host-interpreted.
+Run the helper with no arguments for a compact start page, or add `--compact` to skill search for one-line results. Playbook discovery uses the router's existing table, not a second workflow registry.
+
+`status` validates the optional `.codex/deepwright.toml` in the current working directory without printing values. `config show` exposes effective preferences and their provenance; `config check` validates and `config template` prints defaults without writing. Schema validity does not mean the active Codex session has loaded the plugin, confirmed models, or connected MCP tools. Configuration remains optional; actual host capabilities and the user's task boundary take precedence.
 
 ## Verify this checkout
 
@@ -132,7 +136,7 @@ npm run test:evals
 
 The GitHub Actions matrix runs the static validator, tool tests, and real Codex install smoke on Linux and macOS. The manual desktop checklist is in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
 
-The [skill evaluation corpus](evals/README.md) separates prompts from observer rubrics and supports offline receipt scoring. Passing its scorer tests is not evidence that a model's automatic triggering improved. The [Ponytail comparison](docs/PONYTAIL_REVIEW.md) explains what we adopted and deferred.
+The [skill evaluation corpus](evals/README.md) separates prompts from observer rubrics. Its [artifact verifier](evals/ARTIFACTS.md) checks saved evidence digests and compares runs with matching reported conditions; efficiency is withheld unless correctness and scope gates pass. Passing these tooling tests is not evidence that a model's automatic triggering improved. The [Ponytail comparison](docs/PONYTAIL_REVIEW.md) explains what we adopted and deferred.
 
 ## Repository layout
 

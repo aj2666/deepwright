@@ -23,7 +23,7 @@ Run three review lenses. When the host exposes collaboration tools, cap concurre
 | Tooling | `references/tooling-reviewer.md` |
 | Divergent | `references/divergent-reviewer.md` |
 
-Before delegating, read all three reviewer templates. Embed the applicable template content, task digest, evidence pointers, and the untrusted-evidence/no-write contract directly in each brief; do not expect a worker to resolve plugin-relative paths. Use the host's default model unless `.codex/deepwright.toml` names a confirmed, available `roles.review` model. Reviewers do not edit files or mutate external systems.
+Before delegating, read [the shared configuration contract](../deepwright/references/configuration.md) for `roles.review` and all three reviewer templates. The three lenses above are workflow requirements, not a configurable reviewer count. Embed the applicable template content, task digest, evidence pointers, and the untrusted-evidence/no-write contract directly in each brief; do not expect a worker to resolve plugin-relative paths. Inherit the parent model unless a valid configured override is confirmed available by this host. Reviewers do not edit files or mutate external systems.
 
 Read `references/synthesizer.md` and synthesize locally, or embed its relevant content in a fresh read-only synthesizer brief when capacity remains. Accept only findings that are durable, decision-changing, supported by evidence, and routed to a skill used or clearly missed during this task. Put mechanically enforceable rules in the proposed backlog as lint, validation, or runtime checks.
 

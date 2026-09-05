@@ -29,6 +29,8 @@ jobs:
           cache-dependency-path: plugins/deepwright/skills/deepwright/scripts/package-lock.json
       - name: Install helper dependencies
         run: npm ci --prefix plugins/deepwright/skills/deepwright/scripts
+      - name: Audit helper dependencies
+        run: npm audit --prefix plugins/deepwright/skills/deepwright/scripts --package-lock-only --audit-level=high
       - name: Build and test helpers
         run: npm run test:tools
       - name: Test skill evaluation receipts

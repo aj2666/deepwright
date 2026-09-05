@@ -1,6 +1,16 @@
 # Changelog
 
-## 1.1.0 — Unreleased
+## 1.2.0 — 2026-09-05
+
+- Update the Vitest development dependency to 4.1.11 to resolve its critical security advisory; gate CI on high and critical dependency-audit findings.
+- Apply the shared configuration contract to every direct skill consumer; preserve fixed review lenses and remove duplicated configurable defaults.
+- Require both bundled dependency licenses and their NOTICE references during package validation.
+- Add a compact terminal start page, all-term metadata search, compact results, and playbook browsing derived from the existing router table.
+- Validate optional project TOML with a pinned bundled parser; expose read-only show/check/template commands, default/project provenance, and versioned status without model-availability claims.
+- Share configuration rules across Setup, the router, Swarm, and Architect; preserve inspection-only boundaries and workflow requirements.
+- Add artifact sealing, digest verification, matched-run comparison, regression reporting, and correctness-gated efficiency metrics without launching models.
+
+## 1.1.0 — 2026-09-05
 
 - Add read-only terminal skill search, details, invocation guidance, and local status derived from canonical skill metadata.
 - Offer print-only AGENTS.md and CLAUDE.md fallback pointers without installing adapters or duplicating skill logic.

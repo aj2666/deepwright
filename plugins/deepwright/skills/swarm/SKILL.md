@@ -22,7 +22,7 @@ Open a plan or checklist with one entry per phase before launching anything.
 
 1. State the done predicate and the artifact or report the swarm must return.
 2. Choose the shape. Partition into slices, race N workers on identical briefs, or mix both. For a race or mixed shape, declare `first pass`, `rank all`, or `best-of` before spawning.
-3. Set N from the user or derive it from the shape. Use `parallelism.swarm_workers` from `.codex/deepwright.toml` when present and cap it to the host's available concurrency.
+3. Read [the configuration contract](../deepwright/references/configuration.md). Set N from explicit user requirements first, then a valid `parallelism.swarm_workers` preference, then the default, choosing only useful work for the shape. Cap concurrent workers to the host's available capacity and use bounded waves for remaining slices.
 4. Inherit the parent model by default. When configured and confirmed available, use `roles.research` for read-only workers and `roles.code` for implementation workers. For a deliberate model race, name only confirmed models up front.
 5. For analysis or review, keep workers read-only and collect results in their responses. When the parent task explicitly authorizes implementation, give each writer its own task-scoped output. Use an existing worktree or branch when appropriate; otherwise use a unique directory under a validated writable `TMPDIR`, or `.deepwright/tmp/swarm-<run-id>/worker-<n>/` when no writable system temporary root exists. Never create a worktree or file merely to hold a read-only report.
 

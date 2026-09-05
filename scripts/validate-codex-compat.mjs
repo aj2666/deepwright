@@ -46,11 +46,12 @@ const marketplacePath = path.join(repoRoot, ".agents", "plugins", "marketplace.j
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
 const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+const bundledLicenses = ["commander-LICENSE", "smol-toml-LICENSE"];
 
 for (const required of [
   path.join(pluginRoot, "LICENSE"),
   path.join(pluginRoot, "NOTICE.md"),
-  path.join(pluginRoot, "third_party", "commander-LICENSE"),
+  ...bundledLicenses.map((license) => path.join(pluginRoot, "third_party", license)),
   path.join(skillsRoot, "deepwright", "scripts", "dist", "deepwright.mjs"),
   path.join(skillsRoot, "deepwright", "scripts", "dist", "orch.mjs"),
   path.join(skillsRoot, "deepwright", "scripts", "dist", "watch-pr.mjs")
@@ -58,8 +59,10 @@ for (const required of [
   if (!(await exists(required))) fail(`missing release file: ${path.relative(repoRoot, required)}`);
 }
 const pluginNotice = await readFile(path.join(pluginRoot, "NOTICE.md"), "utf8");
-if (!pluginNotice.includes("third_party/commander-LICENSE")) {
-  fail("plugin NOTICE.md must reference the bundled Commander license");
+for (const license of bundledLicenses) {
+  if (!pluginNotice.includes(`third_party/${license}`)) {
+    fail(`plugin NOTICE.md must reference the bundled ${license}`);
+  }
 }
 
 for (const key of ["name", "version", "description", "author", "skills", "interface"]) {

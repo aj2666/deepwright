@@ -8,17 +8,23 @@ In the examples below, `deepwright` means the executable at `plugins/deepwright/
 
 | Shell command | Result |
 |---|---|
+| `deepwright` or `deepwright home` | Compact start page and command examples |
 | `deepwright --help` | Available commands and options |
 | `deepwright skills` | All existing skills, sorted by name |
 | `deepwright skills review` | Metadata search; not semantic task routing |
+| `deepwright skills "design review" --compact` | One-line results matching all words across metadata fields |
+| `deepwright playbooks performance` | Request shapes and canonical paths from the existing router table |
 | `deepwright skill interrogate` | Summary, canonical file, invocation and policy |
 | `deepwright invoke interrogate` | Codex CLI token and desktop picker guidance |
 | `deepwright invoke deepwright --host agents` | Opt-in AGENTS.md pointer text |
 | `deepwright invoke deepwright --host claude` | Opt-in CLAUDE.md pointer text |
-| `deepwright status` | Local version, discovery policy and config-file presence |
+| `deepwright status` | Local version, discovery policy and config validity without setting values |
+| `deepwright config show` | Effective preferences and default/project provenance |
+| `deepwright config check` | Strict TOML/schema validation without setting values |
+| `deepwright config template` | Default TOML printed to stdout; nothing written |
 | `deepwright doctor` | Existing environment/installation checks |
 
-Discovery, invocation and status accept `--json`. Names may be plain slugs, such as `interrogate`; use the exact names from `skills`. Unknown names and options fail with a usage error. Shell quoting matters when typing a dollar-prefixed Codex token: the simplest approach is to use a plain slug in this helper and paste its result into Codex.
+Discovery, invocation, configuration and status accept `--json`. `--compact` is exclusive to human `skills` output and cannot combine with `--json`. Search is case-insensitive, requires every whitespace-separated term somewhere in the combined metadata, and preserves name order; it does not infer intent. Playbooks are not additional skill tokens: ask Deepwright to use the fitting playbook. Names may be plain slugs, such as `interrogate`; use the exact names from `skills`. Unknown names and options fail with a usage error. Shell quoting matters when typing a dollar-prefixed Codex token: the simplest approach is to use a plain slug in this helper and paste its result into Codex.
 
 All discovery commands are read-only. Human output escapes terminal control characters; JSON remains machine-readable. The helper never evaluates task text as shell commands and does not offer an execute flag.
 
@@ -34,14 +40,18 @@ The generated path is absolute and machine-local. Regenerate it after moving the
 
 ## Configuration and status
 
-The existing `.codex/deepwright.toml` remains the only optional configuration convention. Invoke the Setup Deepwright skill to inspect or change it. Defaults and confirmed model availability are interpreted by the active host; this change introduces no environment override, global file or alternate format.
+The existing `.codex/deepwright.toml` remains the only optional configuration convention. Invoke the Setup Deepwright skill to inspect it or request specific changes. Inspection alone never writes. The [shared configuration contract](../plugins/deepwright/skills/deepwright/references/configuration.md) defines defaults, precedence, and limits; this change introduces no environment override, global file or alternate format.
 
-Run `status` from the project root you intend to inspect. It checks only that working directory; it does not walk parent directories or infer another session's workspace. Missing configuration is valid. Present means readable local configuration exists, not that it is valid TOML or has been applied. The helper deliberately does not implement a partial TOML parser or expose the file's contents.
+Run these commands from the intended project root. They inspect only that directory, never walk ancestors, and never infer another session's workspace. Missing files and keys use defaults. A pinned, bundled TOML parser handles syntax, followed by Deepwright's strict allowlisted schema; floats are not integers, unknown fields fail, and invalid files produce no effective settings. Inputs are bounded to 64 KiB, regular-file only, with symlinks confined to the canonical project. Diagnostics omit raw source lines.
+
+`config show` deliberately reveals effective role identifiers and counts with their provenance. `config check` and `status` omit setting values. A valid identifier remains unverified until the active host confirms it. `config template` prints a template, not a shell command or automatic writer; review before saving and do not overwrite existing configuration accidentally.
+
+Exit codes are `0` success, `1` read/validation failure, and `64` usage error. Missing config succeeds with defaults; invalid config makes `status`, `config check`, and `config show` exit 1. JSON status now uses `schemaVersion: 2` for the validated-config contract (replacing the earlier presence-only v1); other command envelopes are v1. No helper command applies settings to another process.
 
 Status reports local plugin metadata, not active-session state. Model availability, MCP connections and actual implicit invocation cannot be observed by this standalone process. Use `doctor` for environment checks and a harmless fresh-session invocation for host-level verification. Neither output grants authorization or changes the user's task scope.
 
 ## Maintenance
 
-Edit `SKILL.md` and `agents/openai.yaml` as the source of truth. Discovery reads their current values. Keep their supported one-line metadata shape; malformed or unsupported metadata fails clearly rather than silently inventing catalog entries. The catalog does not read every playbook or inject all skills into model context.
+Edit `SKILL.md` and `agents/openai.yaml` as the source of truth. Discovery reads their current values. Keep their supported one-line metadata shape; malformed or unsupported metadata fails clearly rather than silently inventing catalog entries. Playbook browsing validates the router table against its actual files. The catalog does not read every playbook body or inject all skills into model context. Config defaults live in the shared runtime module and are checked against the human-readable contract.
 
 Run `npm run test:tools`, `npm run test:evals`, and `npm run validate` after changes. Commit rebuilt helper bundles using the existing build workflow. See [compatibility checks](COMPATIBILITY.md) for the manual CLI, desktop and fallback verification boundaries.

@@ -29,7 +29,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run `$deepwright:arena` with the design-sketch task and the Phase A grounding artifacts. Before delegating, read `references/runner-prompt.md` and `references/rationale-template.md` from this skill. Embed their relevant content plus the task and grounding directly in every runner brief; do not expect a delegated worker to resolve plugin-relative paths from the target repository. Each candidate produces a design package shaped by the supplied rationale template: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
 
-Use `parallelism.design_candidates` from `.codex/deepwright.toml` when present. Inherit the parent model unless `roles.code` is configured and the host confirms that exact identifier is available. Independent structures matter more than invented model diversity.
+Apply [the configuration contract](../deepwright/references/configuration.md) to `parallelism.design_candidates` and `roles.code`: explicit task requirements precede valid project preferences, then defaults. Preserve the two-design minimum below even if the preference is one, using sequential candidates when capacity requires it. Inherit the parent model unless the host confirms the configured exact identifier. Independent structures matter more than invented model diversity.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This applies `$deepwright:principle-exhaust-the-design-space`. Whole-shape alternatives, not point fixes inside one shape.
 

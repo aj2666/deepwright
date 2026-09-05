@@ -6,4 +6,6 @@ That material was released under the MIT License. The original license text is p
 
 The distributed Node.js helper bundles include Commander, Copyright (c) 2011 TJ Holowaychuk, under the MIT License preserved at [`plugins/deepwright/third_party/commander-LICENSE`](plugins/deepwright/third_party/commander-LICENSE).
 
+The discovery helper bundles [smol-toml 1.8.0](https://github.com/squirrelchat/smol-toml/tree/v1.8.0), Copyright (c) Squirrel Chat et al., under the BSD-3-Clause License preserved at [`plugins/deepwright/third_party/smol-toml-LICENSE`](plugins/deepwright/third_party/smol-toml-LICENSE). It is pinned at build time; users install no runtime dependencies.
+
 The Deepwright name, Rivet character, Codex manifests, portability changes, policies, documentation, validation, and branding were created for this project.

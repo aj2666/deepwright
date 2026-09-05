@@ -1,8 +1,9 @@
-import { constants } from "node:fs";
-import { access, lstat, readFile, realpath, stat } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { readFile, realpath } from "node:fs/promises";
+import { join } from "node:path";
+import { CONFIG_FIELDS, formatConfigTemplate, readConfig } from "../config/config.ts";
 import { main as doctorMain } from "../doctor/doctor.ts";
 import { defaultPluginRoot, jsonText, loadCatalog, terminalText, validName, type Skill } from "./catalog.ts";
+import { loadPlaybooks, searchEntries } from "./workbench.ts";
 
 interface Io {
   readonly stdout: (value: string) => void;
@@ -15,20 +16,23 @@ export interface Context {
 }
 
 type Host = "codex" | "agents" | "claude";
-type Command = "doctor" | "skills" | "skill" | "invoke" | "status";
+type Command = "home" | "doctor" | "skills" | "skill" | "playbooks" | "invoke" | "status" | "config";
 type Guidance =
   | { readonly host: "codex"; readonly cli: string; readonly desktop: string; readonly note: string }
   | { readonly host: "agents" | "claude"; readonly target: string; readonly pointer: string; readonly note: string };
-const commands: readonly string[] = ["doctor", "skills", "skill", "invoke", "status"];
+const commands: readonly string[] = ["home", "doctor", "skills", "skill", "playbooks", "invoke", "status", "config"];
 const USAGE = [
   "Usage: deepwright <command> [options]",
   "",
+  "  home [--json]                           compact start page (also no args)",
   "  doctor [--json]                         check runtime and plugin layout",
-  "  skills [query] [--json]                 list or search skill metadata",
+  "  skills [query] [--compact|--json]       list or search skill metadata",
+  "  playbooks [query] [--json]              browse the canonical router table",
   "  skill <name> [--json]                   inspect a skill and its invocation",
   "  invoke <name> [--host codex|agents|claude] [--json]",
   "                                         print guidance; never execute it",
-  "  status [--json]                         inspect package and config presence",
+  "  status [--json]                         inspect package and config validity",
+  "  config show|check|template [--json]     inspect settings; never write them",
   "",
   "All commands are read-only. They cannot confirm active host/session state.",
   "-h, --help displays this help. Quote a multiword search query.",
@@ -48,7 +52,7 @@ function parse(argv: readonly string[]) {
       continue;
     }
     const flag = argument === "-h" ? "--help" : argument;
-    if (!["--json", "--help", "--host"].includes(flag)) throw new UsageError("unknown option: " + argument);
+    if (!["--json", "--help", "--host", "--compact"].includes(flag)) throw new UsageError("unknown option: " + argument);
     if (seen.has(flag)) throw new UsageError("duplicate option: " + flag);
     seen.add(flag);
     if (flag === "--host") {
@@ -59,38 +63,20 @@ function parse(argv: readonly string[]) {
       host = value;
     }
   }
-  const command = positionals[0];
-  if (command === undefined && seen.has("--help") && !seen.has("--host")) {
-    return { command: undefined, value: undefined, host, json: seen.has("--json"), help: true };
-  }
+  const command = positionals[0] ?? "home";
   if (!commands.includes(command)) throw new UsageError("expected a valid command");
   if (seen.has("--host") && command !== "invoke") throw new UsageError("--host is only valid with invoke");
+  if (seen.has("--compact") && command !== "skills") throw new UsageError("--compact is only valid with skills");
+  if (seen.has("--compact") && seen.has("--json")) throw new UsageError("--compact and --json are mutually exclusive");
   const value = positionals[1];
   const requiredName = command === "skill" || command === "invoke";
-  const maximum = command === "doctor" || command === "status" ? 1 : 2;
+  const maximum = ["home", "doctor", "status"].includes(command) ? 1 : 2;
   if (positionals.length > maximum) throw new UsageError("too many arguments for " + command);
   if (requiredName && value === undefined && !seen.has("--help")) throw new UsageError(command + " requires a skill name");
   if (requiredName && value !== undefined && !validName(value)) throw new UsageError("invalid skill name: " + value);
-  return { command: command as Command, value, host, json: seen.has("--json"), help: seen.has("--help") };
-}
-
-async function configPresence(cwd: string) {
-  const path = resolve(cwd, ".codex", "deepwright.toml");
-  let state: "missing" | "present" | "unreadable" = "present";
-  try {
-    await lstat(path);
-  } catch (error) {
-    state = (error as NodeJS.ErrnoException).code === "ENOENT" ? "missing" : "unreadable";
-  }
-  if (state === "present") {
-    try {
-      if (!(await stat(path)).isFile()) throw new Error("not a regular file");
-      await access(path, constants.R_OK);
-    } catch {
-      state = "unreadable";
-    }
-  }
-  return { path, state, validation: "not-performed" as const };
+  if (command === "config" && !(value === undefined && seen.has("--help")) &&
+      !["show", "check", "template"].includes(value ?? "")) throw new UsageError("config requires show, check, or template");
+  return { command: command as Command, value, host, json: seen.has("--json"), compact: seen.has("--compact"), help: seen.has("--help") };
 }
 
 function skillLines(skill: Skill): string[] {
@@ -142,25 +128,75 @@ export async function main(
       io.stdout(USAGE);
       return 0;
     }
+    const envelope = { schemaVersion: 1, tool: "deepwright", command: options.command };
+    if (options.command === "config") {
+      if (options.value === "template") {
+        const template = formatConfigTemplate();
+        io.stdout(options.json ? jsonText({ ...envelope, action: "template", template, written: false }) : template);
+        return 0;
+      }
+      const report = await readConfig(context.cwd ?? process.cwd());
+      const { settings, sources, ...summary } = report;
+      const values = settings === null ? [] : CONFIG_FIELDS.map((field) => {
+        const [section, key] = field.split(".");
+        const table: Readonly<Record<string, string | number>> = section === "roles" ? settings.roles : settings.parallelism;
+        const value = key === undefined ? settings.version : table[key];
+        return field + " = " + jsonText(value).trim() + " [" + sources![field] + "]";
+      });
+      io.stdout(options.json
+        ? jsonText({ ...envelope, action: options.value, ...(options.value === "show" ? report : summary) })
+        : [
+          "Project config: " + report.state + " — " + jsonText(report.path).trim(),
+          "Config validation: " + report.validation + (report.state === "missing" ? " (defaults)" : ""),
+          ...(options.value === "show" ? values : []),
+          ...report.errors.map((issue) => terminalText(issue.message) +
+            (issue.line === undefined ? "" : " (line " + issue.line + ", column " + issue.column + ")")),
+          "Model availability: not checked. Settings are preferences, not host capability or permission.",
+        ].join("\n") + "\n");
+      return report.ok ? 0 : 1;
+    }
     const pluginRoot = await realpath(context.pluginRoot ?? defaultPluginRoot());
     const skills = await loadCatalog(pluginRoot);
-    const envelope = { schemaVersion: 1, tool: "deepwright", command: options.command };
-    if (options.command === "skills") {
-      const query = (options.value ?? "").toLowerCase();
-      const matches = skills.filter((skill) => [skill.name, skill.displayName, skill.description]
-        .some((value) => value.toLowerCase().includes(query)));
+    if (options.command === "home") {
+      const routes = await loadPlaybooks(pluginRoot);
+      const entrypoints = skills.filter((skill) => skill.implicit);
+      io.stdout(options.json ? jsonText({ ...envelope, skillCount: skills.length, playbookCount: routes.length, entrypoints }) : [
+        "Deepwright — Go deep. Ship sound.",
+        skills.length + " skills · " + routes.length + " playbooks · no background mode",
+        "",
+        ...entrypoints.map((skill) => "Start in Codex: " + skill.invocation + " <your engineering task>"),
+        "Desktop: type @ and select a Deepwright skill.",
+        "",
+        "Find:     deepwright skills review --compact",
+        "Route:    deepwright playbooks performance",
+        "Inspect:  deepwright skill interrogate",
+        "Invoke:   deepwright invoke interrogate",
+        "Settings: deepwright config show",
+        "Health:   deepwright status   /   deepwright doctor",
+        "",
+        "Read-only helper. Paste skill tokens into Codex, not your shell.",
+      ].join("\n") + "\n");
+    } else if (options.command === "playbooks") {
+      const matches = searchEntries(await loadPlaybooks(pluginRoot), options.value ?? "");
+      io.stdout(options.json ? jsonText({ ...envelope, query: options.value ?? null, playbooks: matches }) :
+        (matches.length === 0 ? "No matching playbooks.\n" : matches.map((entry) =>
+          entry.name + " — " + terminalText(entry.description) + "\n  " + jsonText(entry.path).trim()).join("\n") +
+          "\nAsk the Deepwright skill to use the fitting playbook; these are not separate skill tokens.\n"));
+    } else if (options.command === "skills") {
+      const matches = searchEntries(skills, options.value ?? "");
       io.stdout(options.json
         ? jsonText({ ...envelope, query: options.value ?? null, skills: matches })
         : (matches.length === 0 ? "No matching skills.\n" : matches.map((skill) =>
           skill.name + (skill.implicit ? " [implicit]" : "") + " — " + terminalText(skill.displayName) +
-          "\n  " + terminalText(skill.description)).join("\n") + "\n"));
+          (options.compact ? "" : "\n  " + terminalText(skill.description))).join("\n") + "\n"));
     } else if (options.command === "status") {
       const manifest: unknown = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
       if (typeof manifest !== "object" || manifest === null || !("version" in manifest) ||
           typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+$/u.test(manifest.version)) {
         throw new Error("plugin manifest has no valid version");
       }
-      const config = await configPresence(context.cwd ?? process.cwd());
+      const { settings: _settings, sources, ...config } = await readConfig(context.cwd ?? process.cwd());
+      const projectOverrides = sources === null ? null : Object.values(sources).filter((value) => value === "project").length;
       const implicitSkills = skills.filter((skill) => skill.implicit).map((skill) => skill.name);
       const hostState = {
         sessionActivation: "unknown",
@@ -169,16 +205,17 @@ export async function main(
         note: "Package metadata is not host state; use the host's own plugin, model, and MCP interfaces.",
       };
       io.stdout(options.json ? jsonText({
-        ...envelope, version: manifest.version, pluginRoot, skillCount: skills.length,
-        implicitSkills, explicitSkillCount: skills.length - implicitSkills.length, config, hostState,
+        ...envelope, schemaVersion: 2, version: manifest.version, pluginRoot, skillCount: skills.length,
+        implicitSkills, explicitSkillCount: skills.length - implicitSkills.length, config: { ...config, projectOverrides }, hostState,
       }) : [
         "Deepwright " + manifest.version + ": " + skills.length + " skills",
         "Implicit policy: " + (implicitSkills.join(", ") || "none"),
         "Plugin root: " + jsonText(pluginRoot).trim(),
         "Project config: " + config.state + " — " + jsonText(config.path).trim(),
-        "Config validation: not performed; file contents and model availability are not checked.",
+        "Config validation: " + config.validation + (projectOverrides === null ? "; run deepwright config check" : "; " + projectOverrides + " project overrides"),
         "Host session activation, models, and MCP state: unknown (not available to this helper).",
       ].join("\n") + "\n");
+      return config.ok ? 0 : 1;
     } else {
       const skill = skills.find((entry) => entry.name === options.value);
       if (skill === undefined) throw new UsageError("unknown skill: " + options.value + "; run deepwright skills");

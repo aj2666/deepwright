@@ -6,4 +6,6 @@ The upstream work is Copyright 2026 Lauren Tan and is used under the MIT License
 
 The bundled Node.js command-line executables include Commander, Copyright (c) 2011 TJ Holowaychuk, under the MIT License reproduced in [`third_party/commander-LICENSE`](third_party/commander-LICENSE).
 
+The bundled discovery helper includes smol-toml, Copyright (c) Squirrel Chat et al., under the BSD-3-Clause License reproduced in [`third_party/smol-toml-LICENSE`](third_party/smol-toml-LICENSE).
+
 Deepwright is an independent project. It is not affiliated with or endorsed by Cursor or OpenAI.

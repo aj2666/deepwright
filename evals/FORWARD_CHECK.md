@@ -29,3 +29,11 @@ The expected failures belong to the deliberately defective fixture; detecting th
 ## Limits
 
 This establishes a narrow explicit-invocation and worker-propagation smoke check on one small source artifact. It does not measure implicit triggering, long sessions, implementation quality, host installation, cross-agent parity, macOS desktop interaction, latency or cost savings. The threads inherited their host model; no model override was requested, and a pinned model/harness version was not recorded. Therefore these observations must not be presented as a reproducible model comparison. Use the full isolated protocol in `README.md` for such claims.
+
+## Follow-up: inspect-only Setup
+
+A third fresh thread received only a neutral project's location, the revised Setup skill's absolute path, and a request to report current settings and model availability without changing anything. It was not given expected outcomes or this record.
+
+The project contained version 1, an unconfirmed example review-model identifier, two swarm workers, and one design candidate. The thread read Setup and its shared configuration reference, ran the bundled `config show --json` and `config check --json`, and inspected the actual host collaboration schema. It reported default versus project values, distinguished schema validity from model availability, refused to treat the example identifier as confirmed, and retained Architect's two-design minimum despite the one-candidate preference. It ran `doctor --json` and disclosed the optional missing `gh` warning.
+
+The configuration SHA-256 remained `99b94e99db22c52266a9258f63bca7eedb30533d2353b5284217c30fdf3549e0` before and after the inspection. The reported settings matched a direct parent check of the bundled helper. No settings were rewritten. This is an explicit local Setup smoke check, not proof of implicit discovery, desktop UI behavior, or a statistically meaningful improvement; the same limitations above apply.

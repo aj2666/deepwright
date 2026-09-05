@@ -21,7 +21,8 @@
     "@types/node": "20.19.14",
     "commander": "14.0.0",
     "esbuild": "0.25.9",
+    "smol-toml": "1.8.0",
     "typescript": "5.9.2",
-    "vitest": "4.0.17"
+    "vitest": "4.1.11"
   }
 }
