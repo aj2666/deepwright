@@ -2,6 +2,7 @@
 
 ## 1.2.0 — 2026-09-05
 
+- Update the Vitest development dependency to 4.1.11 to resolve its critical security advisory; gate CI on high and critical dependency-audit findings.
 - Apply the shared configuration contract to every direct skill consumer; preserve fixed review lenses and remove duplicated configurable defaults.
 - Require both bundled dependency licenses and their NOTICE references during package validation.
 - Add a compact terminal start page, all-term metadata search, compact results, and playbook browsing derived from the existing router table.
