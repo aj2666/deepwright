@@ -9,7 +9,7 @@
 
 **Go deep. Ship sound.**
 
-Deepwright is an evidence-first engineering plugin for Codex. Rivet routes complex work through investigation, design, implementation, review, and verification on the real artifact. The Investigator Owl keeps an eye on the evidence.
+Deepwright is an evidence-first engineering plugin for Codex. Owl routes complex work through investigation, design, implementation, review, and verification on the real artifact. The Investigator Owl keeps an eye on the evidence.
 
 The plugin includes **46 skills, 23 playbooks, and 21 engineering principles**. One implicit router selects the smallest fitting workflow; focused skills remain explicitly invoked. Optional Node 20.19+ helpers provide terminal discovery, project configuration checks, orchestration, and PR watching. The skills themselves do not require Node.
 
@@ -27,14 +27,14 @@ codex plugin list --json
 
 SSH is also supported: use `git@github.com:aj2666/deepwright.git` as the marketplace source. Start a **new Codex session** after installation.
 
-Give Rivet a goal, a boundary, and a checkable finish condition:
+Give Owl a goal, a boundary, and a checkable finish condition:
 
 ```text
 $deepwright:deepwright investigate why this export loses columns. explain the cause and evidence without editing files.
 ```
 
 ```text
-$deepwright:rivet-agent implement this feature, verify the result, and report what you tested. do not deploy or merge.
+$deepwright:owl-agent implement this feature, verify the result, and report what you tested. do not deploy or merge.
 ```
 
 These are **Codex prompt tokens**, not shell commands. See the [Codex plugin CLI reference](https://learn.chatgpt.com/docs/developer-commands).
@@ -51,7 +51,7 @@ Start a fresh Codex session after reinstalling.
 
 ## macOS desktop app
 
-Clone the repository and open it as a Codex project in the ChatGPT desktop app. Restart the app, then select the **Deepwright** source in the Plugins Directory and install the plugin. In a fresh chat, type `@` and select **Deepwright**, **Rivet**, or a focused skill.
+Clone the repository and open it as a Codex project in the ChatGPT desktop app. Restart the app, then select the **Deepwright** source in the Plugins Directory and install the plugin. In a fresh chat, type `@` and select **Deepwright**, **Owl**, or a focused skill.
 
 After updating the checkout, restart the app, complete any update or reinstall offered in the Plugins Directory, and start a new chat. Desktop invocation uses the `@` picker rather than the CLI tokens above. See OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins) and [Build plugins](https://developers.openai.com/plugins/build/plugins).
 
@@ -59,7 +59,7 @@ After updating the checkout, restart the app, complete any update or reinstall o
 
 | Task | Skill |
 |---|---|
-| Route an engineering task | [Deepwright / Rivet](plugins/deepwright/skills/deepwright/SKILL.md) |
+| Route an engineering task | [Deepwright / Owl](plugins/deepwright/skills/deepwright/SKILL.md) |
 | Understand behavior or rationale | [How](plugins/deepwright/skills/how/SKILL.md) / [Why](plugins/deepwright/skills/why/SKILL.md) |
 | Design before implementation | [Architect](plugins/deepwright/skills/architect/SKILL.md) |
 | Review without applying fixes | [Interrogate](plugins/deepwright/skills/interrogate/SKILL.md) |

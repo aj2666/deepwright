@@ -1,0 +1,7 @@
+interface:
+  display_name: "Owl"
+  short_description: "Deepwright's skeptical evidence-first foreman"
+  brand_color: "#000000"
+  default_prompt: "Use $owl-agent to take this task from evidence to proof."
+policy:
+  allow_implicit_invocation: false

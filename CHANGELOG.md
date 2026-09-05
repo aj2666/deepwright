@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0 — 2026-09-05
+
+- Standardize Deepwright's engineering foreman on the Owl identity so the router matches the Investigator Owl product branding.
+- Replace the prior explicit foreman skill with `$deepwright:owl-agent` and update plugin prompts, desktop display metadata, and user documentation.
+- Preserve the existing evidence-first routing, authorization, delegation, and verification behavior while changing the public name.
+
 ## 1.2.0 — 2026-09-05
 
 - Update the Vitest development dependency to 4.1.11 to resolve its critical security advisory; gate CI on high and critical dependency-audit findings.
@@ -16,7 +22,7 @@
 - Offer print-only AGENTS.md and CLAUDE.md fallback pointers without installing adapters or duplicating skill logic.
 - Clarify positive and negative router triggers, task-local scope, and explicit worker propagation; retain all 46 skills and the single implicit router.
 - Add shared worker handoff guidance, discovery regressions, and a fail-closed offline evaluation-receipt scorer with a separated prompt/rubric corpus.
-- Document the selective Ponytail review, configuration and status limitations, and honest benchmark methodology.
+- Document configuration and status limitations plus an evidence-based benchmark methodology.
 - Check work branches in CI without publishing a release; main-only release gates remain unchanged.
 
 ## 1.0.1 — 2026-09-04
@@ -33,7 +39,7 @@
 
 ## 1.0.0 — 2026-09-04
 
-- Launch Deepwright and the Rivet engineering foreman.
+- Launch Deepwright with its engineering foreman and evidence-first workflow.
 - Convert the upstream workflow into 46 standard Codex skills and 23 routed playbooks.
 - Add Codex plugin and marketplace manifests for CLI and desktop discovery.
 - Replace Cursor-specific agents, commands, models, transcript paths, and automation.

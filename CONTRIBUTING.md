@@ -35,7 +35,7 @@ In fresh CLI and desktop sessions, verify that the printed CLI token and desktop
 ### macOS desktop
 
 1. Clone into a fresh path, open it as a Codex project, restart the app, and install from the repository marketplace.
-2. Confirm the Investigator Owl identity and the displayed Deepwright and Rivet skills. In a new chat, use the `@` picker for a harmless inspection with no editing.
+2. Confirm the Investigator Owl identity and the displayed Deepwright and Owl skills. In a new chat, use the `@` picker for a harmless inspection with no editing.
 3. In a separate bounded prompt, request one reversible change and verify the actual result and reported evidence.
 4. Disable and re-enable the plugin; confirm skills disappear and return.
 5. Update the checkout, restart, complete any offered update or reinstall, and start a new chat. Confirm the intended version is visible.
