@@ -30,7 +30,7 @@
     "websiteURL": "https://github.com/aj2666/deepwright",
     "defaultPrompt": [
       "Use Deepwright to plan and ship this change.",
-      "Ask Rivet to investigate this bug and prove the fix.",
+      "Ask Owl to investigate this bug and prove the fix.",
       "Use Deepwright's adversarial review workflow on this change."
     ],
     "brandColor": "#000000",
