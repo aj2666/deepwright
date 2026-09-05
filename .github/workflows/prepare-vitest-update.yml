@@ -1,0 +1,82 @@
+name: Prepare Vitest security update
+
+on:
+  push:
+    branches: [work/skill-workbench]
+    paths: [.github/workflows/prepare-vitest-update.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+      - name: Record the exact existing audit
+        shell: bash
+        run: |
+          set +e
+          npm audit --prefix plugins/deepwright/skills/deepwright/scripts --package-lock-only --json > "$RUNNER_TEMP/before-audit.json"
+          status=$?
+          set -e
+          if [ "$status" -gt 1 ]; then exit "$status"; fi
+          node -e 'const fs=require("node:fs"); const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/before-audit.json","utf8")); if(r.error) throw new Error(JSON.stringify(r.error)); console.log(JSON.stringify(r,null,2))'
+          cp plugins/deepwright/skills/deepwright/scripts/package-lock.json "$RUNNER_TEMP/before-lock.json"
+      - name: Generate only the targeted test-tool dependency update
+        run: npm install --prefix plugins/deepwright/skills/deepwright/scripts --package-lock-only --ignore-scripts --save-dev --save-exact vitest@4.1.11
+      - name: Audit the complete updated lockfile
+        run: npm audit --prefix plugins/deepwright/skills/deepwright/scripts --package-lock-only --audit-level=low
+      - name: Review dependency graph changes and preserve bundled dependencies
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const before = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/before-lock.json', 'utf8')).packages;
+          const after = JSON.parse(fs.readFileSync('plugins/deepwright/skills/deepwright/scripts/package-lock.json', 'utf8')).packages;
+          assert.equal(after[''].devDependencies.vitest, '4.1.11');
+          for (const [name, version] of Object.entries(before[''].devDependencies)) {
+            if (name !== 'vitest') assert.equal(after[''].devDependencies[name], version);
+          }
+          for (const name of ['commander', 'esbuild', 'smol-toml']) {
+            assert.deepEqual(after['node_modules/' + name], before['node_modules/' + name]);
+          }
+          for (const name of [...new Set([...Object.keys(before), ...Object.keys(after)])].sort()) {
+            if (JSON.stringify(before[name]) !== JSON.stringify(after[name])) {
+              console.log(JSON.stringify({package: name, before: before[name]?.version ?? null, after: after[name]?.version ?? null}));
+            }
+          }
+          NODE
+          git diff --stat
+      - name: Validate the candidate without changing any branch
+        run: |
+          npm ci --prefix plugins/deepwright/skills/deepwright/scripts
+          npm run test:tools
+          npm run test:evals
+          npm run validate
+          git diff --exit-code -- plugins/deepwright/skills/deepwright/scripts/dist
+      - name: Store reviewed candidate blobs without creating a commit or updating a ref
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Candidate source commit: $GITHUB_SHA"
+          for file in package.json package-lock.json; do
+            FILE="$file" node <<'NODE'
+          const fs = require('node:fs');
+          const filename = 'plugins/deepwright/skills/deepwright/scripts/' + process.env.FILE;
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/dependency-blob.json', JSON.stringify({content: fs.readFileSync(filename, 'utf8'), encoding: 'utf-8'}));
+          NODE
+            sha="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input "$RUNNER_TEMP/dependency-blob.json" --jq .sha)"
+            echo "Candidate blob $file: $sha"
+          done
