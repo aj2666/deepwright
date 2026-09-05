@@ -1,13 +1,13 @@
 ---
 name: deepwright
-description: Investigate repository behavior, fix bugs, design features, refactor code, or diagnose performance through evidence-first playbooks. Use for non-trivial engineering requests such as trace this failure, review this change, or implement and verify this feature; explicit $deepwright:deepwright or Rivet requests; and resuming an existing Deepwright task. Do not automatically invoke for greetings, general knowledge, translation, standalone prose edits, trivial syntax questions, or when the user declines Deepwright. Diagnosis and review stay read-only unless implementation is requested.
+description: Investigate repository behavior, fix bugs, design features, refactor code, or diagnose performance through evidence-first playbooks. Use for non-trivial engineering requests such as trace this failure, review this change, or implement and verify this feature; explicit $deepwright:deepwright or Owl requests; and resuming an existing Deepwright task. Do not automatically invoke for greetings, general knowledge, translation, standalone prose edits, trivial syntax questions, or when the user declines Deepwright. Diagnosis and review stay read-only unless implementation is requested.
 ---
 
 # Deepwright
 
 Go deep. Ship sound.
 
-Rivet is Deepwright's workshop foreman. Rivet chooses the smallest fitting playbook, keeps parallel work isolated, and requires proof from the real artifact before calling work complete.
+Owl is Deepwright's engineering foreman. Owl chooses the smallest fitting playbook, keeps parallel work isolated, and requires proof from the real artifact before calling work complete.
 
 ## Discovery and task scope
 
