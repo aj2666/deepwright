@@ -54,4 +54,4 @@ Status reports local plugin metadata, not active-session state. Model availabili
 
 Edit `SKILL.md` and `agents/openai.yaml` as the source of truth. Discovery reads their current values. Keep their supported one-line metadata shape; malformed or unsupported metadata fails clearly rather than silently inventing catalog entries. Playbook browsing validates the router table against its actual files. The catalog does not read every playbook body or inject all skills into model context. Config defaults live in the shared runtime module and are checked against the human-readable contract.
 
-Run `npm run test:tools`, `npm run test:evals`, and `npm run validate` after changes. Commit rebuilt helper bundles using the existing build workflow. See [compatibility checks](COMPATIBILITY.md) for the manual CLI, desktop and fallback verification boundaries.
+Run `npm run test:tools`, `npm run test:evals`, and `npm run validate` after changes. Commit rebuilt helper bundles using the existing build workflow. See [manual release checks](../CONTRIBUTING.md#manual-release-checks) for the CLI, desktop and fallback verification boundaries.

@@ -204,11 +204,14 @@ for (const file of releaseFiles) {
   }
 }
 
-for (const file of [path.join(repoRoot, "MIGRATION.md")]) {
+const repositoryDocs = (await filesUnder(repoRoot)).filter((file) =>
+  file.endsWith(".md") && !file.startsWith(pluginRoot + path.sep));
+for (const file of repositoryDocs) {
   validateSkillReferences(await readFile(file, "utf8"), file);
 }
 
-for (const file of releaseFiles.filter((file) => file.endsWith(".md"))) {
+const markdownFiles = [...releaseFiles.filter((file) => file.endsWith(".md")), ...repositoryDocs];
+for (const file of markdownFiles) {
   const source = await readFile(file, "utf8");
   for (const match of source.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
     const raw = match[1].trim().replace(/^<|>$/g, "");
@@ -254,3 +257,4 @@ if (errors.length) {
 }
 
 console.log(`Deepwright compatibility validation passed: ${skillDirs.length} skills, skills-only manifest, Codex-native policies.`);
+console.log(`Documentation validation passed: ${markdownFiles.length} Markdown files checked for local file links.`);

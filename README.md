@@ -9,60 +9,37 @@
 
 **Go deep. Ship sound.**
 
-Meet **the Investigator Owl** — sharp, skeptical, and curious. Deepwright's black-and-white mascot keeps an eye on the evidence.
+Deepwright is an evidence-first engineering plugin for Codex. Rivet routes complex work through investigation, design, implementation, review, and verification on the real artifact. The Investigator Owl keeps an eye on the evidence.
 
-Deepwright is an evidence-first engineering plugin for Codex. Rivet, its engineering router, routes complex work through focused playbooks for investigation, design, implementation, review, and proof on the real artifact.
+The plugin includes **46 skills, 23 playbooks, and 21 engineering principles**. One implicit router selects the smallest fitting workflow; focused skills remain explicitly invoked. Optional Node 20.19+ helpers provide terminal discovery, project configuration checks, orchestration, and PR watching. The skills themselves do not require Node.
 
-This repository is a native Codex package—not a compatibility wrapper. It uses the required [`.codex-plugin/plugin.json`](https://developers.openai.com/plugins/build/plugins) manifest, standard skill folders, and per-skill invocation policy. It has no Cursor agents, slash commands, hooks, or hard-coded model names.
-
-## What ships
-
-- **Rivet orchestration:** `$deepwright:deepwright` selects the smallest fitting engineering playbook and owns the final evidence.
-- **23 playbooks:** bugs, features, refactors, performance, runtime and trace forensics, visual parity, PRs, shipping, and multi-phase programs.
-- **Focused tools:** `$deepwright:architect`, `$deepwright:arena`, `$deepwright:interrogate`, `$deepwright:swarm`, `$deepwright:tdd`, and more.
-- **21 engineering principles:** loaded only when they change a decision.
-- **Portable helpers:** optional Node 20.19+ orchestration and PR-watching CLIs with no Bun dependency.
-- **Safe defaults:** no bundled credentials, MCP server, background automation, deployment, merge, or external write without the authority supplied by the task.
-
-The plugin is skills-only. Rivet's `$deepwright:deepwright` router is the single implicit entry point for natural, non-trivial engineering requests; focused leaf skills stay explicit so a narrow question cannot accidentally start a wide workflow. Skills are the portable workflow layer supported by Codex CLI and the Codex experience in the ChatGPT desktop app; they progressively load when invoked instead of flooding the initial context. See OpenAI's [skill documentation](https://learn.chatgpt.com/docs/build-skills).
+Deepwright is a native skills-only Codex package. It does not install lifecycle hooks, an MCP server, global settings, or background automation. A request to investigate is not permission to edit, deploy, merge, or take other external actions.
 
 ## Install in Codex CLI
 
-Prerequisites: Codex CLI, Git, and access to this private GitHub repository.
+You need Codex CLI with plugin support and Git. While this repository is private, you also need repository access and working GitHub authentication.
 
 ```bash
-codex plugin marketplace add git@github.com:aj2666/deepwright.git --ref main --json
+codex plugin marketplace add https://github.com/aj2666/deepwright.git --ref main --json
 codex plugin add deepwright@deepwright --json
 codex plugin list --json
 ```
 
-Start a new Codex CLI session after installation so the bundled skills are
-loaded.
+SSH is also supported: use `git@github.com:aj2666/deepwright.git` as the marketplace source. Start a **new Codex session** after installation.
 
-GitHub HTTPS works too when your Git credential helper can authenticate:
-
-```bash
-codex plugin marketplace add https://github.com/aj2666/deepwright.git --ref main --json
-```
-
-Codex accepts local directories, GitHub shorthand, HTTPS URLs, and SSH URLs as marketplace sources. See the [Codex plugin CLI reference](https://learn.chatgpt.com/docs/developer-commands).
-
-In Codex CLI, start a task with:
+Give Rivet a goal, a boundary, and a checkable finish condition:
 
 ```text
-$deepwright:deepwright investigate this bug, fix the root cause, and prove it on the real surface
+$deepwright:deepwright investigate why this export loses columns. explain the cause and evidence without editing files.
 ```
-
-Or invoke Rivet directly:
 
 ```text
-$deepwright:rivet-agent take this feature from design through verified delivery
+$deepwright:rivet-agent implement this feature, verify the result, and report what you tested. do not deploy or merge.
 ```
 
-## Update in Codex CLI
+These are **Codex prompt tokens**, not shell commands. See the [Codex plugin CLI reference](https://learn.chatgpt.com/docs/developer-commands).
 
-Refresh the Git marketplace, reinstall the plugin, and then start a new Codex
-session:
+## Update
 
 ```bash
 codex plugin marketplace upgrade deepwright --json
@@ -70,88 +47,60 @@ codex plugin add deepwright@deepwright --json
 codex plugin list --json
 ```
 
-## Install in the macOS desktop app
+Start a fresh Codex session after reinstalling.
 
-1. Clone the private repository with your normal GitHub credentials.
-2. Open the cloned folder as the project in Codex.
-3. Restart the ChatGPT desktop app so it discovers `.agents/plugins/marketplace.json`.
-4. Open the Plugins Directory, choose the **Deepwright** source, and install **Deepwright**.
-5. Start a fresh Codex chat, type `@`, select **Deepwright** or one of its bundled skills, and ask it to inspect a harmless sample repository without editing.
+## macOS desktop app
 
-The `$deepwright:...` examples in this repository are Codex CLI syntax. In the
-desktop app, use the `@` picker and the displayed **Deepwright** and **Rivet**
-names. OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins)
-documents the fresh-chat and `@` invocation behavior. After pulling an update
-to the checkout, restart the app, complete any update or reinstall offered in
-the Plugins Directory, and start a new chat.
+Clone the repository and open it as a Codex project in the ChatGPT desktop app. Restart the app, then select the **Deepwright** source in the Plugins Directory and install the plugin. In a fresh chat, type `@` and select **Deepwright**, **Rivet**, or a focused skill.
 
-Repo marketplaces and plugin skills are supported in the desktop app; OpenAI documents the discovery flow in [Build plugins](https://developers.openai.com/plugins/build/plugins) and [Build skills](https://learn.chatgpt.com/docs/build-skills).
+After updating the checkout, restart the app, complete any update or reinstall offered in the Plugins Directory, and start a new chat. Desktop invocation uses the `@` picker rather than the CLI tokens above. See OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins) and [Build plugins](https://developers.openai.com/plugins/build/plugins).
+
+## Choose a workflow
+
+| Task | Skill |
+|---|---|
+| Route an engineering task | [Deepwright / Rivet](plugins/deepwright/skills/deepwright/SKILL.md) |
+| Understand behavior or rationale | [How](plugins/deepwright/skills/how/SKILL.md) / [Why](plugins/deepwright/skills/why/SKILL.md) |
+| Design before implementation | [Architect](plugins/deepwright/skills/architect/SKILL.md) |
+| Review without applying fixes | [Interrogate](plugins/deepwright/skills/interrogate/SKILL.md) |
+| Implement through a test loop | [TDD](plugins/deepwright/skills/tdd/SKILL.md) |
+| Inspect or change project preferences | [Setup Deepwright](plugins/deepwright/skills/setup-deepwright/SKILL.md) |
+
+From a checkout, the optional helper reads canonical metadata and prints guidance:
+
+```bash
+plugins/deepwright/skills/deepwright/scripts/deepwright
+plugins/deepwright/skills/deepwright/scripts/deepwright skills review --compact
+plugins/deepwright/skills/deepwright/scripts/deepwright playbooks performance
+plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
+plugins/deepwright/skills/deepwright/scripts/deepwright status --json
+```
+
+These discovery commands do not launch agents or modify files. All skills remain available through the catalog. See the [terminal reference](docs/TERMINAL.md) for command options and opt-in, print-only AGENTS.md / CLAUDE.md pointers.
 
 ## Optional configuration
 
-Deepwright works without configuration. Run `$deepwright:setup-deepwright` to create `.codex/deepwright.toml` for repository-specific role choices and parallelism. It never edits Codex's main config.
+Deepwright works without configuration. Use `$deepwright:setup-deepwright` to inspect preferences or explicitly request changes to `.codex/deepwright.toml`. It never edits Codex's main configuration.
 
-Only use model IDs that the active Codex host confirms are available. Missing role settings inherit the parent model.
+The helper's `config show`, `config check`, and `config template` commands inspect settings, validate them, or print defaults without writing. Run them from the intended project root. Missing settings inherit defaults; invalid configuration is not partially applied. Only the active host can confirm model availability and concurrency. See the [configuration contract](plugins/deepwright/skills/deepwright/references/configuration.md).
 
-## Find and invoke a skill
-
-All 46 skills remain available. These are useful starting points, not a second routing system:
-
-| Need | Existing skill |
-|---|---|
-| Choose a workflow for an engineering task | Deepwright / Rivet |
-| Understand behavior or rationale | How / Why |
-| Design before implementation | Architect |
-| Review a design or diff without applying fixes | Interrogate |
-| Implement through a focused test loop | TDD |
-| Configure optional roles and parallelism | Setup Deepwright |
-
-From this checkout, use the optional helper in your shell:
+## Development
 
 ```bash
-plugins/deepwright/skills/deepwright/scripts/deepwright skills review
-plugins/deepwright/skills/deepwright/scripts/deepwright playbooks performance
-plugins/deepwright/skills/deepwright/scripts/deepwright skill interrogate
-plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
-plugins/deepwright/skills/deepwright/scripts/deepwright status --json
-plugins/deepwright/skills/deepwright/scripts/deepwright config show
+npm ci --prefix plugins/deepwright/skills/deepwright/scripts
+npm test
 ```
 
-These commands only read files and print results. They do not launch an agent or modify the project. Paste the printed skill token into a **Codex prompt**, not your shell; use the `@` picker in the desktop app. Search reads current skill metadata, not a separately maintained catalog. See the [terminal and adapter guide](docs/TERMINAL.md).
+CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, package/documentation validation, and real Codex CLI installation on Linux and macOS. Desktop interaction and live-agent behavior require separate manual checks; passing tooling tests does not establish improved model routing or productivity.
 
-For a host without native plugin discovery, `invoke deepwright --host agents` or `--host claude` prints an opt-in pointer block. Review it before manually merging it into existing repository instructions. No adapters, hooks, MCP server, or global settings are installed.
+See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 
-Run the helper with no arguments for a compact start page, or add `--compact` to skill search for one-line results. Playbook discovery uses the router's existing table, not a second workflow registry.
-
-`status` validates the optional `.codex/deepwright.toml` in the current working directory without printing values. `config show` exposes effective preferences and their provenance; `config check` validates and `config template` prints defaults without writing. Schema validity does not mean the active Codex session has loaded the plugin, confirmed models, or connected MCP tools. Configuration remains optional; actual host capabilities and the user's task boundary take precedence.
-
-## Verify this checkout
-
-```bash
-npm run validate
-npm install --prefix plugins/deepwright/skills/deepwright/scripts
-npm run test:tools
-npm run test:evals
-```
-
-The GitHub Actions matrix runs the static validator, tool tests, and real Codex install smoke on Linux and macOS. The manual desktop checklist is in [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md).
-
-The [skill evaluation corpus](evals/README.md) separates prompts from observer rubrics. Its [artifact verifier](evals/ARTIFACTS.md) checks saved evidence digests and compares runs with matching reported conditions; efficiency is withheld unless correctness and scope gates pass. Passing these tooling tests is not evidence that a model's automatic triggering improved. The [Ponytail comparison](docs/PONYTAIL_REVIEW.md) explains what we adopted and deferred.
-
-## Repository layout
-
-```text
-.agents/plugins/marketplace.json      Repo marketplace
-plugins/deepwright/.codex-plugin/     Codex manifest
-plugins/deepwright/skills/            Deepwright and supporting skills
-plugins/deepwright/assets/            Native Deepwright identity
-scripts/                              Compatibility validator
-```
+The `plugins/deepwright/skills/` directory contains the actual skill instructions, playbooks, principles, and supporting references—not disposable documentation. The marketplace lives in `.agents/plugins/marketplace.json`; the plugin manifest is `plugins/deepwright/.codex-plugin/plugin.json`.
 
 ## Origins and license
 
-Deepwright is a substantial Codex-native adaptation of Cursor's `pstack` plugin. The migration replaces Poteto with Rivet, converts agent and command concepts into standard skills, removes vendor-only automation, and ports bundled tooling from Bun to Node. See [`MIGRATION.md`](MIGRATION.md) and [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Deepwright is a substantial Codex-native adaptation of Cursor's MIT-licensed `pstack` plugin. Its workflow concepts were adapted into standard Codex skills and its optional helpers were ported from Bun to Node. Attribution and dependency notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-Repository additions are available under the root Apache-2.0 license. The distributed plugin retains the upstream MIT license and notice in `plugins/deepwright/`.
+Repository additions use the root [Apache-2.0 license](LICENSE). The distributed plugin retains its [MIT license](plugins/deepwright/LICENSE) and [notice](plugins/deepwright/NOTICE.md).
 
 Deepwright is independent and is not affiliated with or endorsed by Cursor or OpenAI.
