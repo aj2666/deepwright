@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 — Unreleased
+## 1.2.0 — 2026-09-05
 
 - Apply the shared configuration contract to every direct skill consumer; preserve fixed review lenses and remove duplicated configurable defaults.
 - Require both bundled dependency licenses and their NOTICE references during package validation.
@@ -8,6 +8,9 @@
 - Validate optional project TOML with a pinned bundled parser; expose read-only show/check/template commands, default/project provenance, and versioned status without model-availability claims.
 - Share configuration rules across Setup, the router, Swarm, and Architect; preserve inspection-only boundaries and workflow requirements.
 - Add artifact sealing, digest verification, matched-run comparison, regression reporting, and correctness-gated efficiency metrics without launching models.
+
+## 1.1.0 — 2026-09-05
+
 - Add read-only terminal skill search, details, invocation guidance, and local status derived from canonical skill metadata.
 - Offer print-only AGENTS.md and CLAUDE.md fallback pointers without installing adapters or duplicating skill logic.
 - Clarify positive and negative router triggers, task-local scope, and explicit worker propagation; retain all 46 skills and the single implicit router.
