@@ -15,6 +15,7 @@
   },
   "scripts": {
     "validate": "node scripts/validate-codex-compat.mjs",
+    "check:skills": "sh scripts/check-skills.sh",
     "build:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run build",
     "test:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run check",
     "test:evals": "node --test scripts/score-skill-evals.test.mjs scripts/verify-skill-evals.test.mjs scripts/feature-fixture.test.mjs evals/fixtures/retry/request.test.mjs",
