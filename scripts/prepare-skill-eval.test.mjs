@@ -28,7 +28,7 @@ function command(executable, args, options = {}) {
 test("every corpus case prepares its declared project without copying the observer rubric", async (t) => {
   const root = await temporary(t);
   const { prompts, fixtures } = await loadFixtures();
-  assert.equal(fixtures.length, 26);
+  assert.equal(fixtures.length, 32);
   assert.deepEqual(new Set(fixtures.map(({ id }) => id)), new Set(prompts.map(({ id }) => id)));
   for (const [index, fixture] of fixtures.entries()) {
     const report = await prepare(fixture.id, join(root, `project ${index}`));

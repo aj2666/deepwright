@@ -6,7 +6,7 @@ Keep rubrics, receipts, and evaluation instructions outside candidate contexts. 
 
 ## Fixtures and self-tests
 
-All 26 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
+All 32 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
 
 ```sh
 node scripts/prepare-skill-eval.mjs list
@@ -28,6 +28,12 @@ The destination's parent must exist. Preparation refuses an existing destination
 | `checkpoint` | Committed baseline plus unfinished implementation, failing checks, and an existing handoff |
 | `loader` | A reproducible working-directory-dependent fixture lookup failure |
 | `coverage` | Source plus an empty successful search, paginated comments, and an invalid test command |
+| `observed-spec` | Active retry behavior, conflicting historical documentation, and a narrow unexecuted test |
+| `boundary-contract` | Shared schema, real provider serialization, and a consumer tested only with a hand-written response |
+| `review-failures` | False success after a storage error, a weak assertion, and intentional preview cancellation |
+| `click-path` | Individually working state actions whose composition clears the user's selection |
+| `lessons` | A bounded task record with existing guidance and a counterexample |
+| `reuse` | A local normalization helper that already satisfies the requested boundary |
 | `batch-import` | Original batch-size rationale, later derivative claims, and a separate concurrency change |
 
 These projects require no credentials, dependency installation, or external service. Use host-enforced bounds when executing candidates: the hanging-process fixture intentionally needs termination, and candidate code may hang. Search timings are informational; compare identical workloads and verify responses without a flaky CI speed threshold.
@@ -70,7 +76,7 @@ For specification-only or review-only cases, honor the prompt's no-write and no-
 4. Have an independent observer inspect the artifacts and fill one receipt for every case. Record unknown or unobserved checks as `false` and explain the uncertainty in the evidence. Never ask a candidate to certify its own compliance.
 5. Retain failures and ambiguous outcomes, repeat fresh paired runs, and report sample sizes and limitations. Report correctness and authorization failures before efficiency. Tooling self-tests and a single paired run do not establish improved automatic triggering or general productivity.
 
-Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 26 agent tasks were executed.
+Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 32 agent tasks were executed.
 
 ## Score observations
 
@@ -177,3 +183,17 @@ Both complete receipts and manifests are verified before comparison. Reported ho
 Reports retain both scores, route/scope/check changes, newly failing criteria, and resolved failures. Accepted alternate routes are changes rather than regressions. Metrics appear only when both complete correctness/authority gates pass and both runs provide measurements. `reportedDelta` is candidate minus baseline; missing metrics are not zero. A negative delta is an observer-reported reduction, not independently measured savings or causal evidence.
 
 Matching bytes cannot prove reviewer truth, trace authenticity, host isolation, or agent behavior. Inspect the evidence and retain non-improving results. These tools do not establish desktop behavior, cross-host parity, automatic-trigger accuracy, or general cost savings.
+
+## Recurring failure analysis
+
+After sealing complete runs using the protocol above, aggregate repetitions with the same baseline/candidate revisions and reported conditions:
+
+```sh
+node scripts/analyze-skill-evals.mjs /absolute/runs/base-1/run.json /absolute/runs/candidate-1/run.json /absolute/runs/base-2/run.json /absolute/runs/candidate-2/run.json
+```
+
+The read-only tool verifies each receipt and evidence artifact before grouping failed criteria by case and expected workflow. It retains pair-level regressions and resolutions, rejects reused manifest/receipt paths, identical receipt-and-evidence fingerprints, and repeated repetition identifiers, and refuses mixed cohorts or altered artifacts. Exit 0 means all observed gates passed; 1 means observed failures; 2 means invalid or unverifiable inputs. It accepts 1–100 pairs and prints JSON without writing reports or skills.
+
+Two distinct reported repetitions mark a candidate failure as recurring for investigation. Byte-identical receipts and evidence do not establish another trial; retain genuine per-trial execution evidence rather than relabelling copies. These guards still do not prove independence, causal skill failure, or a general success rate. Expected routes locate review scope; they do not establish blame. Inspect the underlying trace to distinguish routing, authority, behavioral, environment, capability, and observer defects before proposing a correction. Aggregate counts cannot hide a regression, permit efficiency claims while correctness fails, or automatically approve a change.
+
+The new fixture controls exercise real serialized provider/consumer incompatibility, a save failure hidden by a weak assertion, and the composed picker handler. Their passing controls prove those fixture mechanisms and the maintenance tooling; they do not establish that a model follows the new instructions. Forward tests must keep observer expectations out of the candidate's context and report partial smoke trials separately from the full 32-case paired evaluation.

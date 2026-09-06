@@ -2,12 +2,14 @@
 
 **You own the outcome.** Scale design and coordination to the change; preserve verification and final review.
 
+Before introducing a dependency or substantial helper, use [reuse research](../../architect/references/reuse-research.md) to check existing repository capabilities and justify adopting, extending, or building.
+
 Before implementation, read [the acceptance contract](../../spec/references/acceptance-contract.md) and ground the requested behavior in the user's instructions or existing specification. Small, clear changes need only a short checklist. Invoke `$deepwright:spec` when a specification is requested or consequential behavior remains ambiguous; read [its workflow](../../spec/SKILL.md) rather than inventing a second requirements process. A spec-only request stops there. An already authorized build proceeds without repeated approval for settled decisions.
 
 1. Inspect the affected interface, callers, and existing tests. Invoke `$deepwright:how` when the subsystem needs investigation; direct source inspection is enough for a familiar, local change.
 2. Follow an established design for a small, compatible addition. Invoke `$deepwright:architect` when the change introduces a consequential interface, data model, migration, or unresolved design tradeoff. State the chosen approach and its reason.
 3. For a small change, keep a compact behavior-and-verification checklist. For work spanning dependent units or multiple workers, record the coordination decisions:
-   - **Blocking first steps.** Gates run before fan-out.
+   - **Blocking first steps.** Gates run before fan-out. For separately owned consumers and providers, establish [one shared boundary contract](../../architect/references/shared-boundary-contract.md) and its integration checks before splitting work.
    - **Independent workstreams.** Disjoint files, services, or layers parallelize. Shared writes serialize.
    - **Shared mutable state.** Default to splitting the target (`$deepwright:principle-separate-before-serializing-shared-state`). Serialize only for real invariants.
    - **Smallest safe decomposition.** Keep tightly coupled edits with one owner.

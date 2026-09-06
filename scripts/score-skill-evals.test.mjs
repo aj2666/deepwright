@@ -18,7 +18,7 @@ const good = () => ({
 });
 
 test("corpus keeps prompts separate and the complete known-good receipt passes", () => {
-  assert.equal(prompts.length, 26);
+  assert.equal(prompts.length, 32);
   assert.ok(prompts.every((entry) => Object.keys(entry).length === 2));
   const report = scoreReceipts(good(), expected);
   assert.equal(report.ok, true);

@@ -15,7 +15,7 @@ const releaseFiles = [
   "package.json", ".agents/plugins/marketplace.json", validatorPath,
   pluginPath + "/.codex-plugin/plugin.json",
   ...["LICENSE", "NOTICE.md", "third_party/commander-LICENSE", "third_party/smol-toml-LICENSE",
-    "third_party/mattpocock-skills-LICENSE", "assets/icon.png", "assets/logo.png", "assets/logo-dark.png"]
+    "third_party/mattpocock-skills-LICENSE", "third_party/ecc-LICENSE", "assets/icon.png", "assets/logo.png", "assets/logo-dark.png"]
     .map((file) => pluginPath + "/" + file),
   ...["discovery/metadata.mjs", "dist/deepwright.mjs", "dist/orch.mjs", "dist/watch-pr.mjs",
     "deepwright", "check-plan.mjs", "worktree-audit.sh", "orch/orch", "watch-pr/watch-pr"]
@@ -231,3 +231,22 @@ test("both entrypoints accept the longest qualified name and confined metadata l
   assert.equal(discovery.status, 0, discovery.stderr);
   assert.equal(JSON.parse(discovery.stdout).skills[0].invocation.length, 65); // '$' plus the 64-character qualified name.
 });
+
+for (const license of ['mattpocock-skills-LICENSE', 'ecc-LICENSE']) {
+  test(`release validation retains adapted guidance license and notice: ${license}`, async (t) => {
+    const context = await fixture(t);
+    const filename = join(context.root, pluginPath, 'third_party', license);
+    const content = await readFile(filename);
+    await rm(filename);
+    const missing = run(context.root, validatorPath);
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /missing release file/);
+    await writeFile(filename, content);
+    assert.equal(run(context.root, validatorPath).status, 0);
+    const notice = join(context.root, pluginPath, 'NOTICE.md');
+    await writeFile(notice, (await readFile(notice, 'utf8')).replaceAll(`third_party/${license}`, 'omitted-license'));
+    const uncredited = run(context.root, validatorPath);
+    assert.equal(uncredited.status, 1);
+    assert.match(uncredited.stderr, /NOTICE.md must reference/);
+  });
+}

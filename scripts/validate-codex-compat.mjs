@@ -47,7 +47,7 @@ const marketplacePath = path.join(repoRoot, ".agents", "plugins", "marketplace.j
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
 const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
-const bundledLicenses = ["commander-LICENSE", "smol-toml-LICENSE"];
+const bundledLicenses = ["commander-LICENSE", "smol-toml-LICENSE", "mattpocock-skills-LICENSE", "ecc-LICENSE"];
 
 for (const required of [
   path.join(pluginRoot, "LICENSE"),

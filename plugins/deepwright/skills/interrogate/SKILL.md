@@ -42,6 +42,8 @@ Read [the acceptance contract](../spec/references/acceptance-contract.md). Reuse
 
 ## Step 3, Spawn Reviewers
 
+For changes to error handling or tests, read [the focused lenses](references/focused-lenses.md) and include the relevant questions in the existing brief. For UI state transitions, include [click-path tracing](../how/references/click-path-audit.md). These are conditional lenses, not additional mandatory reviewers.
+
 Read [the shared configuration contract](../deepwright/references/configuration.md) before choosing `parallelism.reviewers` or `roles.review`, including when Interrogate is invoked directly. Follow its validation and explicit-user/project/default precedence. Use the host's collaboration mechanism when available, cap concurrent reviewers to advertised free capacity, and process the remainder in bounded waves. Reviewers are read-only and inherit the parent model unless the host confirms the configured override. Never guess a model slug or retry with a different product's model name. If the host cannot delegate, run one careful local review and disclose the reduced independence.
 
 Read `references/reviewer-prompt.md`, `references/rubric.md`, and `references/code-quality-review.md` before delegating. Embed their relevant contents and the explicit untrusted-evidence/no-write contract directly in every reviewer brief; do not expect workers to resolve plugin-relative paths. Fill the template with:

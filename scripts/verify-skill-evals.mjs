@@ -128,7 +128,7 @@ async function verified(manifestPath) {
     seen.add(artifact.path);
     requireValue(digest(await readRelative(root, artifact.path, budget)) === artifact.sha256, `Evidence SHA-256 mismatch: ${artifact.path}`);
   }
-  return { manifest: { ...manifest, ...input }, receipt, score, expected: suite.expected };
+  return { manifest: { ...manifest, ...input }, receipt, receiptPath: await realpath(path.join(root, manifest.receipt.path)), score, expected: suite.expected };
 }
 export async function verifyRun(manifestPath) {
   const { manifest, score } = await verified(manifestPath);
@@ -140,6 +140,9 @@ function criteria(entry, expected) {
 export async function compareRuns(baselinePath, candidatePath) {
   const baseline = await verified(baselinePath);
   const candidate = await verified(candidatePath);
+  return compareVerified(baseline, candidate);
+}
+function compareVerified(baseline, candidate) {
   for (const field of ["host", "model"]) requireValue(baseline.receipt.run[field] === candidate.receipt.run[field], `Paired ${field} differs`);
   for (const field of ["tools", "permissions", "repetition", "fixtures"]) requireValue(same(baseline.manifest.context[field], candidate.manifest.context[field]), `Paired ${field} differs`);
   requireValue([baseline, candidate].every((run) => commitPattern.test(run.receipt.run.revision)), "Comparisons require exact lowercase 40-hex Git revisions");
@@ -165,6 +168,56 @@ export async function compareRuns(baselinePath, candidatePath) {
     : !hasMetrics ? { eligible: true, available: false, reason: "Both runs need reported metrics; no savings inferred" }
       : { eligible: true, available: true, reportedDelta: Object.fromEntries(["wallTimeMs", "toolCalls"].map((key) => [key, candidate.manifest.metrics[key] - baseline.manifest.metrics[key]])), limitation: "Candidate minus baseline; observer-reported measurements, not independently timed" };
   return { schemaVersion: 1, kind: "comparison", ok: eligible, pairedRuns: 1, artifactIntegrity: true, reportedConditionsMatch: true, baseline: baseline.score, candidate: candidate.score, changes, regressions, resolvedFailures, efficiency, limitation: LIMITATION };
+}
+
+export async function analyzeRuns(pairs) {
+  requireValue(Array.isArray(pairs) && pairs.length > 0 && pairs.length <= 100, "Supply 1 through 100 baseline/candidate pairs");
+  const paths = new Set(), receipts = new Set(), fingerprints = new Set(), repetitions = new Set(), results = [], failures = new Map();
+  let cohort;
+  for (const pair of pairs) {
+    requireValue(Array.isArray(pair) && pair.length === 2 && pair.every(nonempty), "Each pair requires two manifest paths");
+    for (const filename of pair) {
+      const resolved = await realpath(filename);
+      requireValue(!paths.has(resolved), "A manifest cannot be reused across pairs");
+      paths.add(resolved);
+    }
+    const baseline = await verified(pair[0]), candidate = await verified(pair[1]);
+    for (const run of [baseline, candidate]) {
+      requireValue(!receipts.has(run.receiptPath), "An underlying receipt cannot be reused across runs");
+      receipts.add(run.receiptPath);
+      const fingerprint = digest(JSON.stringify(canonical({ receipt: run.manifest.receipt.sha256,
+        artifacts: [...run.manifest.artifacts].sort((a, b) => a.path.localeCompare(b.path)) })));
+      requireValue(!fingerprints.has(fingerprint), "Identical receipt and evidence fingerprints cannot count as another run");
+      fingerprints.add(fingerprint);
+    }
+    const comparison = compareVerified(baseline, candidate);
+    const { repetition, ...conditions } = baseline.manifest.context;
+    const current = { ...baseline.receipt.run, candidateRevision: candidate.receipt.run.revision, conditions, suiteSha256: baseline.manifest.suiteSha256 };
+    if (cohort) requireValue(same(cohort, current), "Batch conditions or revisions differ; analyze separate cohorts");
+    else cohort = current;
+    requireValue(!repetitions.has(repetition), "Repeated repetition identifier");
+    repetitions.add(repetition);
+    results.push({ repetition, ...comparison });
+    for (const [arm, run] of [["baseline", baseline], ["candidate", candidate]]) {
+      for (const result of run.score.results) {
+        const expectation = run.expected.find((entry) => entry.id === result.id);
+        for (const failure of result.failures) {
+          const category = failure.startsWith("route:") ? "routing" : failure.startsWith("scope:") ? "authority" : "behavior";
+          const criterion = category === "behavior" ? failure.slice(7) : category;
+          const key = JSON.stringify([result.id, category, criterion]);
+          if (!failures.has(key)) failures.set(key, { case: result.id, expectedRoutes: expectation.routes, category, criterion, baseline: [], candidate: [] });
+          failures.get(key)[arm].push(repetition);
+        }
+      }
+    }
+  }
+  const recurring = [...failures.values()].map((entry) => ({ ...entry,
+    baseline: entry.baseline.sort((a, b) => a - b), candidate: entry.candidate.sort((a, b) => a - b),
+    recurringInCandidate: entry.candidate.length >= 2,
+  })).sort((a, b) => b.candidate.length - a.candidate.length || a.case.localeCompare(b.case) || a.criterion.localeCompare(b.criterion));
+  return { schemaVersion: 1, kind: "failure-analysis", ok: results.every((entry) => entry.ok), pairedRuns: results.length,
+    cohort, failures: recurring, pairs: results.sort((a, b) => a.repetition - b.repetition),
+    limitation: LIMITATION + " Counts describe distinct reported repetitions, not independent trials or causal skill defects. Expected routes locate review scope, not blame. No automatic promotion or skill edits." };
 }
 async function main(args) {
   if (args.length === 1 && ["--help", "-h"].includes(args[0])) {

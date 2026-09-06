@@ -26,6 +26,8 @@ Track the phases in the task plan for a multi-step run. A short design-only answ
 
 ## Phase A: Ground the problem
 
+Before proposing a new dependency or substantial helper, use [reuse research](references/reuse-research.md) to inspect local options and compare adopting, extending, or building. Keep the search proportional to the decision.
+
 Build a traced model of the systems the new code touches using `$deepwright:how` guidance. Reuse current, cited grounding from the task when it already traces the relevant paths; do not rerun exploration solely to satisfy a phase label. Use critique mode when existing structure constrains the design.
 
 Naming a file isn't grounding. Produce the traced model `$deepwright:how` prescribes. If the design redefines ownership or layering, also run `$deepwright:why` on the existing shape so the rationale becomes a constraint, not a guess.
@@ -33,6 +35,8 @@ Naming a file isn't grounding. Produce the traced model `$deepwright:how` prescr
 Skip Phase A only when the work is genuinely greenfield with no surrounding system to integrate.
 
 ## Phase B: Sketch
+
+When work crosses a serialized boundary or splits provider and consumer ownership, read [the shared-boundary contract](references/shared-boundary-contract.md). Include its authoritative artifact, dependent owners, and compatibility checks in the sketch and implementation briefs.
 
 Run `$deepwright:arena` with the design-sketch task and the Phase A grounding artifacts. Before delegating, read `references/runner-prompt.md` and `references/rationale-template.md` from this skill. Embed their relevant content plus the task and grounding directly in every runner brief; do not expect a delegated worker to resolve plugin-relative paths from the target repository. Each candidate produces a design package shaped by the supplied rationale template: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
 

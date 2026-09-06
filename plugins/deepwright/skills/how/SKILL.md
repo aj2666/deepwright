@@ -38,6 +38,8 @@ Identify the scope. If ambiguous, state your best-guess interpretation before ex
 
 **Assess complexity to decide the approach:**
 
+For a UI action that composes state changes or asynchronous work, read [click-path tracing](references/click-path-audit.md). Follow the complete handler chain and final visible state, including resets inside helpers. Include the relevant state and timing questions in any explorer brief.
+
 - **Simple** (a single module, a small utility, a narrow question like "how does function X work"): skip explorer agents; the explainer explores and explains in a single pass. Go to Step 2b.
 - **Complex** (a subsystem spanning multiple files/services, a cross-cutting feature, a full architectural overview): spawn parallel explorer agents first, then hand off to the explainer. Go to Step 2a.
 

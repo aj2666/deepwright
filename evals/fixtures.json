@@ -24,5 +24,11 @@
   {"id":"plan-vertical","project":null,"overlay":null},
   {"id":"spec-untrusted","project":null,"overlay":null},
   {"id":"review-partial-coverage","project":"coverage","overlay":null},
-  {"id":"investigation-source-origins","project":"batch-import","overlay":null}
+  {"id":"investigation-source-origins","project":"batch-import","overlay":null},
+  {"id":"spec-observed","project":"observed-spec","overlay":null},
+  {"id":"design-shared-contract","project":"boundary-contract","overlay":null},
+  {"id":"review-failure-quality","project":"review-failures","overlay":null},
+  {"id":"ui-click-path","project":"click-path","overlay":null},
+  {"id":"reflect-scoped-lesson","project":"lessons","overlay":null},
+  {"id":"design-reuse","project":"reuse","overlay":null}
 ]
