@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Continue authorized local autonomous programs across their milestones without requiring a monitoring tool. Preserve narrower request boundaries and inherited diffs; commit only with existing authorization and revert only identified, separable attempt changes.
+- Evaluate skill changes according to their behavioral effect, including prose labeled subjective. Keep editorial-only checks proportionate and distinguish implemented instructions from behavior verified in live tasks.
+
+- Route ordinary read-only correctness and requirements reviews directly to Interrogate. Scale clear local bug fixes to direct investigation and implementation while preserving reproduction, regression checks, and final review.
+- Refresh Shipping verdicts when the reviewed base, head, target, or patch changes, including unchanged patch IDs; keep stack workflows aligned with the same rule.
+- Make run status and attempt claims agree at the event-capacity limit without modifying recorded history or selected evidence.
+- Preserve explicit input domains in specifications; proposed defaulting conventions cannot exempt invalid supplied values without an approved requirement change.
+
+- Execute evaluation commands consistently through direct paths and filesystem aliases; preserve scoring and artifact-integrity failures instead of silently exiting successfully. Keep preparation and failure-analysis entry detection compatible with imported APIs and Node's preserved-main-symlink mode.
+
 - Add existing-behavior specification with code/test anchors and explicit contradictions; coordinate separately owned providers and consumers through one shared contract and real boundary checks.
 - Add conditional error-handling and test-quality review lenses, UI click-path tracing, and bounded research before introducing dependencies or substantial helpers.
 - Preserve project-scoped lessons with counterexamples and verification context. Add read-only matched-evaluation failure analysis and content-based catalog maintenance with dependent-skill invalidation; no automatic skill promotion or hidden observation hooks.

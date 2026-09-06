@@ -99,15 +99,25 @@ $deepwright:deepwright add a case-insensitive name filter to this list using the
 $deepwright:interrogate review my current changes against the requested behavior. Include uncommitted files, identify actionable defects, and explain what the available test evidence establishes. Do not edit or post comments.
 ```
 
-Small additions can use direct implementation and a local final review. Architecture exploration and multiple workers are reserved for changes that benefit from them; acceptance checks still apply.
+Small additions and clear local bug fixes can use direct implementation and a separate local final review. A fix still needs a reproduced failure, a relevant regression check, and verification of the original behavior. Architecture exploration and multiple workers are reserved for changes that benefit from them.
+
+Ordinary requests such as “Does my uncommitted change preserve the required behavior?” route to Interrogate without needing an explicit leaf token. It reviews the current change against the requirements and distinguishes source findings from matching execution evidence. Explanations and architectural judgments use Investigation / How, and an explicitly requested skill keeps its own scope.
 
 The [acceptance contract](plugins/deepwright/skills/spec/references/acceptance-contract.md) distinguishes proved, failed, blocked, and not-applicable criteria. Missing evidence remains blocked. A green test suite or an implementer's claim does not prove every requirement, and a read-only review does not run tests that may write files or contact services.
+
+Specifications keep explicit input domains intact. An omitted option can use its specified default; a supplied value outside the allowed domain cannot become valid merely because a language convention would default it.
+
+For authorized landing, [Shipping](plugins/deepwright/skills/deepwright/playbooks/shipping.md) requires a verdict for the current base, head, and target. An unchanged patch ID does not preserve an old approval when the surrounding base changes; affected behavior and integration evidence need a fresh review before landing.
 
 Interrogate adds conditional [failure-visibility and test-quality lenses](plugins/deepwright/skills/interrogate/references/focused-lenses.md). For UI state bugs, How traces the [whole click path](plugins/deepwright/skills/how/references/click-path-audit.md), including hidden resets and asynchronous completion order, and identifies a check of the composed user action.
 
 For uncertain investigations, How and Why compare plausible explanations using the next observation that could distinguish them. They trace repeated claims to their original source and stop when another check would not change the answer. [Investigation guidance](plugins/deepwright/skills/deepwright/references/investigation-evidence.md) keeps this extra work conditional on a material uncertainty.
 
 Reviews and handoffs retain [evidence coverage](plugins/deepwright/skills/deepwright/references/evidence-coverage.md): complete, partial, unavailable, not run, or error. For longer authorized tasks, an optional [run evidence helper](plugins/deepwright/skills/deepwright/references/run-evidence.md) preserves selected historical files and carries a fixed attempt allowance and deadline across resumes. It records bookkeeping; host permissions and execution limits remain the host's responsibility.
+
+[Autonomous runs](plugins/deepwright/skills/deepwright/playbooks/autonomous-run.md) continue available local work through the authorized milestones, even when monitoring or delegation is unavailable. Diagnosis, planning, and review requests keep their narrower stops. Iterations preserve inherited work, require existing commit authorization, and only revert changes whose ownership is established.
+
+[Skill authoring](plugins/deepwright/skills/deepwright/playbooks/authoring-a-skill.md) chooses validation by the changed behavior. Instructions affecting decisions, permissions, tools, delegation, or verification need scoped behavioral evaluation; a subjective label does not exempt them. Editorial changes can use lighter checks.
 
 ## Optional configuration
 
@@ -124,7 +134,7 @@ npm ci --prefix plugins/deepwright/skills/deepwright/scripts
 npm test
 ```
 
-CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 26 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
+CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 34 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
 
 See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 

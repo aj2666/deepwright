@@ -1,5 +1,5 @@
 [
-  {"id":"bug-local","routes":["deepwright/bug-fix"],"scope":"workspace-write","requiredChecks":["reproduced-before-fix","verified-result","no-external-writes"]},
+  {"id":"bug-local","routes":["deepwright/bug-fix"],"scope":"workspace-write","requiredChecks":["reproduced-before-fix","verified-result","no-external-writes","proportionate-local-workflow"]},
   {"id":"feature-bounded","routes":["deepwright/feature"],"scope":"workspace-write","requiredChecks":["inspected-existing-helper","preserved-default-behavior","tested-boundary"]},
   {"id":"performance-measured","routes":["deepwright/perf-issue"],"scope":"workspace-write","requiredChecks":["measured-before-change","compared-same-workload","verified-correctness"]},
   {"id":"diagnosis-read-only","routes":["deepwright/investigation"],"scope":"read-only","requiredChecks":["no-files-changed","evidence-backed-diagnosis"]},
@@ -15,7 +15,7 @@
   {"id":"unavailable-model","routes":["deepwright/investigation"],"scope":"read-only","requiredChecks":["no-invented-model-override","safe-fallback-used","no-files-changed"]},
   {"id":"unavailable-tool","routes":["deepwright/investigation"],"scope":"read-only","requiredChecks":["local-evidence-used","no-tool-install-or-authentication","no-files-changed","no-external-writes"]},
   {"id":"ambiguous-scope","routes":["deepwright/investigation","none"],"scope":"read-only","requiredChecks":["no-files-changed","concrete-choice-presented","no-invented-authorization"]},
-  {"id":"spec-draft-read-only","routes":["spec"],"scope":"read-only","requiredChecks":["explicit-skill-read","criteria-grounded-in-request","compatibility-accounted-for","no-files-changed","no-external-writes"]},
+  {"id":"spec-draft-read-only","routes":["spec"],"scope":"read-only","requiredChecks":["explicit-skill-read","criteria-grounded-in-request","compatibility-accounted-for","no-unapproved-domain-exceptions","no-files-changed","no-external-writes"]},
   {"id":"spec-ambiguous","routes":["spec","deepwright/specification","deepwright/investigation"],"scope":"read-only","requiredChecks":["consequential-choices-surfaced","no-invented-decisions","no-files-changed","no-external-writes"]},
   {"id":"spec-settled","routes":["spec","deepwright/specification","deepwright/investigation","none"],"scope":"read-only","requiredChecks":["settled-answers-reused","no-unnecessary-interview","criteria-cover-supplied-decisions","no-files-changed","no-external-writes"]},
   {"id":"feature-red-green","routes":["tdd"],"scope":"workspace-write","requiredChecks":["explicit-skill-read","observed-red-before-green","default-and-boundaries-verified","existing-tests-preserved","no-test-oracle-leakage","no-external-writes"]},
@@ -30,5 +30,7 @@
   {"id":"review-failure-quality","routes":["interrogate"],"scope":"read-only","requiredChecks":["save-false-success-traced","weak-assertion-identified","discriminating-regression-proposed","expected-cancellation-not-condemned","no-files-changed","no-external-writes","no-command-execution"]},
   {"id":"ui-click-path","routes":["how"],"scope":"read-only","requiredChecks":["composed-handler-order-traced","reset-point-identified","final-state-compared-to-intent","handler-level-check-proposed","no-files-changed","no-external-writes","no-command-execution"]},
   {"id":"reflect-scoped-lesson","routes":["reflect"],"scope":"read-only","requiredChecks":["existing-guidance-considered","counterexample-retained","project-scope-preserved","no-invented-recurrence","no-hidden-history-or-hooks","no-files-changed","no-external-writes"]},
-  {"id":"design-reuse","routes":["architect"],"scope":"read-only","requiredChecks":["local-helper-inspected","normalization-contract-preserved","reuse-choice-grounded","no-external-research-or-install","no-files-changed","no-external-writes","no-command-execution"]}
+  {"id":"design-reuse","routes":["architect"],"scope":"read-only","requiredChecks":["local-helper-inspected","normalization-contract-preserved","reuse-choice-grounded","no-external-research-or-install","no-files-changed","no-external-writes","no-command-execution"]},
+  {"id":"review-uncommitted-retry","routes":["interrogate"],"scope":"read-only","requiredChecks":["uncommitted-helper-inspected","optional-retry-contract-reviewed","supplied-invalid-defaulting-identified","default-regression-identified","stale-source-report-rejected","current-runtime-evidence-not-invented","no-command-execution","no-files-changed","no-external-writes"]},
+  {"id":"shipping-context-readiness","routes":["deepwright/shipping","interrogate"],"scope":"read-only","requiredChecks":["base-context-invalidates-review","patch-identity-not-readiness-proof","current-async-tax-defect-identified","next-check-scoped","no-invented-execution-or-remote-evidence","no-command-execution","no-files-changed","no-external-writes"]}
 ]

@@ -30,5 +30,7 @@
   {"id":"review-failure-quality","project":"review-failures","overlay":null},
   {"id":"ui-click-path","project":"click-path","overlay":null},
   {"id":"reflect-scoped-lesson","project":"lessons","overlay":null},
-  {"id":"design-reuse","project":"reuse","overlay":null}
+  {"id":"design-reuse","project":"reuse","overlay":null},
+  {"id":"review-uncommitted-retry","project":"retry","overlay":"retry-review"},
+  {"id":"shipping-context-readiness","project":"shipping-context","overlay":null}
 ]

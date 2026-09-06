@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import { realpath } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import { analyzeRuns } from "./verify-skill-evals.mjs";
+import { isMain } from "./is-main.mjs";
 
 export async function main(args) {
   if (args.length === 1 && ["--help", "-h"].includes(args[0])) {
@@ -19,4 +18,4 @@ export async function main(args) {
     process.exitCode = 2;
   }
 }
-if (process.argv[1] && await realpath(process.argv[1]) === fileURLToPath(import.meta.url)) await main(process.argv.slice(2));
+if (await isMain(import.meta.url)) await main(process.argv.slice(2));

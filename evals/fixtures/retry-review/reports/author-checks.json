@@ -1,0 +1,10 @@
+{
+  "source": {
+    "path": "request.mjs",
+    "snapshot": "reports/request.checked.mjs",
+    "sha256": "3e60f145ff225afa98fd126ea281f92a1225ac65fedc5a1b3fcb36124e617f2c"
+  },
+  "command": ["node", "--test", "--test-reporter=tap", "request.test.mjs"],
+  "exitCode": 0,
+  "summary": { "tests": 2, "passed": 2, "failed": 0 }
+}

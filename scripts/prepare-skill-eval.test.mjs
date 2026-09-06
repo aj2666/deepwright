@@ -28,7 +28,7 @@ function command(executable, args, options = {}) {
 test("every corpus case prepares its declared project without copying the observer rubric", async (t) => {
   const root = await temporary(t);
   const { prompts, fixtures } = await loadFixtures();
-  assert.equal(fixtures.length, 32);
+  assert.equal(fixtures.length, 34);
   assert.deepEqual(new Set(fixtures.map(({ id }) => id)), new Set(prompts.map(({ id }) => id)));
   for (const [index, fixture] of fixtures.entries()) {
     const report = await prepare(fixture.id, join(root, `project ${index}`));
@@ -117,7 +117,7 @@ test("preparation protects fixture sources through direct paths and parent alias
   const checkout = join(root, "checkout");
   await mkdir(join(checkout, "scripts"), { recursive: true });
   await mkdir(join(checkout, "evals", "fixtures"), { recursive: true });
-  for (const file of ["prepare-skill-eval.mjs", "score-skill-evals.mjs"]) {
+  for (const file of ["prepare-skill-eval.mjs", "score-skill-evals.mjs", "is-main.mjs"]) {
     await copyFile(new URL(file, import.meta.url), join(checkout, "scripts", file));
   }
   for (const file of ["prompts.json", "expected.json", "fixtures.json"]) {

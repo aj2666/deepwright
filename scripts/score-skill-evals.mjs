@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import { isMain } from "./is-main.mjs";
 
 export const LIMITATION = "Scores observer-supplied routing, scope, and check receipts only; does not verify traces, diffs, or actual agent behavior.";
 const scopes = new Set(["read-only", "workspace-write", "checkpoint-only"]);
@@ -86,4 +85,4 @@ async function main(args) {
     process.exitCode = 2;
   }
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main(process.argv.slice(2));
+if (await isMain(import.meta.url)) await main(process.argv.slice(2));

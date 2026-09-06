@@ -85,8 +85,12 @@ Later changes create new snapshots and events. The original records retain the
 bytes that supported the earlier decision. `status` verifies hashes and sequence
 against the committed head, reports consumed/remaining attempts, and returns the
 historical records. It performs no writes and does not reread the live source files.
-Checkpoint/result records are allowed after exhaustion so unfinished work can be
-reported honestly; they do not replenish the allowance.
+Checkpoint/result records are allowed after attempt or deadline exhaustion so
+unfinished work can be reported honestly; they do not replenish the allowance.
+At the 10,000-event capacity, `status` reports `nextAttemptAllowed: false` with
+`event limit reached`, and no further event can be appended. Preserve the full
+run and leave any additional handoff outside its event log; do not delete history
+or start another run to evade the original allowance.
 
 ## Resume and recover
 

@@ -23,9 +23,9 @@ Use the Specification playbook when the deliverable is requirements or acceptanc
 ## Instructions
 
 1. Read the repository instructions and inspect the current state before editing.
-2. Classify the request against the playbooks below. Read the selected playbook in full.
+2. Classify the request using the routing guidance below. Read the selected skill or playbook in full.
 3. Name the load-bearing data shape, boundary, or observable behavior before writing code.
-4. State a compact route preview: playbook, risk level, write scope, verification target, and any external-action gate.
+4. State a compact route preview: selected workflow, risk level, write scope, verification target, and any external-action gate.
 5. Break the work into verifiable units. Use parallel subagents only when their scopes can be isolated.
 6. Review every delegated result. The parent owns the final diff and claims.
 7. Verify the real artifact, not only a proxy such as compilation or self-report.
@@ -100,11 +100,13 @@ Read a leaf skill in full when it changes a decision. Name the principle and the
 
 ## Playbook router
 
-Read only the selected playbook plus any leaf skills it calls.
+For a read-only review of code or a diff for correctness, regressions, or requirement compliance, use [Interrogate](../interrogate/SKILL.md) directly. A confidence question about whether a change works belongs to that review; explanations and judgments about architecture use Investigation. Preserve an explicitly requested leaf skill's scope.
+
+Read only the selected skill or playbook plus the references it needs.
 
 | Request shape | Playbook |
 |---|---|
-| Read-only explanation or confidence check | `playbooks/investigation.md` |
+| Explain behavior or assess architecture without edits | `playbooks/investigation.md` |
 | Define requirements or acceptance criteria without implementation | `playbooks/specification.md` |
 | Reproduce and fix a defect | `playbooks/bug-fix.md` |
 | Improve measured performance | `playbooks/perf-issue.md` |

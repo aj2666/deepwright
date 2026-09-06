@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isMain } from "./is-main.mjs";
 import { loadSuite, scoreReceipts } from "./score-skill-evals.mjs";
 
 export const LIMITATION = "Verifies confined artifact bytes and matching reported conditions, not reviewer truth, actual host isolation, or agent behavior. Hashes are not signatures. One pair is not statistical or causal evidence.";
@@ -235,4 +235,4 @@ async function main(args) {
     process.exitCode = 2;
   }
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main(process.argv.slice(2));
+if (await isMain(import.meta.url)) await main(process.argv.slice(2));

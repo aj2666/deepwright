@@ -61,8 +61,8 @@ Tests alone are not sufficient for behavior-changing work. Every applicable unit
 ### Verdict and landing
 
 - [ ] At the merge-ready head SHA, invoke `$deepwright:swarm` with a risk-based set of independent lanes.
-- [ ] Clean only when every required lane is `PASS`. Findings return to the owner. A changed patch gets a fresh verdict.
-- [ ] Apply the merge or append rule from the selected Deepwright execution playbook and the patch-ID rule from its `playbooks/shipping.md` resource.
+- [ ] Clean only when every required lane is `PASS`. Findings return to the owner. A changed base, head, target, or patch gets a fresh verdict.
+- [ ] Apply the merge or append rule from the selected Deepwright execution playbook and [Shipping's review-validity rule](shipping.md), including context changes with an unchanged patch ID.
 - [ ] Re-read GitHub state immediately before and after every authorized merge action.
 
 ### Evidence recipe for each live lane
@@ -123,7 +123,7 @@ Use an isolated worktree or clean checkout created for the lane. Never switch th
 
 - [ ] Independent verdict at the exact head SHA.
 - [ ] Automated-review triage complete.
-- [ ] Current GitHub state and patch ID rechecked.
+- [ ] Current GitHub state, base, head, target, and patch ID rechecked against the verdict.
 - [ ] <Authorized owner and exact merge or stack-append action.>
 
 ## Close the program

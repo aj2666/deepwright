@@ -6,7 +6,7 @@ Keep rubrics, receipts, and evaluation instructions outside candidate contexts. 
 
 ## Fixtures and self-tests
 
-All 32 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
+All 34 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
 
 ```sh
 node scripts/prepare-skill-eval.mjs list
@@ -35,6 +35,8 @@ The destination's parent must exist. Preparation refuses an existing destination
 | `lessons` | A bounded task record with existing guidance and a counterexample |
 | `reuse` | A local normalization helper that already satisfies the requested boundary |
 | `batch-import` | Original batch-size rationale, later derivative claims, and a separate concurrency change |
+| `retry-review` | Uncommitted retry options over the `retry` base, with an author report and saved source from the earlier implementation |
+| `shipping-context` | Reviewed and current base/head source snapshots for a checkout change whose stable patch ID stays the same |
 
 These projects require no credentials, dependency installation, or external service. Use host-enforced bounds when executing candidates: the hanging-process fixture intentionally needs termination, and candidate code may hang. Search timings are informational; compare identical workloads and verify responses without a flaky CI speed threshold.
 
@@ -49,6 +51,8 @@ node scripts/verify-skill-evals.mjs --help
 ```
 
 Tests use synthetic receipts and temporary evidence. They establish schema, completeness, boundary, integrity, and comparison behavior—not that an agent followed a skill, routed correctly, or became faster.
+
+The preparation, scoring, artifact verification, and failure-analysis CLIs recognize direct paths, script symlinks, and checkout-directory aliases. A checkout alias also works with Node's `--preserve-symlinks-main` option. They print the same reports and preserve their documented exit codes across these launch paths. Importing their APIs does not run a CLI. Treat an empty output or an unparseable report as missing evidence even if an external wrapper reports exit 0; capture the actual JSON verdict and process exit code.
 
 ### Independent acceptance checks
 
@@ -76,7 +80,7 @@ For specification-only or review-only cases, honor the prompt's no-write and no-
 4. Have an independent observer inspect the artifacts and fill one receipt for every case. Record unknown or unobserved checks as `false` and explain the uncertainty in the evidence. Never ask a candidate to certify its own compliance.
 5. Retain failures and ambiguous outcomes, repeat fresh paired runs, and report sample sizes and limitations. Report correctness and authorization failures before efficiency. Tooling self-tests and a single paired run do not establish improved automatic triggering or general productivity.
 
-Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 32 agent tasks were executed.
+Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 34 agent tasks were executed.
 
 ## Score observations
 
@@ -196,4 +200,6 @@ The read-only tool verifies each receipt and evidence artifact before grouping f
 
 Two distinct reported repetitions mark a candidate failure as recurring for investigation. Byte-identical receipts and evidence do not establish another trial; retain genuine per-trial execution evidence rather than relabelling copies. These guards still do not prove independence, causal skill failure, or a general success rate. Expected routes locate review scope; they do not establish blame. Inspect the underlying trace to distinguish routing, authority, behavioral, environment, capability, and observer defects before proposing a correction. Aggregate counts cannot hide a regression, permit efficiency claims while correctness fails, or automatically approve a change.
 
-The new fixture controls exercise real serialized provider/consumer incompatibility, a save failure hidden by a weak assertion, and the composed picker handler. Their passing controls prove those fixture mechanisms and the maintenance tooling; they do not establish that a model follows the new instructions. Forward tests must keep observer expectations out of the candidate's context and report partial smoke trials separately from the full 32-case paired evaluation.
+The new fixture controls exercise real serialized provider/consumer incompatibility, a save failure hidden by a weak assertion, and the composed picker handler. Their passing controls prove those fixture mechanisms and the maintenance tooling; they do not establish that a model follows the new instructions. Forward tests must keep observer expectations out of the candidate's context and report partial smoke trials separately from the full 34-case paired evaluation.
+
+The ordinary review case does not name Interrogate: it checks whether a natural correctness-review request reaches the right scope, includes the uncommitted change, and distinguishes an earlier green report from evidence for the current source. Its optional-input contract also distinguishes omission from an invalid supplied value, including a value that defaulting would otherwise erase. Its checked-source copy lets a no-command reviewer compare the supplied bytes without hashing or executing Git. The Shipping fixture uses actual Git diffs and Node behavior to establish that equivalent patches can behave differently after a base change. Its self-test does not establish that an agent refreshed a verdict or that a merge occurred. The local bug case also checks proportionality: clear defects can be handled directly while retaining reproduction, regression checks, and final review.

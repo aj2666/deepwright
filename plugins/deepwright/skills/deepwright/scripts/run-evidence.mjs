@@ -193,6 +193,7 @@ function stateOf(run, now) {
   const { spec } = run.manifest;
   const reasons = [];
   if (run.attempts >= spec.maxAttempts) reasons.push("attempt allowance exhausted");
+  if (run.events.length >= EVENT_LIMIT) reasons.push("event limit reached");
   if (now.getTime() >= Date.parse(spec.deadline)) reasons.push("deadline reached");
   if (now.toISOString() < run.lastTime) reasons.push("clock moved backwards");
   return {
@@ -225,7 +226,7 @@ async function locked(directory, operation) {
 }
 
 function pendingEvent(run, kind, payload, now) {
-  if (run.events.length >= EVENT_LIMIT) throw new Error("event count exceeds the run limit");
+  if (run.events.length >= EVENT_LIMIT) throw new Error("event limit reached");
   const at = now.toISOString();
   if (at < run.lastTime) throw new Error("clock moved backwards; refusing to reorder run history");
   const sequence = run.events.length + 1;

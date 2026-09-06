@@ -97,13 +97,13 @@ The helper does not control host token usage or grant additional execution scope
 - One stack owner writes topology. Workers do not rebase, retarget, or force-push.
 - Work in isolated worktrees. Never reset or switch the user's dirty active tree.
 - Creating, closing, retargeting, rebasing, or force-pushing a shared branch must be inside explicit authorization for the exact target. Verify the remote head immediately before an authorized `--force-with-lease`.
-- After any base or head change, recompute patch IDs, mergeability, and checks. A changed patch voids the old verdict.
+- After any base, head, or target change, recompute patch IDs, mergeability, and checks. Apply [Shipping's review-validity rule](shipping.md) to refresh the independent verdict even when the patch ID stays the same.
 
 #### Verification
 
 Scale proof to risk. A cheap deterministic unit command may be run by the worker and spot-checked. Use an independent verifier for expensive, judgment-heavy, behavioral, security-sensitive, or high-blast-radius work. Do not require a different provider or model.
 
-Key every verdict by repository, PR or unit, base SHA, head SHA, and patch ID. CI green is input, not proof. Behavioral work needs live evidence through a host capability or a `BLOCKED` verdict. A new patch invalidates the row. Post verdicts to GitHub only when comment writes are authorized.
+Key every verdict by repository, PR or unit, target base branch, base SHA, head SHA, and patch ID. CI green is input, not proof. Behavioral work needs live evidence through a host capability or a `BLOCKED` verdict. Changed behavior or relevant integration context invalidates the row; PR verdicts follow [Shipping's review-validity rule](shipping.md). Post verdicts to GitHub only when comment writes are authorized.
 
 #### Liveness and failure
 

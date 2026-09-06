@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -75,6 +76,53 @@ test("concurrent claims cannot spend a single remaining attempt twice", async (t
   const attempts = await Promise.allSettled([claimAttempt(directory, start), claimAttempt(directory, start)]);
   assert.equal(attempts.filter((one) => one.status === "fulfilled").length, 1);
   assert.equal((await status(directory, start)).consumedAttempts, 1);
+});
+
+test("status and claims agree at the event limit without changing full run history", async (t) => {
+  const { workspace, directory } = await fixture(t);
+  await writeFile(join(workspace, "source.txt"), "historical selected evidence\n");
+  const saved = await recordEvidence(directory, record([{ path: "source.txt", label: "source" }]), start);
+
+  // Seed valid history directly to avoid replaying and verifying the entire log 10,000 times.
+  let previous = saved.sha256;
+  for (let sequence = 2; sequence < 10_000; sequence++) {
+    const body = {
+      sequence, at: start.toISOString(), kind: "checkpoint",
+      payload: { summary: "Synthetic historical checkpoint", coverage, files: [] }, previous,
+    };
+    const sha256 = createHash("sha256").update(JSON.stringify(body)).digest("hex");
+    await writeFile(join(directory, "events", `${String(sequence).padStart(6, "0")}.json`), `${JSON.stringify({ ...body, sha256 })}\n`);
+    previous = sha256;
+  }
+  await writeFile(join(directory, "head.json"), `${JSON.stringify({ sequence: 9_999, sha256: previous })}\n`);
+
+  const available = await status(directory, start);
+  assert.equal(available.integrity, "verified");
+  assert.equal(available.records.length, 9_999);
+  assert.equal(available.remainingAttempts, 2);
+  assert.equal(available.nextAttemptAllowed, true);
+  assert.deepEqual(available.reasons, []);
+  const lastClaim = await claimAttempt(directory, start);
+  assert.equal(lastClaim.sequence, 10_000);
+  assert.equal(lastClaim.payload.attempt, 1);
+
+  const full = await status(directory, start);
+  assert.equal(full.integrity, "verified");
+  assert.equal(full.remainingAttempts, 1);
+  assert.equal(full.nextAttemptAllowed, false);
+  assert.deepEqual(full.reasons, ["event limit reached"]);
+  const manifest = await readFile(join(directory, "run.json"));
+  const head = await readFile(join(directory, "head.json"));
+  const eventNames = await readdir(join(directory, "events"));
+  const runNames = await readdir(directory);
+
+  await assert.rejects(claimAttempt(directory, start), /event limit reached/);
+  assert.deepEqual(await readFile(join(directory, "run.json")), manifest);
+  assert.deepEqual(await readFile(join(directory, "head.json")), head);
+  assert.deepEqual(await readdir(join(directory, "events")), eventNames);
+  assert.deepEqual(await readdir(directory), runNames);
+  assert.deepEqual(await status(directory, start), full);
+  assert.equal(await readFile(join(directory, "artifacts", saved.payload.files[0].sha256), "utf8"), "historical selected evidence\n");
 });
 
 test("initialization cannot overwrite an existing run or accept invalid limits", async (t) => {

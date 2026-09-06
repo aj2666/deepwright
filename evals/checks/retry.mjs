@@ -88,7 +88,7 @@ for (const asynchronous of [false, true]) {
 
 for (const [label, maxRetries] of [
   ["negative", -1], ["above maximum", 6], ["fractional", 1.5], ["NaN", NaN],
-  ["Infinity", Infinity], ["-Infinity", -Infinity], ["string", "2"], ["null", null],
+  ["Infinity", Infinity], ["-Infinity", -Infinity], ["string", "2"], ["null", null], ["undefined", undefined],
   ["true", true], ["false", false], ["object", {}], ["array", []],
   ["bigint", 2n], ["boxed number", new Number(2)], ["symbol", Symbol("limit")],
 ]) {

@@ -5,6 +5,7 @@ import { lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:f
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadSuite } from "./score-skill-evals.mjs";
+import { isMain } from "./is-main.mjs";
 
 const root = fileURLToPath(new URL("../evals/fixtures/", import.meta.url));
 const MAX_BYTES = 32 * 1024 * 1024;
@@ -168,4 +169,4 @@ export async function main(args) {
     return 2;
   }
 }
-if (process.argv[1] && await realpath(process.argv[1]).catch(() => null) === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
+if (await isMain(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
