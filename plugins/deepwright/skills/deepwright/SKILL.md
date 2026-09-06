@@ -1,13 +1,14 @@
 ---
 name: deepwright
-description: Investigate repository behavior, specify and build features, fix bugs, refactor code, or diagnose performance through evidence-first playbooks. Use for non-trivial engineering requests such as trace this failure, define acceptance criteria, review this change, or implement and verify this feature; explicit $deepwright:deepwright or Owl requests; and resuming an existing Deepwright task. Do not automatically invoke for greetings, general knowledge, translation, standalone prose edits, trivial syntax questions, or when the user declines Deepwright. Diagnosis, specification, planning, and review do not authorize implementation.
+description: "Route repository investigations, specifications, feature work, fixes, reviews, and refactors through verified playbooks. Use for Owl tasks; not greetings or syntax questions."
+license: MIT
 ---
 
 # Deepwright
 
-Go deep. Ship sound.
+## Purpose
 
-Owl is Deepwright's engineering foreman. Owl chooses the smallest fitting playbook, keeps parallel work isolated, and requires proof from the real artifact before calling work complete.
+Choose the smallest workflow that advances the developer's requested outcome, preserve their delivery boundary, and require evidence from the affected behavior. Owl coordinates the work; the available host supplies execution and collaboration tools.
 
 ## Discovery and task scope
 
@@ -17,7 +18,7 @@ For help finding a skill, show relevant entries and invocation guidance without 
 
 Use the Specification playbook when the deliverable is requirements or acceptance criteria. For an authorized build, Feature carries the same acceptance contract through design, implementation, and review. Clear, small work needs a compact checklist, not an interview or a mandatory specification file.
 
-## Run contract
+## Instructions
 
 1. Read the repository instructions and inspect the current state before editing.
 2. Classify the request against the playbooks below. Read the selected playbook in full.
@@ -126,16 +127,42 @@ Read only the selected playbook plus any leaf skills it calls.
 
 Use `$deepwright:figure-it-out` when no playbook fits or a cross-cutting migration needs a bespoke run. Use the Orchestrate playbook only for a standing program that cannot reasonably finish in one session.
 
-## Optional tools
+## Requirements
+
+Start from the user's request, the active project, and its applicable instructions. Work from supplied excerpts when repository access is absent; mark conclusions that depend on unavailable files. The skills require no runtime installation. Optional helpers require Node 20.19+; Git is needed for repository operations and authenticated GitHub access only for remote work.
+
+## Available Scripts
 
 The bundled scripts under `scripts/` support orchestration state, PR watching, plan checks, and worktree audits. They are optional accelerators. The core workflow must still work when an optional executable or GitHub CLI is unavailable.
 
 - Prefer an installed GitHub connector for repository reads and writes.
 - Use `gh` only when it is installed and authenticated.
 - Never downgrade a requested private operation to a public one.
-- Run `scripts/deepwright doctor` before relying on optional tools.
-- Use `scripts/deepwright status` for local discovery and configuration validity, or `config show` for effective preferences. Neither verifies another session's activation, model availability, or MCP connections.
+Resolve helpers from this skill directory and run project-sensitive commands from the intended project root. Use only the helper needed for the current task.
+
+| Script | Purpose | Example arguments |
+| --- | --- | --- |
+| `scripts/deepwright` | Check runtime/layout, discover workflows, inspect project settings | `doctor --json`, `skills review --compact`, `config check` |
+| `scripts/orch/orch` | Track authorized coordination state | `--help` before selecting a state-changing command |
+| `scripts/watch-pr/watch-pr` | Observe PR checks and review status through authenticated GitHub access | `--help` to select the actual PR and watch limits |
+
+Run `scripts/deepwright doctor` before relying on a helper. `status` reports local discovery/configuration validity; it does not verify another session's activation, model availability, or MCP connections.
 
 ## Writing the handoff
 
 Lead with what changed for the user. Then give verification, important implementation choices, and remaining risks. Use direct sentences. Link only artifacts actually created or inspected during the run.
+
+
+## Examples
+
+- **Diagnosis:** “Explain why CSV exports lose columns; do not edit.” Select Investigation, trace the relevant parser and output, and report evidence plus uncertainty. A discovered fix stays a recommendation within this request.
+- **Small implementation:** “Add a case-insensitive name filter using the existing UI pattern.” Select Feature, preserve empty-filter behavior, implement the local slice, and check matching and nonmatching names. Do not start a separate architecture competition when the existing pattern settles the design.
+- **Requirements:** “Define team invitations; we have not chosen who may invite.” Select Specification, identify the permission decision, and draft the settled criteria in the conversation. Keep dependent behavior blocked until that decision is answered.
+
+## Limitations
+
+A selected route is not evidence that the task succeeded. Static inspection, tests, UI interaction, and production observation establish different things; match the finish condition to the available surface. A capability or configuration preference never expands permission to write or publish.
+
+## Troubleshooting
+
+If a helper fails, inspect its error and continue through available host tools where they establish the same fact. Missing GitHub access blocks remote status claims, not local code inspection. Without delegation, work sequentially and disclose the reduced independence. If the target itself is unavailable, report the smallest missing input or access rather than inventing a passing result.

@@ -1,21 +1,30 @@
 ---
 name: principle-migrate-callers-then-delete-legacy-apis
 description: "Migrate all callers before deleting a legacy API. Use for $deepwright:principle-migrate-callers-then-delete-legacy-apis."
+license: MIT
 ---
 
 # Migrate Callers Then Delete Legacy APIs
 
-When we decide a new API is the right design, migrate callers and remove the old API in the same refactor wave instead of preserving compatibility layers.
+## Purpose
 
-**Rule:**
-- Do not keep legacy API paths alive only because internal callers still exist
-- Inventory callers, migrate them, and delete the old API immediately
-- Treat temporary adapters as exceptional and time-boxed, not default architecture
-- Update tests to assert the new contract, and delete tests that only protect pre-refactor implementation details
+Complete an internal API refactor by migrating its callers and removing the obsolete path. Apply this when a coordinated change is supported and no external compatibility promise requires the old interface.
 
-**When this applies:**
-- No external users depend on backward compatibility
-- The project can absorb coordinated breaking changes
-- The new API is part of a simplification or refactor initiative
+## Instructions
 
-Keeping both old and new APIs creates dual-path complexity, slows cleanup, and makes the codebase feel append-only.
+- Establish the compatibility boundary before deletion. Inspect exports, package entry points, generated bindings, examples, scripts, tests, and supported external consumers, not only direct source calls.
+- Inventory callers of the old contract and map them to the replacement. Include string-based registration or configuration if the API can be selected dynamically.
+- Migrate in coherent units and verify the replacement behavior. Delete the old implementation after its supported callers move; do not retain it solely to avoid completing an in-scope migration.
+- Update contract tests and usage examples. Keep regression coverage for promised success and error behavior, including missing records or invalid input, even when the old implementation is removed.
+- Use a temporary adapter only when rollout or compatibility actually requires it. Identify its consumers and removal condition; do not quietly treat it as permanent architecture.
+- Keep deletion inside the authorized scope and preserve pre-existing user changes. Report consumers that cannot be migrated in this task.
+
+## Examples
+
+An internal `getUser(id, true)` API becomes `getUserWithOrders(id)`. Search runtime code, test fixtures, and CLI scripts; migrate the supported callers and assert the same not-found behavior. Then remove the boolean overload and its implementation-only tests.
+
+Expected outcome: source and generated entry points expose one supported path, all callers type-check, and the not-found regression still passes. If the old overload is publicly exported in a released package, keep compatibility until an authorized release plan permits removal.
+
+## Limitations
+
+A text search with no matches does not prove there are no external or dynamic callers. When that boundary is uncertain, document the uncertainty and preserve compatibility. A staged deployment across independently released services may need an adapter; forcing immediate deletion there can break running consumers.

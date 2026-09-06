@@ -1,13 +1,20 @@
 ---
 name: arena
-description: "Compare parallel solutions and synthesize the best. Use for $deepwright:arena."
+description: "Compare independent candidate designs, analyses, or authorized implementations against a task rubric and verify one coherent synthesis. Use for $deepwright:arena."
+license: MIT
 ---
 
 # Arena
 
+## Purpose
+
 Fan out N parallel attempts at the same task. Read every candidate end to end. Pick the strongest as the base. Graft the best ideas from the others into it. Verify the synthesized result.
 
-## Start
+## Prerequisites
+
+Identify the requested artifact, the evidence candidates may read, and the acceptance criteria before choosing runners. Use only advertised collaboration capacity and model identifiers. Advisory tasks need no writable workspace; implementation candidates need separate, validated output locations.
+
+## Instructions
 
 Open a plan or checklist with one entry per phase before launching anything. The arena runs autonomously and the list keeps phases from silently disappearing.
 
@@ -70,3 +77,20 @@ If verification surfaces a problem the arena did not catch, either Phase A was w
 ## Outputs
 
 One synthesized artifact and one short synthesis note naming the base, the grafts (with source candidate), the rejections, the dropouts if any, and the verification result. Return both in the response by default; write them only when the parent task explicitly authorizes that output.
+
+## Examples
+
+```text
+$deepwright:arena Compare designs for a --dry-run import mode. It must report
+planned changes without writing files or contacting the remote service.
+```
+
+Give both candidates those behavioral requirements and the current import flow. Judge the resulting designs on skipped effects, output usefulness, and compatibility. Expected result: one design, a short record of the selected base and any grafts, and a verification plan that observes writes and network calls. Merely naming a method `dryRun` is not evidence that it skips effects.
+
+## Limitations
+
+Candidate agreement cannot establish correctness without evidence.
+
+## Troubleshooting
+
+If only one candidate survives, obtain another useful alternative or clearly return a single-candidate result with comparison incomplete. If a fresh judge is unavailable, record that gap and use the parent’s criterion-by-criterion assessment. An unavailable runtime check remains unverified; a high rubric score does not replace it.

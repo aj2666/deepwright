@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Improve all 47 skills with concrete examples, narrower scope, useful failure guidance, and explicit MIT licensing; raise the static quality gate to grade A (90). Correct TypeScript invariant claims, validate configuration before writing, and remove unsupported universal workflow rules.
 - Add pinned NVIDIA SkillEvaluator static checks and per-skill CI reports, with a documented attribution policy and real positive/negative gate tests. Keep live evaluations separate from static quality scores.
 - Scale Feature design, planning, delegation, and review to the change; keep small developer tasks direct while preserving acceptance checks and authorization boundaries.
 - Close retry-observer false passes for asynchronous default retries and non-Error rejection identity, with failing-before regression controls.

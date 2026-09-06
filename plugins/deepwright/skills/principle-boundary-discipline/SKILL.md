@@ -1,33 +1,31 @@
 ---
 name: principle-boundary-discipline
 description: "Validate boundaries and trust typed internals. Use for $deepwright:principle-boundary-discipline."
+license: MIT
 ---
 
 # Boundary Discipline
 
-Place validation, type narrowing, and error handling at system boundaries. Trust internal code unconditionally. Business logic lives in pure functions; the shell is thin and mechanical.
+## Purpose
 
-**Why:** Scattered validation is noisy, redundant, and gives a false sense of safety. Validate data once at the boundary. Keep logic out of framework wiring so it can be tested without the framework.
+Place validation and type narrowing where raw or independently changing data enters the system. Use this to remove duplicated checks and keep framework wiring separate from domain decisions.
 
-**The pattern:**
-- **At boundaries** (CLI args, config files, external APIs, network protocols): validate, return errors, handle defensively.
-- **Inside the system:** typed data, error propagation, no re-validation. Trust the types.
-- **Across the boundary.** Expose domain concepts, not the boundary's private representation. Keep general-purpose mechanism inside and special-purpose policy at the edge.
+## Instructions
 
-**Applications:**
+- Identify the boundary: CLI arguments, config, external APIs, database reads, plugin callbacks, or any input whose invariant the current component does not own.
+- Parse raw values into domain types once. Return actionable errors at that boundary; keep transport and storage representations out of public domain interfaces.
+- Trust established invariants within the region that maintains them. Internal mutation, unsafe casts, independently updated records, and concurrent actors can invalidate an earlier check; treat those transitions as new boundaries.
+- Put domain decisions in pure functions when practical. Keep the shell responsible for I/O, transactions, and translating failures. A pure core can still return an explicit domain error such as insufficient inventory.
+- Remove redundant checks only after tracing who establishes and preserves the invariant. Preserve useful assertions for detecting programmer errors and checks for genuinely changing conditions.
 
-Validation and error handling:
-- Validate config at parse time (the boundary), not inside business logic
-- Parse raw data into domain types at the boundary
-- Do not re-export transport, storage, framework, or wire types through the public surface
-- No redundant nil checks deep in call chains if the boundary already validated
+- Trace one invalid input and one legitimate domain failure through the proposed boundary. Confirm callers receive useful errors without learning transport-specific details.
 
-Code organization:
-- Business logic in pure functions with no framework dependencies
-- Parse functions: pure transforms from raw bytes to typed state
-- Prompt construction: structured state in, string out
-- Scoring and assessment: pure transforms from state to results
+## Examples
 
-**The tests:**
-- "Is this data crossing a system boundary right now?" If not, validation is redundant.
-- "Can this be a pure function that the shell just calls?" If yes, extract it.
+A checkout endpoint accepts `{ "quantity": "2" }`. Parse it into a positive integer before calling pricing logic; reject `"many"` there with a field error. Pass the parsed value to a pure `priceOrder` function instead of reparsing it in every helper. Reserve stock with an atomic conditional update that succeeds only when enough remains; a separate read followed by a write can race even inside a transaction.
+
+Expected outcome: malformed requests fail at entry and pricing tests need no HTTP framework. With one item remaining, two interleaving reservation attempts must yield one success and one insufficient-stock result. Exercise that contention at the actual storage boundary before claiming overselling is prevented.
+
+## Limitations
+
+Types do not validate runtime JSON, establish authorization, or guarantee freshness. If a removed internal check exposes a failure, trace the missing invariant owner and repair that boundary; do not assume the value is safe merely because its type says so. Keep framework extraction local when a separate module would add more indirection than it removes.

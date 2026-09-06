@@ -1,22 +1,30 @@
 ---
 name: principle-build-the-lever
 description: "Automate repetitive work with reusable checks. Use for $deepwright:principle-build-the-lever."
+license: MIT
 ---
+
 # Build the Lever
 
-When repeated or error-prone work earns it, build the smallest tool that does or proves it.
+## Purpose
 
-**Why:** Two payoffs. Throughput: a codemod, generator, or script does the work the same way every time and reruns for free. Confidence: the tool is one artifact a reviewer can read and rerun to check the work. Hand-done changes can only be re-verified by redoing them. A deterministic script turns "trust me" into "run this".
+When repeated or error-prone work earns it, build the smallest tool that performs or verifies it. A rerunnable artifact improves both throughput and reviewability.
 
-**Pattern:** Compare the cost of a lever with the cost and risk of the manual work. Build one when it improves repeatability or proof without expanding the user's requested scope.
+## Instructions
 
-- Do the first unit by hand to learn the recipe, then build the tool. Prove it by rerunning it on that unit and diffing against your hand-done version. Make the lever safe to rerun. A reviewer will.
-- Codemod or script for edits, generator for repetitive files, a dump-to-sqlite query for analysis, a rerunnable check for verification.
-- A deterministic lever beats fan-out. If the tool can process every unit in one pass, run it yourself; don't fan out delegates to hand-apply what a script can do.
-- When you fan work out, put the shared recipe and fences in an existing in-scope brief or task-owned artifact. Create a reusable skill only when the user asked for one or approved that scope.
-- For an analysis-only request, use an existing command or an ephemeral scratch script and return the evidence. Do not add repository files merely to satisfy this principle.
-- Commit a useful lever only when commits are authorized and the artifact belongs in the repository. Otherwise keep it in the task's scratch evidence or propose it.
+- Compare the time and failure risk of a tool with the manual work, including review and future reruns. A one-off can justify a small script; a trivial edit rarely needs a framework.
+- Work through a representative unit to learn the recipe. Compare the tool's result with that expected result before widening its scope, and include an awkward case such as an already-migrated input.
+- Prefer an existing command. Otherwise use a codemod for syntax-aware edits, a generator for repetitive files, a query for analysis, or a deterministic check for verification.
+- Bound the targets and preserve unexpected content. Support a preview or dry run when an incorrect rewrite would be costly. Make reruns leave completed work unchanged and return a clear error for unsupported cases.
+- Use deterministic tooling before delegating identical manual edits. Delegate only independent judgment or cases the tool cannot handle reliably.
+- For analysis-only work, keep new helpers in task-owned scratch space. Add repository tooling only inside the authorized write scope; creating reusable skills, commits, or remote records requires the corresponding authorization.
 
-**Balance:** A one-off can earn a lever when it is the cheapest reliable proof, but not when building it costs more than the task. Apply [`$deepwright:principle-laziness-protocol`](../principle-laziness-protocol/SKILL.md): build the smallest script that does or proves the job, never a framework.
+## Examples
 
-Distinct from [`$deepwright:principle-encode-lessons-in-structure`](../principle-encode-lessons-in-structure/SKILL.md), which makes a recurring instruction a durable guardrail. This is throughput and reviewability on the work in front of you. For verification, use [`$deepwright:principle-prove-it-works`](../principle-prove-it-works/SKILL.md).
+Twelve callers need to replace `legacyGet(id)` with `client.get({ id })`. Confirm one ordinary caller and one aliased import by hand, then use a syntax-aware codemod with a preview. Skip and report ambiguous bindings instead of rewriting every matching string.
+
+Expected outcome: the preview lists exactly the intended callers, tests pass for the new API, and a second run produces no diff. A shadowed local `legacyGet` remains untouched and is reported for review.
+
+## Limitations
+
+Stop extending the tool when manual treatment of a few exceptional cases is cheaper and clearer. A repeatable wrong transformation is still wrong: verify behavior as well as text. See [Laziness Protocol](../principle-laziness-protocol/SKILL.md) for scope and [Prove It Works](../principle-prove-it-works/SKILL.md) for proof. [Encode Lessons in Structure](../principle-encode-lessons-in-structure/SKILL.md) addresses durable prevention, rather than the immediate work.

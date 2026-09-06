@@ -1,33 +1,31 @@
 ---
 name: principle-prove-it-works
 description: "Verify behavior against the real artifact. Use for $deepwright:principle-prove-it-works."
+license: MIT
 ---
 
 # Prove It Works
 
-Verify every task output by checking the real thing directly. Do not infer from proxies, self-reports, or "it compiles."
+## Purpose
 
-**Why:** Unverified work has unknown correctness. Indirect verification (file mtimes, output freshness, agent self-reports, cached screenshots) feels cheaper than direct observation. Acting on a wrong inference costs far more than checking the source.
+Verify the requested behavior through the actual artifact or closest authorized execution path. Compilation, a delegate's summary, or an output timestamp may support a check but does not establish the user-visible outcome by itself.
 
-**Pattern:** After completing any task, ask: "how do I prove this actually works?"
+## Instructions
 
-Check the real thing, not a proxy:
-- Check process liveness directly, not indirectly through derived state
-- Read the actual value, not a cached or derived representation
-- When verification fails, suspect the observation method before suspecting the system
+- Translate the requested outcome into observable evidence. For a bug, reproduce the relevant failure when practical; for a generated artifact, inspect the output the user will receive.
+- Choose a proof proportional to the change. Reuse focused checks first, and add broader execution only when changed behavior, failures, or unresolved risks justify it.
+- Identify effects before running a proof path: local writes, credentials, network access, messages, billing, shared data, and cloud resources. Prefer isolated fixtures, a local service, sandbox, or dry run when they prove the required behavior.
+- Observe the chain from input to output and verify relevant authorized side effects. Check process liveness directly and read actual values rather than assuming derived state is current.
+- When a result conflicts with expectations, inspect both the observation method and the system. Confirm that the test used the intended revision, inputs, and artifact before drawing a conclusion.
+- Inspect delegated output directly through its diff, contents, or runtime behavior. Keep the evidence visible and distinguish verified results from remaining assumptions.
+- If the closest real path needs unavailable infrastructure or new permission, use the strongest safe proof and name the remaining validation gap. Missing authority does not become permission to test against live data.
 
-Code and features:
-1. Classify the proof path's effects before running it: local files, credentials, network, messages, billing, production or shared data, cloud resources, and external writes.
-2. Build it when relevant, but do not treat compilation as sufficient.
-3. Exercise the closest real path that is both available and authorized. Prefer a sandbox, fixture account, dry-run, local service, or isolated data.
-4. Check the observable chain from input to output and verify authorized side effects.
-5. If the real path needs new permission or unavailable infrastructure, stop at the strongest safe proof and label the remaining step blocked. Never convert missing authority into a test action.
+## Examples
 
-Delegation: trust artifacts, not self-reports.
-When verifying delegated work, inspect the actual output artifact (git diff, file contents, runtime behavior), not the delegate's summary. Agents report what they intended, not always what happened.
+A CLI fix claims to support configuration paths containing spaces. Build the CLI if required, create an isolated fixture named `sample config.json`, and run the actual command against it. Assert the parsed output and exit status; also run malformed input and inspect its error.
 
-## Script the check when you can
+Expected outcome: the real executable accepts the valid path and rejects invalid content clearly. A unit test of an internal parser alone would leave command-line argument handling unverified.
 
-The strongest proof is often a deterministic check that re-runs the same comparison. Reuse an existing check first. Add a repository script only when code changes are in scope; otherwise use an ephemeral task-owned scratch check or describe the proposed command. A comparison of old and new compiled output can catch what a glance misses without touching live data.
+## Limitations
 
-Keep the artifact visible for the human. When the user authorized commits and a large or complex change needs a durable audit trail, use `$deepwright:show-me-your-work` and commit the proof. Most work needs the artifact visible, not committed.
+Do not add tests that merely mirror the implementation or repeat a passing suite without a reason. No finite check proves every behavior; state coverage accurately. A deterministic scratch check can suffice for analysis-only work. Add repository tooling only within write scope, and commit proof only when commits are authorized; use [Show Me Your Work](../show-me-your-work/SKILL.md) when a complex delivery needs that audit trail.

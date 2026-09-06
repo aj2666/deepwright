@@ -1,20 +1,23 @@
 ---
 name: setup-deepwright
-description: "Configure Deepwright role models and parallelism. Use for $deepwright:setup-deepwright."
+description: "Inspect or configure Deepwright role models and parallelism. Use for project preferences, not host-wide Codex settings."
+license: MIT
 ---
 
 # Set up Deepwright
 
+## Purpose
+
 Deepwright works without configuration. By default, every delegated role inherits the current Codex model and the host decides which execution features are available.
 
-## Steps
+## Instructions
 
 1. Inspect the host's available subagent or collaboration tool schema. Record only model identifiers and options the host actually exposes.
 2. Read [the shared configuration contract](../deepwright/references/configuration.md). Inspect `.codex/deepwright.toml` in the active repository using the optional `config show` helper when available; validate the same contract directly when Node is unavailable.
 3. Show the current choices and any confirmed model overrides. Never infer a model slug from marketing names or old configuration.
-4. For an inspection-only request, report the current state and stop without writing. Only when configuration changes were requested, write the complete project file atomically at `.codex/deepwright.toml`, preserving unrelated choices and accurate comments.
-5. Re-read and validate the file. Reject an explicit model that was not confirmed available in this host.
-6. Resolve and run the bundled [`../deepwright/scripts/deepwright`](../deepwright/scripts/deepwright) `doctor` command. Report warnings without treating an optional tool as a core failure.
+4. For an inspection-only request, report the current state and stop without writing. For requested changes, validate the proposed complete configuration and confirm explicit models before modifying the file. If a requested override is unavailable, explain the blocked choice and offer `inherit-parent`; do not silently persist an unconfirmed model.
+5. Write an authorized, valid configuration atomically at `.codex/deepwright.toml`, preserving unrelated choices and accurate comments. Re-read and validate the result; report a write or validation failure without claiming setup succeeded.
+6. When Node is available, resolve and run the bundled [`../deepwright/scripts/deepwright`](../deepwright/scripts/deepwright) `doctor` command. Report optional-tool warnings separately from configuration errors.
 
 Use the defaults in the shared contract, or print them with the bundled `deepwright config template`. The helper never writes them. Run `config check` after an authorized change when Node is available; it validates TOML/schema, not host model availability.
 
@@ -27,4 +30,16 @@ Rules:
 - Do not edit the Codex host's main `config.toml`; Deepwright owns only `deepwright.toml`.
 - Configuration never grants permission for merges, deployments, messages, or other external writes.
 
-After setup, tell the user to begin a new chat when their Codex client does not refresh plugin files in the active thread.
+## Examples
+
+**Inspection:** “Which review model will this project use?” Read the project configuration and the shared defaults. If the file is absent, report `inherit-parent`; do not create a template or search a home directory for preferences.
+
+**Local change:** “Use one reviewer and keep the other settings.” After reading the current file, change only `parallelism.reviewers` to `1`, preserve role settings and comments, and validate the full result. One reviewer reduces independence; it does not remove the required review lenses.
+
+## Limitations
+
+Configuration validation checks syntax and supported values, not model availability or actual capacity. Existing configuration is read for the next applicable workflow; changing project preferences does not itself require reinstalling the plugin. Do not claim that a file edit altered a running worker.
+
+## Troubleshooting
+
+If TOML is malformed, explain the offending field or error without dumping file contents. Do not partially apply valid-looking keys. Offer a minimal correction and apply it only within the requested scope. Without Node, inspect against the shared contract and disclose that the helper was not run; missing optional tooling does not require an installation.

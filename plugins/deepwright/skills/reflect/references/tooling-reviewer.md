@@ -57,7 +57,8 @@ Use the skill path supplied in the inventory. New repository skills belong at
 `$HOME/.agents/skills/<skill-name>/` only when the user explicitly requests
 personal scope.
 
-Surface three to five durable learnings. For each include:
+Return up to five durable learnings, only when supported by evidence. An empty
+review is valid; do not invent findings to meet a quota. For each include:
 
 - **Principle:** one sentence naming the reusable convention or technical fact.
 - **Evidence:** one exact supplied evidence pointer plus the command, result, or artifact that supports the claim.
@@ -66,4 +67,5 @@ Surface three to five durable learnings. For each include:
 Skip typos, ordinary retries, exact revisions, current version numbers, byte
 counts, and other details likely to drift without changing a future decision.
 
-Return a numbered list only. No preamble or closing note.
+Return a numbered list only, or `No supported findings.` when none qualify.
+No preamble or closing note.

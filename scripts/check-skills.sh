@@ -22,5 +22,5 @@ fi
 exec skillevaluator validate "$target" \
   --type skill --external --policy "$repo_root/.github/skillevaluator-policy.yaml" \
   --checks schema,pii,license,quality,unicode,lint \
-  --no-llm --no-dedup --continue-on-failure --min-score 70 \
+  --no-llm --no-dedup --continue-on-failure --min-score 90 \
   --report json,markdown --output-dir "$reports"

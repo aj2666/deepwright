@@ -1,30 +1,49 @@
 ---
 name: principle-type-system-discipline
 description: "Use types to make invalid states unrepresentable. Use for $deepwright:principle-type-system-discipline."
+license: MIT
 ---
 
 # Type System Discipline
 
-The type checker is a proof assistant. Use it to eliminate impossible states, mismatched primitives, and unhandled variants at compile time. A case the types let you ignore becomes a runtime failure the compiler could have stopped. Prefer defining errors and special cases out of existence over proliferating handlers; unrepresentable states, total functions, and interface redesign (the patterns below) are the tools.
+## Purpose
 
-Applies to any typed language. Skills like `typescript-best-practices` ground it in specific syntax.
+Use a typed language to prevent meaningful invalid states, mismatched identifiers, and unhandled variants. Strengthen the model where it makes an operation total or enforces a real invariant; avoid type ceremony that adds no safety.
 
-**The patterns:**
+## Instructions
 
-- **Make illegal states unrepresentable.** Model variants as sum types: discriminated unions in TypeScript, enums with payloads in Rust/Swift/Kotlin, sealed classes in Scala, ADTs in Haskell/OCaml. Don't model state as a bag of optional fields where contradictory combinations compile. A subtle anti-pattern worth naming: `{ completed: boolean; completedAt?: Date }` admits `completed: true; completedAt: undefined`, which is meaningless. Derive the boolean from a single source like `completedAt !== null`, or model the variants explicitly as `{ kind: 'open' } | { kind: 'done'; at: Date }`. If a bug forces the question "wait, can this combination actually happen?", the type is too loose.
-- **Types are constructions, not restrictions.** Build the type up from the values you want instead of carving them out of a looser type with checks. The invariant that seems to need a refinement type is usually a construction away. A non-empty list is a head plus a rest, not a list with a length check. A valid time range is a start plus a duration, not two timestamps you must keep ordered. No representation is privileged. A list of pairs is an even-length list if you interpret it that way, so choose the shape that cannot build the illegal value and expose the interface callers need on top.
-- **Brand semantic primitives.** `UserId` and `OrderId` are strings underneath but should not be interchangeable. Newtypes in Rust, opaque types in Swift, value classes in Kotlin, phantom types in Haskell, branded intersections in TypeScript. Validate once at creation, trust the type downstream.
-- **External data is untyped until parsed.** RPC payloads, JSON, IPC messages, CLI args, config files, environment variables, database rows. Have a parse function at every boundary that turns unstructured input into the typed model. Apply `$deepwright:principle-boundary-discipline` to place validation.
-- **Don't lie to the type system.** Casts, unsafe coercions, and assertion functions that bypass the compiler are runtime crashes waiting to happen. If the compiler can't prove a fact, prove it (validate, narrow, refine the model) or accept that the cast is a hazard. The cast you bury today is the postmortem you write next week.
-- **Exhaustive matching is the compiler's job.** When you match on a sum type, the compiler must fail compilation if a new variant is added without handling. Use the idiom your language provides: `never`-typed binding in TypeScript, unannotated `match` in Rust, `-Wincomplete-patterns` in Haskell, sealed-class match exhaustiveness in Kotlin.
-- **Derive types from authoritative schemas.** When a protocol buffer, OpenAPI spec, GraphQL schema, database migration, or design-system token file defines a shape, derive from it instead of hand-rolling a parallel type. Manual duplication drifts. Apply `$deepwright:principle-encode-lessons-in-structure`.
-- **Strengthen a type only where partiality appears.** A runtime assertion, null check, or "this should never happen" throw marks the place a type is too weak. Push that check up into the type. Then stop. The type system's job is to track the cases each use site must handle, not to describe the data as precisely as possible. Prefer total functions. `sum` of an empty list is 0, so it takes the plain list. `head` of an empty list has no answer, so it demands the non-empty one. Extra precision costs reuse and ceremony and buys no safety.
+- Model alternatives with sum types: discriminated unions, payload enums, sealed classes, or the language's equivalent. A bag of optional fields often allows combinations the domain cannot support.
+- Construct valid shapes rather than storing values that must continually be synchronized. A non-empty collection can be a head plus a remainder; a completed item can carry its completion time only in the completed variant.
+- Use semantic types when interchangeable primitives cause realistic mistakes, such as `UserId` and `OrderId`. Validate at creation, then preserve the invariant downstream.
+- Treat runtime JSON, RPC payloads, CLI input, config, and independently stored records as unvalidated until parsed. Place that check at the owning boundary; [Boundary Discipline](../principle-boundary-discipline/SKILL.md) explains where earlier validation can stop being sufficient.
+- Prefer narrowing or a better model to unsafe casts and assertions. When interop genuinely requires an escape hatch, isolate it, document the established invariant, and validate or test that boundary.
+- Make variant handling exhaustive using the language's compiler-supported idiom. Adding a new case should identify the consumers that need a decision, rather than silently falling through a default.
+- Derive types from an authoritative schema when tooling already supports it. Do not maintain a parallel handwritten shape that will drift from the contract.
+- Stop strengthening when additional precision no longer prevents a concrete failure. A sum accepts an empty list and returns zero; an operation requiring a first element needs an explicit empty case or a non-empty input.
 
-**The tests:**
+## Examples
 
-- "Can I write a comment explaining when this combination of fields is valid?" If yes, the type is too loose. Split it into a sum type.
-- "Do two of my function arguments share a primitive type but mean different things?" Brand them.
-- "Where did this `any`, this `as`, this `assertNotNull` come from?" Trace it to the boundary and validate there instead.
-- "If a new variant is added next month, will the compiler tell the next agent where to add a case?" If no, the match isn't exhaustive.
-- "Is this type duplicating a shape another file owns?" Derive instead.
-- "Am I strengthening this type to keep an operation total, or just to be more precise?" If nothing would otherwise panic, keep the plain type.
+A task uses `{ completed: boolean; completedAt?: Date }`, allowing a completed task with no timestamp. Represent its lifecycle directly:
+
+```ts
+type TaskState =
+  | { kind: 'open' }
+  | { kind: 'done'; at: Date };
+
+function completionTime(state: TaskState): Date | null {
+  switch (state.kind) {
+    case 'open': return null;
+    case 'done': return state.at;
+    default: {
+      const unexpected: never = state;
+      return unexpected;
+    }
+  }
+}
+```
+
+Expected outcome: constructing `done` without `at` fails the type check, and adding a new state makes the exhaustive consumer require an update. Parse external timestamps separately and reject invalid dates before constructing the domain state.
+
+## Limitations
+
+Compilation does not prove authorization, freshness, numeric validity, or business correctness. Mutable aliases and unchecked casts can invalidate a type-level promise. If a stronger type spreads assertions across callers or blocks harmless reuse, revisit its construction or use an explicit error result. Brand identifiers where confusion matters, not every primitive by default.
