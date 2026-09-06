@@ -32,7 +32,7 @@ CI also runs the base installation of [NVIDIA SkillEvaluator](https://github.com
 | PII | Pattern-based sensitive-data checks on supported text files |
 | License | Detected per-skill license declarations; absent declarations remain warnings |
 | Unicode | Hidden or suspicious Unicode payload detection on supported files |
-| Quality | Heuristic scores for correctness, discoverability, reliability, and efficiency; minimum 70 per skill |
+| Quality | Heuristic scores for correctness, discoverability, reliability, and efficiency; minimum 90 per skill (grade A) |
 | Lint | Advisory Python script checks; our Node and shell checks remain necessary |
 
 The [policy overlay](.github/skillevaluator-policy.yaml) makes only missing per-skill author metadata advisory: the plugin manifest and distribution notices own attribution. Supplied author values still undergo format validation. Keep package license validation: SkillEvaluator does not establish that every skill inherits the correct plugin license. Its scores are editing signals, not measurements of agent usefulness; do not add boilerplate sections or invented metadata merely to raise them.
@@ -52,7 +52,7 @@ Each default run creates a fresh report directory under the system temporary dir
 PATH="/tmp/deepwright-skill-check-env/bin:$PATH" npm run check:skills -- plugins/deepwright/skills/spec /tmp/deepwright-spec-report
 ```
 
-The integration tests run the real evaluator against valid and defective fixtures, including malformed frontmatter, hidden Unicode, excessive instruction context, an empty catalog, and a mixed passing/failing catalog. Nonzero exits remain failures; reports from earlier runs are never reused.
+The integration tests run the real evaluator against valid and defective fixtures, including a valid skill below grade A, malformed frontmatter, hidden Unicode, excessive instruction context, an empty catalog, and a mixed passing/failing catalog. Nonzero exits remain failures; reports from earlier runs are never reused.
 
 For dependency updates, change the reviewed upstream commit in [.github/requirements/skillevaluator.in](.github/requirements/skillevaluator.in), regenerate the lock with `uv pip compile --python 3.13 .github/requirements/skillevaluator.in --output-file .github/requirements/skillevaluator.txt`, then rerun both the fixtures and the full catalog. Review score and policy changes before raising the threshold.
 

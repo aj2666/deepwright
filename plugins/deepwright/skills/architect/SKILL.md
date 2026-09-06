@@ -1,15 +1,22 @@
 ---
 name: architect
-description: "Design code structure before implementation. Use for $deepwright:architect."
+description: "Design interfaces, types, and module boundaries before implementation; compare alternatives and capture the chosen contract. Use for $deepwright:architect."
+license: MIT
 ---
 
 # Architect
 
+## Purpose
+
 Design before implementing. Sketch types, function signatures, class shapes, and module boundaries with `not implemented` bodies and pseudocode. Synthesize across independent design perspectives, then fill in code against the chosen sketch. If implementation proves the sketch wrong, throw it out and redesign.
 
-## Start
+## Prerequisites
 
-Open a plan or checklist with one entry per phase before starting. Autonomous mode without checkpoints needs the list to show phase position and keep phases from silently disappearing.
+Start from the requested behavior, relevant repository paths, and compatibility constraints. Infer these from the current task and code; ask only for an unresolved choice that changes the product or public contract. A design-only request produces a response artifact. It does not authorize repository edits.
+
+## Instructions
+
+Track the phases in the task plan for a multi-step run. A short design-only answer can carry the same decisions in its response without a separate planning artifact.
 
 1. Ground
 2. Sketch
@@ -19,7 +26,7 @@ Open a plan or checklist with one entry per phase before starting. Autonomous mo
 
 ## Phase A: Ground the problem
 
-Build a real mental model of every system the new code touches. Run `$deepwright:how` over the relevant subsystems. Critique mode if existing structure is the constraint or the design must push back on it.
+Build a traced model of the systems the new code touches using `$deepwright:how` guidance. Reuse current, cited grounding from the task when it already traces the relevant paths; do not rerun exploration solely to satisfy a phase label. Use critique mode when existing structure constrains the design.
 
 Naming a file isn't grounding. Produce the traced model `$deepwright:how` prescribes. If the design redefines ownership or layering, also run `$deepwright:why` on the existing shape so the rationale becomes a constraint, not a guess.
 
@@ -80,3 +87,22 @@ When you scrap:
 ## Outputs
 
 The caller's usage is written first and the type sketch derived from it. One file with new types and signatures for small changes; module map plus type definitions for larger work. The rationale ships alongside, shaped per `references/rationale-template.md`, including the usage sketch and the synthesis decision.
+
+## Examples
+
+```text
+$deepwright:architect Design a resumable file importer. Keep the CLI flags stable;
+show the design before implementing.
+```
+
+Trace the current import flow and compare a persisted job record with a replayable input log. Show the caller's resume operation, ownership of progress, and the failure/retry contract before types. Expected result: one chosen sketch and rejected alternatives, with no implementation because the request is design-only.
+
+For an authorized implementation, a newly discovered optional parameter is a design deviation to inspect; repeated callers needing access to internal checkpoint state is a reason to revisit the ownership boundary.
+
+## Limitations
+
+A coherent sketch is not runtime validation.
+
+## Troubleshooting
+
+If integration code or a dependency contract is unavailable, mark the affected boundary provisional and name the read or test needed to settle it. If collaboration is unavailable, use Arena’s sequential alternatives and disclose their shared context; do not claim independent review. A candidate failure does not justify relaxing the two-design minimum: replace the missing candidate or report the comparison blocked.

@@ -1,13 +1,24 @@
 ---
 name: why
-description: "Trace design rationale through authorized evidence. Use for $deepwright:why."
+description: "Investigate why a code decision exists using repository history and explicitly scoped records, separating direct rationale from inference. Use for $deepwright:why."
+license: MIT
 ---
 
 # Why
 
+## Purpose
+
 Find the forces behind a design without turning a plausible story into a fact. Repository evidence is the default. Connected private sources are opt-in and tightly scoped.
 
-## Evidence boundary
+## Prerequisites
+
+Identify a concrete decision, symbol, threshold, or behavior and its code location. Local source and history are sufficient to start; authenticated connectors are optional. Use linked records and authorized narrow searches only when they can answer the specific question.
+
+## Instructions
+
+Anchor the question before selecting evidence sources.
+
+### Evidence boundary
 
 1. Define the target: file, symbol, feature, decision, or threshold.
 2. Default to the active repository, the current conversation, and links or IDs the user supplied.
@@ -92,3 +103,21 @@ Read `references/epistemics.md` and `references/synthesizer-prompt.md`. When usi
 - **Change constraints:** when the user plans to modify the code, summarize what to preserve, change, avoid, and verify.
 
 Do not cite the code as proof of its own motivation. Do not smooth away uncertainty for a more satisfying narrative.
+
+## Examples
+
+```text
+$deepwright:why Why does the retry loop stop after three attempts? Use this repo only.
+```
+
+Find the introducing change and inspect its message, surrounding diff, and later adjustments. Expected result: cite an explicit latency-budget reason if the record states one; otherwise label that explanation inferred or unknown. Do not search team chat to fill the gap when the user limited scope to the repository.
+
+If a cited issue describes a later requirement that conflicts with the original commit, present the chronology and both sources instead of choosing the more convenient story.
+
+## Limitations
+
+Squashed commits, shallow history, and unavailable linked records can erase the rationale trail.
+
+## Troubleshooting
+
+Report which source is missing and which narrow searches actually ran; continue with the available code and preserve uncertainty. A failed connector read does not permit broader searching or use of another account. Code behavior alone cannot prove author intent.

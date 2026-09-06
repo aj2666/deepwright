@@ -1,21 +1,30 @@
 ---
 name: principle-outcome-oriented-execution
 description: "Converge on the target instead of preserving detours. Use for $deepwright:principle-outcome-oriented-execution."
+license: MIT
 ---
 
 # Outcome-Oriented Execution
 
-Optimize for the intended, verifiable end state rather than preserving smooth intermediate states.
+## Purpose
 
-**Why:** Keeping every intermediate step fully stable often creates temporary compatibility code that becomes long-lived debt. Converge on the target architecture and prove correctness at explicit verification boundaries.
+Converge on an agreed, verifiable end state during a planned rewrite or migration. Temporary local instability can be appropriate when preserving every intermediate interface would create unnecessary compatibility code.
 
-**Core rule:**
-- Prioritize end-state integrity over transitional stability
-- Intermediate breakage is acceptable when it is planned, scoped, and reversible
-- Always run final verification before declaring done
+## Instructions
 
-**Guardrails:**
-- Use this for planned rewrites and migrations with explicit phase boundaries
-- Declare where temporary breakage is acceptable
-- Keep high-signal checks for actively touched areas while migrating
-- Require full static and runtime verification at plan completion
+- Define the target contract and observable completion checks before the migration. Identify which existing behaviors must remain supported.
+- Name where intermediate breakage is acceptable, such as an isolated working branch, and where it is not, such as a deployed service or a shared package consumed independently.
+- Group tightly coupled edits into coherent units. Run useful checks for each completed unit and keep failures attributable to known unfinished work rather than ignoring new regressions.
+- Avoid compatibility scaffolding that exists only to keep an unshipped intermediate step green. Keep adapters required by rollout, supported consumers, or recovery.
+- Complete the relevant static and runtime verification before declaring the migration done. Match checks to the actual change; a documentation-only update does not require a runtime suite.
+- Keep changes reversible and preserve user work. Commits, pushes, releases, and history rewriting still depend on the task's authorization.
+
+## Examples
+
+A local refactor replaces `Result<T, string>` with a structured error type across one package. Change the type and its dependent callers as one unit, accepting expected type errors during the edit. Then run the type checker and contract tests before starting an independent feature.
+
+Expected outcome: the completed unit has one error model and preserves error behavior. An independently deployed consumer still expecting a string needs a compatible rollout; it cannot be treated as temporary local breakage.
+
+## Limitations
+
+This does not justify shipping a broken increment, hiding unexplained test failures, or leaving the user with an incomplete migration. If the task must stop early, restore a coherent state when authorized and feasible, or clearly identify the remaining breakage and recovery step. Scale verification to risk without using the final target to excuse skipped evidence.

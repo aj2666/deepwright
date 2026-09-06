@@ -1,15 +1,31 @@
 ---
 name: principle-separate-before-serializing-shared-state
 description: "Separate writers before adding synchronization. Use for $deepwright:principle-separate-before-serializing-shared-state."
+license: MIT
 ---
 
 # Separate Before Serializing Shared State
 
-When concurrent actors might share mutable state, first ask whether they truly need the same mutable object. If not, eliminate the sharing. When sharing is real, enforce serialization structurally: lockfiles, sequential phases, exclusive ownership. Instructions and conventions are not concurrency control.
+## Purpose
 
-**Why:** Concurrent writes to shared state create race conditions that are intermittent, hard to reproduce, and expensive to debug. Telling agents or goroutines to "take turns" does not work.
+Reduce concurrency failures by removing unnecessary shared mutable state. When actors truly need one canonical object, enforce coordination with a mechanism rather than an instruction to take turns.
 
-**Pattern:**
-1. **Identify shared mutable state** (files both read and write, branches both push to, APIs both define and consume).
-2. **Default: eliminate the shared write target.** Ask: do these actors need one canonical object, or are they publishing independent facts? Give each actor its own owned file, key, branch, or state directory, and merge only at the read/reporting boundary. Two workers writing their own `lastX` field into one `state.json` is still shared mutation; `indexer-state.json` + `metrics-state.json` is not.
-3. **Only when one shared write target is a real invariant, serialize access structurally** (lockfiles, sequential phases, single-writer actor, or atomic compare-and-swap). Treat "we need a lock" as a design smell to check, not as the default answer.
+## Instructions
+
+- Identify shared write targets and invariants: files, database rows, branch refs, caches, and API contracts. Two independent fields in one rewritten JSON file still share a write target.
+- Determine whether actors publish independent facts or jointly maintain one invariant. Give independent facts separate owned files, keys, branches, or directories, then combine them when reading or reporting.
+- Define ownership and publication behavior so readers avoid partial output. Separate files still need atomic publication when readers can observe a write in progress.
+- For a real shared invariant, use an appropriate transaction, single writer, lock, compare-and-swap, or sequential phase. Cover the entire read-modify-write operation, including lock release and failure recovery.
+- Verify a concurrent interleaving that previously lost data and a failed writer. Document who owns reconciliation instead of assuming a convention prevents races.
+
+- Keep each actor inside its assigned write scope. Separate branches or files organize authorized work; they do not authorize additional writers or changes to shared infrastructure.
+
+## Examples
+
+An indexer and a metrics worker both rewrite `state.json` with their latest timestamp. Each can overwrite the other's update. Give them owned `indexer-state.json` and `metrics-state.json` files, publish atomically, and combine their values in the status reader.
+
+Expected outcome: simultaneous updates preserve both facts and a partial metrics write cannot corrupt indexer state. If both workers instead allocate from one unique sequence, keep a canonical counter and use an atomic allocation operation.
+
+## Limitations
+
+Splitting data does not preserve an invariant that spans both values, and separate files do not form a transaction. If a consistent cross-value snapshot is required, use versioned publication or a transactional store. Lock correctness depends on ownership, scope, and crash behavior; an old-looking lock or a PID alone is not sufficient evidence to delete it.

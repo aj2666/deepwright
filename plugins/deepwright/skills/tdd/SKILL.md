@@ -1,16 +1,19 @@
 ---
 name: tdd
-description: "Build features or fix bugs through a focused red-green-refactor loop. Use for $deepwright:tdd; preserve the requested behavior, compatibility, and delivery boundary."
+description: "Build features and fix bugs through observable red-green-refactor steps. Use when a behavior change needs regression evidence."
+license: MIT
 ---
 
 # TDD
+
+## Purpose
 
 Make one required behavior executable, observe it fail for the right reason,
 implement just enough to pass, then refactor while keeping the check green.
 This workflow covers both new features and bug fixes; it does not authorize
 commits, publication, merges, or unrelated changes.
 
-## Select the contract and test boundary
+## Requirements
 
 Read [the acceptance contract](../spec/references/acceptance-contract.md).
 Reuse the request's criteria and identify the behavior for this slice. For a
@@ -27,7 +30,7 @@ cost, security, or product decision. A test boundary is not required to be a
 unit test: an integration, CLI, browser, or other real-surface check may be
 more appropriate.
 
-## One vertical slice
+## Instructions
 
 1. Write the smallest test for one criterion. Derive the expected outcome from
    the contract, a worked example, or an independent reference, not a copy of
@@ -65,7 +68,7 @@ retry limits or idempotency. Storage checks are valid when stored state is
 part of the required outcome. Do not delete existing tests until their
 important behavioral coverage is demonstrably preserved.
 
-## When a failing test is impractical
+## Limitations
 
 Name the specific obstacle before fixing: inaccessible production-only state,
 no reproducible trigger, disproportionate fixture setup, or an unsuitable
@@ -86,3 +89,14 @@ Report the behavior delivered, genuine failing-before and passing-after
 commands/results, the tested revision or snapshot, refactoring performed,
 adjacent validation, and remaining failed or blocked criteria. The enclosing
 Feature or Bug Fix workflow owns broader review and delivery.
+
+
+## Examples
+
+**Default compatibility:** A helper retries twice and the user requests a configurable limit. First add a check that a limit of zero calls a failing operation once and preserves that failure. Observe the existing helper make three calls, then implement the limit and rerun the same check. Keep the old default tests and add invalid-input and asynchronous cases as later slices. The examples describe expected behavior; the actual test commands and outputs must come from the project.
+
+**A misleading red:** A new test fails because its module cannot be imported. Fix the test setup before editing production behavior; the import failure does not demonstrate the requested regression. If the behavior is already correct, retain useful coverage and state that no failing-before behavior was observed.
+
+## Troubleshooting
+
+When a focused check passes but a neighboring test fails, investigate the shared contract before declaring green. If an external service is unavailable, separate the locally verified behavior from the blocked integration and avoid replacing it with mocks that erase the failure mechanism.

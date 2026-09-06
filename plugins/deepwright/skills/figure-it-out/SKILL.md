@@ -1,15 +1,22 @@
 ---
 name: figure-it-out
-description: "Design an auditable plan for unusual complex work. Use for $deepwright:figure-it-out."
+description: "Design and execute an evidence-based workflow for unusual, long-running, or cross-cutting engineering work that exceeds a focused playbook. Use for $deepwright:figure-it-out."
+license: MIT
 ---
 
 # Figure it out
 
-When the task matches no playbook, design one. The deliverable before any code is the workflow itself: a sequence of phases that scales rigor to the task, runs the scientific method, and leaves a decision trail a human can audit after stepping away. Bias toward more rigor. The cost of building the wrong thing dwarfs the cost of being careful.
+## Purpose
+
+When the task matches no playbook, design one. The deliverable before any code is the workflow itself: a sequence of phases that scales rigor to the task, runs the scientific method, and leaves a decision trail a human can audit after stepping away. Scale the rigor to uncertainty, reversibility, and the cost of a wrong result.
 
 Don't reinvent a playbook you already have. A focused single-unit task that matches Bug fix, Perf, Feature, Visual parity, Eval, or Multi-phase plan routes there. But a large or cross-cutting version of one (a migration across many call sites, an ambitious multi-part change), or work the user reviews after stepping away, belongs here even though a single-unit version would be a Feature. The rigor and the audit trail are the point.
 
-## Start
+## Prerequisites
+
+Ground the requested outcome, change scope, available environment, and any user-specified checkpoints. Identify which steps can be reversed and which would require a new product or operational decision. Missing production access need not block useful local design or verification.
+
+## Instructions
 
 Open a plan or checklist whose first item is to read the Principles section of `$deepwright:deepwright`. Then add the phases below.
 
@@ -19,15 +26,15 @@ Ground first, then commit. Don't start the run until you can state:
 
 - The definition of done as a falsifiable predicate from `$deepwright:principle-prove-it-works`. "Done well" has to be checkable.
 - Scope, quantified: rough units and effort, plus the blockers grounding surfaced. Raise them before spending hours, not after fifty doomed commits.
-- The rigor level, biased high. One-way doors and high blast radius get more; reversible low-stakes steps get less. Rigor is gates and artifacts, not "try harder".
+- The rigor level and the risk it addresses. One-way doors and high blast radius get more; reversible low-stakes steps get less. Choose checks and artifacts that resolve a concrete uncertainty.
 
-Present the framing and tradeoffs before committing to a long run. Apply `$deepwright:principle-never-block-on-the-human` to reversible work, but give a multi-hour run one checkpoint.
+Present the framing and tradeoffs before a long run. Apply `$deepwright:principle-never-block-on-the-human` to already authorized reversible work. Honor a requested approval checkpoint, and pause for an unresolved consequential choice; a progress update alone does not require another approval.
 
 ## Phase B: Design the workflow
 
 Decompose into atomic, independently landable units. Sequence the riskiest unknown first so option value stays high. Scaffold and verification come before features under `$deepwright:principle-foundational-thinking`.
 
-- Build the verification harness before the work, with the baseline captured from the pre-change state, so the check reads as "old value vs new value".
+- Capture the pre-change baseline before the work. Reuse an existing check where it measures the predicate; build a harness only when the required observation is missing.
 - For one-way-door design decisions, run `$deepwright:architect`, which invokes `$deepwright:arena`, with isolated candidates and a fresh read-only judge when collaboration is available. Skip it for mechanical work whose shape is already concrete. A second arena over a settled design violates `$deepwright:principle-laziness-protocol`.
 - Decide what fans out. Parallelize only across genuine seams, and give each writer its own worktree or branch under `$deepwright:principle-separate-before-serializing-shared-state`. Do not over-fan.
 - Write the designed phase list down. That list is what the human reviews.
@@ -52,3 +59,20 @@ Log the run through `$deepwright:show-me-your-work`: one canonical TSV with a ro
 Check the whole against the Phase A predicate on the real product, not just the harness. Apply `$deepwright:principle-encode-lessons-in-structure` to recurring corrections so the win cannot silently regress.
 
 **Reply:** the playbook you designed, the rigor level and why, the decision-trail path, what's verified against the predicate, and what's still open.
+
+## Examples
+
+```text
+$deepwright:figure-it-out Migrate the 40 import adapters to the new result type.
+Keep behavior stable and leave evidence I can review tomorrow.
+```
+
+Inventory adapters and capture representative success and failure behavior first. Migrate one risky adapter, verify its contract, then split independent adapters into owned slices. Expected result: a reviewable migration with a per-unit decision trail and final old/new behavior checks. A failing baseline is recorded separately from a regression introduced by the migration.
+
+## Limitations
+
+A multi-hour task needs visible framing, not repeated permission requests for already authorized work.
+
+## Troubleshooting
+
+Continue reversible steps after presenting the plan unless the user requested a checkpoint that waits or a consequential choice remains unresolved. If validation infrastructure fails, distinguish the harness failure from product behavior, keep the affected unit inconclusive, and continue independent units only when that does not hide a shared blocker.

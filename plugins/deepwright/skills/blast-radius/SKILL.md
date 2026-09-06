@@ -1,15 +1,22 @@
 ---
 name: blast-radius
-description: "Find downstream risks and prove a change is safe. Use for $deepwright:blast-radius."
+description: "Trace downstream compatibility, data, timing, and dependency risks in a proposed change, then verify the facts its safety depends on. Use for $deepwright:blast-radius."
+license: MIT
 ---
 
 # Blast radius
+
+## Purpose
 
 Find what a change could break somewhere else before it ships. A review request is read-only unless the user also asks for changes.
 
 Companion to `$deepwright:how` and `$deepwright:why`. `$deepwright:how` tells you what the code does. `$deepwright:why` tells you why it is shaped that way. Blast radius tells you what it breaks somewhere else.
 
 Listing the callers is not the job. The agent can grep those in a second. The job is the breakage grep won't show you.
+
+## Prerequisites
+
+Use the supplied diff, commit, or local changes and identify its base and head or working-tree snapshot. Read the affected contracts and pinned dependencies before naming consumers. If the target is ambiguous, inspect the active task and report the scope chosen; ask only when different choices would materially change the assessment.
 
 ## Don't trust your own writeup
 
@@ -27,7 +34,7 @@ For each fact the change's safety depends on, get it as far down this list as is
 
 Any safety fact you can't get to step 4, say so out loud. Don't write it up as settled. Step 4 is usually one small script that imports the same library the app ships and calls the exact function you're worried about.
 
-## Steps
+## Instructions
 
 1. Read the change. Inspect the diff, the symbols it adds, changes, and deletes, and what it now does differently, including the part the diff does not spell out. Use `$deepwright:why` to pull the PR and commits when rationale matters.
 2. Find the one fact it's safe because of. Most changes that look scary are safe because of a single fact, like "this call only drops already-dead cache entries and does nothing else". Find that fact. If it holds, most of the scary cases die at once. Spend your time here, not on a long list of maybes.
@@ -47,3 +54,20 @@ Any safety fact you can't get to step 4, say so out loud. Don't write it up as s
 Write it through `$deepwright:unslop`, cite real code, and strip anything private before it goes anywhere public.
 
 **Reply:** the writeup above, with the one safety fact either proven or marked unproven.
+
+## Examples
+
+```text
+$deepwright:blast-radius Review removing `status` from the /jobs response.
+The new client uses `state`; can this ship?
+```
+
+Trace serializers, generated clients, saved fixtures, and supported older consumers. Test the claimed compatibility against the actual response shape when safe. Expected result: a concrete old-client failure if it still reads `status`, or a cited compatibility guarantee and its validation limits. Finding no local reads is not proof that deployed clients are safe.
+
+## Limitations
+
+Repository searches cannot enumerate untracked external consumers.
+
+## Troubleshooting
+
+If the pinned dependency source, old client, or live surface is unavailable, identify the missing evidence and leave the corresponding safety claim unproven. Do not turn qualitative likelihood into invented percentages or build a speculative risk catalog to fill the report.
