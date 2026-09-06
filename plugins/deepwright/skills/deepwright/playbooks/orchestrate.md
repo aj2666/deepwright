@@ -64,6 +64,8 @@ STANDING     current standing orders
 
 Scale the brief to the unit. Missing scope, acceptance, verification, or permissions means the unit is not ready to assign. A dependency is a context relay, not only an ordering edge: paste or point to the needed artifact because sibling conversations may not be visible. Never rely on a worker remembering an earlier turn.
 
+For provider/consumer units, use [the shared-boundary contract](../../architect/references/shared-boundary-contract.md): carry the same artifact revision into every brief, name its change owner, and include real serialization/consumption checks at integration. Track supported version combinations when deployment can be staggered.
+
 #### Steps
 
 1. **Frame.** State a countable done predicate, unit estimate, dependency graph, verification bar, available collaboration capacity, wall-clock or session budget, and authorization matrix. If one agent can finish within the budget, use Autonomous run instead. For a contested decomposition or one-way door, invoke `$deepwright:arena`.

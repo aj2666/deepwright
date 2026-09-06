@@ -42,7 +42,7 @@ Apply every criterion to every finding:
 - **Structural mechanism:** put cheaply enforceable rules in Backlog as lint, validation, metadata, tests, or runtime checks.
 - **Skill scope:** accept a body change only for a skill in `<SKILLS_AND_TOOLS_USED>`; route a clearly missed trigger as `tune description: <skill path>`; otherwise reject it as `skill-not-used`.
 - **Already covered:** read the in-scope target skill before accepting an edit; reject duplicates or propose a precise placement or wording fix when existing guidance failed to fire.
-- **Authorization:** proposals must remain read-only until the user separately approves their application; never treat approval to reflect as approval for an external write.
+- **Authorization:** proposals require explicit approval for application; recognize existing approval for the same concrete improvement, but never treat approval to reflect as approval for an external write.
 
 Use paths from the supplied inventory. If a new skill is justified, propose
 `.agents/skills/<skill-name>/` for repository scope. Propose

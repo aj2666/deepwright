@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add existing-behavior specification with code/test anchors and explicit contradictions; coordinate separately owned providers and consumers through one shared contract and real boundary checks.
+- Add conditional error-handling and test-quality review lenses, UI click-path tracing, and bounded research before introducing dependencies or substantial helpers.
+- Preserve project-scoped lessons with counterexamples and verification context. Add read-only matched-evaluation failure analysis and content-based catalog maintenance with dependent-skill invalidation; no automatic skill promotion or hidden observation hooks.
+- Extend the isolated observer corpus to 32 cases with six focused workflow fixtures and deterministic controls for the new tools. Attribute the adapted ECC concepts and retain its MIT notice.
+
 - Ground investigations in competing explanations, original evidence sources, and a useful next check; keep review agreement separate from proof and avoid extra process for simple questions.
 - Preserve complete, partial, unavailable, unattempted, and failed evidence coverage through reviews and handoffs. Add an optional run record for selected historical evidence and fixed attempt/deadline allowances across resumes.
 - Supply isolated project preparation for all 26 observer cases, including parser TDD, performance, hanging tests, unfinished checkpoints, partial coverage, and repeated-source rationale; add independent fixture acceptance controls.

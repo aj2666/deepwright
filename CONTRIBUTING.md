@@ -24,6 +24,8 @@ A separate workflow job runs actionlint 1.7.12 from its pinned release archive, 
 
 Keep tests and fixtures when pruning documentation. The CSV evaluation fixture is intentionally defective; its neutral contract remains beside it. Offline scorer/verifier tests check the tooling, not actual model behavior. Use the [evaluation protocol](evals/README.md) for live comparisons.
 
+For catalog maintenance, `npm run skills:stocktake -- snapshot` prints content fingerprints for maintained skill files; save snapshots outside the catalog, then use `compare <before.json> <after.json>` to select changes and dependent skills for review. It includes references, metadata, scripts, assets, and bundles; it excludes `.git` and `node_modules`. Review dynamic dependencies manually. `npm run eval:analyze -- <baseline/run.json> <candidate/run.json> [...]` groups failures from verified matched pairs without editing skills. Both repository tools are covered by `test:evals`; neither is an installed plugin command or a quality/promotion oracle.
+
 ## Static skill checks
 
 CI also runs the base installation of [NVIDIA SkillEvaluator](https://github.com/NVIDIA/SkillEvaluator) on all 47 bundled skills. Its source revision and Python dependencies are pinned in [.github/requirements/skillevaluator.txt](.github/requirements/skillevaluator.txt). This separate job runs without provider credentials or live-agent execution, preserves per-skill JSON/Markdown reports in the `skillevaluator-reports` artifact, and gates the release job alongside the existing checks.

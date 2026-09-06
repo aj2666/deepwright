@@ -83,6 +83,10 @@ These discovery commands do not launch agents or modify files. All skills remain
 
 Use `$deepwright:spec` to turn an idea or existing conversation into acceptance criteria without starting implementation. It reuses settled decisions, investigates available facts, and surfaces consequential open choices. The draft stays in the conversation unless writing a document is authorized.
 
+Spec can also [document existing behavior](plugins/deepwright/skills/spec/references/existing-behavior.md) from active code paths and tests, retaining contradictions and unread gaps. Observed behavior does not become an approved requirement automatically.
+
+Architect uses [one shared contract](plugins/deepwright/skills/architect/references/shared-boundary-contract.md) for separately owned consumers and providers, including real serialization and compatibility checks. Before introducing a dependency or substantial helper, [reuse research](plugins/deepwright/skills/architect/references/reuse-research.md) compares existing repository capabilities with adopting, extending, or building.
+
 For an authorized feature build, Owl carries those same criteria through design, behavioral test slices, real-surface verification, and final requirements-aware review. A small, clear change needs a short checklist, not a formal spec or repeated interview. Multi-phase plans tie each unit to observable behavior and genuine dependencies; planning alone does not publish tickets or start the build.
 
 Start with the outcome you need. For example, in a Codex CLI prompt:
@@ -99,6 +103,8 @@ Small additions can use direct implementation and a local final review. Architec
 
 The [acceptance contract](plugins/deepwright/skills/spec/references/acceptance-contract.md) distinguishes proved, failed, blocked, and not-applicable criteria. Missing evidence remains blocked. A green test suite or an implementer's claim does not prove every requirement, and a read-only review does not run tests that may write files or contact services.
 
+Interrogate adds conditional [failure-visibility and test-quality lenses](plugins/deepwright/skills/interrogate/references/focused-lenses.md). For UI state bugs, How traces the [whole click path](plugins/deepwright/skills/how/references/click-path-audit.md), including hidden resets and asynchronous completion order, and identifies a check of the composed user action.
+
 For uncertain investigations, How and Why compare plausible explanations using the next observation that could distinguish them. They trace repeated claims to their original source and stop when another check would not change the answer. [Investigation guidance](plugins/deepwright/skills/deepwright/references/investigation-evidence.md) keeps this extra work conditional on a material uncertainty.
 
 Reviews and handoffs retain [evidence coverage](plugins/deepwright/skills/deepwright/references/evidence-coverage.md): complete, partial, unavailable, not run, or error. For longer authorized tasks, an optional [run evidence helper](plugins/deepwright/skills/deepwright/references/run-evidence.md) preserves selected historical files and carries a fixed attempt allowance and deadline across resumes. It records bookkeeping; host permissions and execution limits remain the host's responsibility.
@@ -110,6 +116,8 @@ Deepwright works without configuration. Use `$deepwright:setup-deepwright` to in
 The helper's `config show`, `config check`, and `config template` commands inspect settings, validate them, or print defaults without writing. Run them from the intended project root. Missing settings inherit defaults; invalid configuration is not partially applied. Only the active host can confirm model availability and concurrency. See the [configuration contract](plugins/deepwright/skills/deepwright/references/configuration.md).
 
 ## Development
+
+Reflect proposes [scoped lessons](plugins/deepwright/skills/reflect/references/scoped-lessons.md) with evidence, counterexamples, and last verified context. It can analyze supplied recurring failures or review an explicitly named catalog without collecting hidden histories or changing skills automatically. Maintainers can use [matched-run failure analysis](evals/README.md#recurring-failure-analysis) and [catalog content snapshots](plugins/deepwright/skills/reflect/references/catalog-maintenance.md) to select focused improvements.
 
 ```bash
 npm ci --prefix plugins/deepwright/skills/deepwright/scripts

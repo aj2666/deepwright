@@ -2,6 +2,8 @@
 
 **You own this task. Plan, review, verify.** Delegate investigation and the fix to subagents, stay in the lead.
 
+For a UI action whose result is reset or changes with timing, use [click-path tracing](../../how/references/click-path-audit.md) to follow the composed handler and its final state before choosing the regression check.
+
 Be scientific. Every shipped line traces to runtime evidence. Belt-and-suspenders that "might help" is a hypothesis, not a fix; it does not ship. When evidence refutes a hypothesis, revert what it motivated. The smallest change the evidence justifies ships, nothing more. Same discipline for Perf, where the evidence is the trace.
 
 1. Reproduce it on a safe local, test, or otherwise authorized surface with the host's available browser, PTY, simulator, or application-control capability. Never synthesize triggers or add instrumentation against production or third-party systems without explicit authorization. If the host cannot reach the target, state the exact limitation and ask for the smallest missing artifact or user-run step. A bug you cannot reproduce cannot be proved fixed.

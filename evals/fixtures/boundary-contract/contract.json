@@ -1,0 +1,1 @@
+{"type":"object","required":["id","note"],"properties":{"id":{"type":"string"},"note":{"type":["string","null"]}}}
