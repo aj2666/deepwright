@@ -47,6 +47,8 @@ Read the terminal results. For coverage, every required slice needs a result. Fo
 
 Keep a compact result table, one-line evidenced issues, and explicit gaps or dropouts.
 
+For an investigation that needs another wave, read [testing an explanation](../deepwright/references/investigation-evidence.md). Reconcile the current results first, then assign only questions whose answers could change the conclusion or close a required coverage gap. Return unresolved limits when further authorized work cannot answer them; equivalent reports and unchanged retries do not establish the missing evidence.
+
 ## Phase D: Report
 
 Return one consolidated in-chat report with the table, issue one-liners, gaps or dropouts, and the race rule when used.

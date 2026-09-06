@@ -1076,12 +1076,12 @@ ${USAGE}`);
 }
 
 // discovery/catalog.ts
-import { readFile, readdir, realpath as realpath2 } from "node:fs/promises";
-import { dirname as dirname2, isAbsolute as isAbsolute2, join as join3, relative as relative2, resolve as resolve3, sep as sep2 } from "node:path";
+import { dirname as dirname2, resolve as resolve3 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
-function defaultPluginRoot() {
-  return resolve3(dirname2(fileURLToPath2(import.meta.url)), "../../../..");
-}
+
+// discovery/metadata.mjs
+import { readFile, readdir, realpath as realpath2 } from "node:fs/promises";
+import { isAbsolute as isAbsolute2, join as join3, relative as relative2, sep as sep2 } from "node:path";
 function validName(value) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
@@ -1160,15 +1160,22 @@ async function loadCatalog(pluginRoot) {
       if (frontmatter === void 0) throw new Error("missing YAML frontmatter");
       const name = field(frontmatter, "name");
       if (name !== entry.name) throw new Error("name must match the skill directory");
+      if (`deepwright:${name}`.length > 64) throw new Error("qualified skill name exceeds 64 characters");
+      const description = field(frontmatter, "description");
+      if (description.length > 1024) throw new Error("description exceeds 1024 characters");
       const policy = (await readFile(policyPath, "utf8")).replace(/\r\n/g, "\n");
       const policySection = section(policy, "policy");
       const implicit = field(policySection, "allow_implicit_invocation", "  ", "boolean");
       if (!/^  allow_implicit_invocation: *(true|false) *$/m.test(policySection)) {
         throw new Error("implicit policy must be an unquoted true or false boolean");
       }
+      const expectedImplicit = name === "deepwright";
+      if (implicit === "true" !== expectedImplicit) {
+        throw new Error("implicit invocation must be " + expectedImplicit + " for " + name);
+      }
       skills.push({
         name,
-        description: field(frontmatter, "description"),
+        description,
         displayName: field(section(policy, "interface"), "display_name", "  "),
         path,
         invocation: "$deepwright:" + name,
@@ -1180,6 +1187,11 @@ async function loadCatalog(pluginRoot) {
   }
   if (skills.length === 0) throw new Error("no skills discovered in " + root);
   return skills;
+}
+
+// discovery/catalog.ts
+function defaultPluginRoot() {
+  return resolve3(dirname2(fileURLToPath2(import.meta.url)), "../../../..");
 }
 function terminalText(value) {
   return value.replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\|$)/gu, "").replace(/\u001b\[[0-?]*[ -/]*[@-~]/gu, "").replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069]/gu, " ").trim();

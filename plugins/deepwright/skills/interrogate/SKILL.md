@@ -8,6 +8,8 @@ license: MIT
 
 ## Purpose
 
+When evidence is incomplete, apply the [coverage contract](../deepwright/references/evidence-coverage.md) to the material checks. Keep the scope actually inspected separate from the scope requested; a successful empty search, a capped result, an unavailable source, and an invalid checking command support different conclusions.
+
 Spawn several independent reviewers to adversarially review code changes. Each gets the same prompt and rubric. Independence comes from separate passes and, when the host confirms multiple models, optional model diversity. Agreement is higher-signal than a lone finding, but the lead still checks every claim against the code.
 
 The deliverable is a synthesized verdict. Do NOT auto-apply changes.

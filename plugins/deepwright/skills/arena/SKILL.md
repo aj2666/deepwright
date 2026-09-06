@@ -52,7 +52,7 @@ After all Phase B candidates complete, spawn one fresh judge when the host suppo
 
 Read every candidate end to end before picking. Skimming N candidates surfaces only the candidate whose surface looks most familiar.
 
-Score each candidate against the rubric criterion by criterion, not on holistic feel. Compare against the cross-judge. Agreement on the base confirms the pick. Disagreement means one of you is biased or the rubric was ambiguous. Read both rationales before deciding.
+Score each candidate against the rubric criterion by criterion, not on holistic feel. Compare against the cross-judge and trace decisive claims to their original evidence. Agreement may repeat a shared assumption; disagreement may expose missing evidence or a real tradeoff. Read both rationales before deciding. For disputed claims, use [testing an explanation](../deepwright/references/investigation-evidence.md) to identify an observation that would change the choice.
 
 Pick the base a future maintainer can extend most easily without breaking invariants. Prefer the cleaner boundary or smaller surface area when two feel tied; apply `$deepwright:principle-laziness-protocol`.
 
@@ -66,7 +66,7 @@ Fold each graft in by hand under `$deepwright:principle-redesign-from-first-prin
 
 Record what was grafted, from which candidate, and what was rejected and why. Keep that record in the final response unless the parent task authorizes a durable artifact. The rejection notes are the highest-signal part of the record. Future readers learn from what you considered and dropped, not just what you kept.
 
-When N candidates converge on the same shape, that is a strong agreement signal. Note the convergence in the record and ship the consensus shape. No graft is needed. When N candidates wildly diverge, Phase A was under-specified. Reframe and re-run rather than averaging the divergence.
+When candidates converge on the same shape, record whether their reasons rest on distinct evidence or the same assumption, then verify the chosen shape. No graft is needed merely to include every candidate. When candidates diverge, inspect whether the cause is missing criteria, missing evidence, or a real tradeoff. Reframe only what is ambiguous and rerun only when a changed brief or new observation could improve the choice; otherwise explain the unresolved tradeoff.
 
 ## Phase F: Verify
 

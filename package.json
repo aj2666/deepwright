@@ -18,9 +18,12 @@
     "check:skills": "sh scripts/check-skills.sh",
     "build:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run build",
     "test:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run check",
-    "test:evals": "node --test scripts/score-skill-evals.test.mjs scripts/verify-skill-evals.test.mjs scripts/feature-fixture.test.mjs evals/fixtures/retry/request.test.mjs",
+    "test:evals": "node --test scripts/score-skill-evals.test.mjs scripts/verify-skill-evals.test.mjs scripts/feature-fixture.test.mjs scripts/parser-fixture.test.mjs scripts/csv-fixture.test.mjs scripts/additional-fixtures.test.mjs scripts/prepare-skill-eval.test.mjs evals/fixtures/retry/request.test.mjs evals/fixtures/parser/parser.test.mjs evals/fixtures/parser/formatter.test.mjs",
+    "test:contracts": "node --test scripts/validate-codex-compat.test.mjs",
+    "test:runs": "node --test scripts/run-evidence.test.mjs",
+    "eval:prepare": "node scripts/prepare-skill-eval.mjs",
     "eval:skills": "node scripts/score-skill-evals.mjs",
     "eval:artifacts": "node scripts/verify-skill-evals.mjs",
-    "test": "npm run validate && npm run test:tools && npm run test:evals"
+    "test": "npm run validate && npm run test:tools && npm run test:evals && npm run test:contracts && npm run test:runs"
   }
 }

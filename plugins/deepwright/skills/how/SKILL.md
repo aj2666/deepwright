@@ -108,6 +108,8 @@ Run the full explain flow above (Steps 1-4). You must understand the architectur
 
 ### Step 2. Spawn Critics
 
+For disputed explanations or recommendations, read [testing an explanation](../deepwright/references/investigation-evidence.md). Carry the relevant competing claim and the observation that could distinguish it into the critique brief. Use existing critics for this check; a separate role is optional.
+
 After the explanation is complete, choose the number of read-only architectural critics using `parallelism.reviewers` under the shared configuration contract. Cap concurrency to advertised free capacity and process the remainder in bounded waves. If collaboration is unavailable, run the lenses sequentially in the parent context and disclose the reduced independence. Inherit the parent model unless the host confirms a configured `roles.review` override.
 
 Read `references/critic-prompt.md` and `references/critique-rubric.md` before delegating. Embed their relevant content in every critic brief rather than relying on plugin-relative paths. Each critic gets:

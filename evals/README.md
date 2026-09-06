@@ -6,9 +6,35 @@ Keep rubrics, receipts, and evaluation instructions outside candidate contexts. 
 
 ## Fixtures and self-tests
 
-`fixtures/csv/` contains one deliberately defective source fixture and its neutral contract. Do not repair the committed fixture while testing skills. Copy only its project files into a neutral working directory. It does not supply the distinct parser, performance, checkpoint, and other fixtures required by the entire corpus.
+All 26 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
 
-`fixtures/retry/` provides a working fixed-retry helper and two tests of its current behavior. Use a fresh neutral copy for `feature-red-green`, whose prompt defines the requested configurable retry behavior. The initial fixture intentionally lacks that feature. It needs no network, credentials, or dependency installation. Do not copy observer checks, rubric files, or the positive control into the candidate project.
+```sh
+node scripts/prepare-skill-eval.mjs list
+node scripts/prepare-skill-eval.mjs prepare explicit-tdd /absolute/runs/parser-candidate
+node scripts/prepare-skill-eval.mjs snapshot /absolute/runs/parser-candidate
+```
+
+The destination's parent must exist. Preparation refuses an existing destination and any destination inside the fixture sources, including filesystem aliases. It copies only the declared project, initializes a reproducible Git baseline, and applies any unfinished-work overlay after committing that baseline. It does not run project code, launch a model, install skills, or impose host isolation. Git initialization ignores ambient hooks, templates, signing, and Git configuration. The printed result contains the original prompt, fixture fingerprints, file hashes, and baseline commit; keep this setup record outside the candidate project. It contains no expected routes, required checks, or observer controls.
+
+| Project | Cases and behavior |
+|---|---|
+| `csv` | Export defect and scope clarification; deliberately drops empty fields and zero values |
+| `retry` | Feature, specification, and review cases; compatible fixed-retry baseline |
+| `parser` | TDD, separate parser/formatter review, and local diagnosis; independent empty-input and formatter defects |
+| `search` | HTTP endpoint and deterministic benchmark with the same query workload and response checksum |
+| `hanging-tests` | Tests finish but a retained interval prevents process exit |
+| `cache` | Request path through the HTTP server, router, service, cache, and store |
+| `config` | Valid project configuration with inherited role choices and distinguishable defaults |
+| `checkpoint` | Committed baseline plus unfinished implementation, failing checks, and an existing handoff |
+| `loader` | A reproducible working-directory-dependent fixture lookup failure |
+| `coverage` | Source plus an empty successful search, paginated comments, and an invalid test command |
+| `batch-import` | Original batch-size rationale, later derivative claims, and a separate concurrency change |
+
+These projects require no credentials, dependency installation, or external service. Use host-enforced bounds when executing candidates: the hanging-process fixture intentionally needs termination, and candidate code may hang. Search timings are informational; compare identical workloads and verify responses without a flaky CI speed threshold.
+
+`snapshot` hashes relative paths and file bytes, excluding the root `.git` directory. It detects changed, added, or removed files, but does not capture permissions, Git history, or transient writes that were undone. Pair snapshots with separately observed Git state and permitted tool receipts when checking no-write or no-commit boundaries. Source and staged project symlinks are rejected. The preparation fingerprint binds the base and overlaid working snapshots; use the printed `fixtureSha256` consistently in both comparison arms.
+
+For no-command review cases, supply the allowed source, reports, and needed skill instructions through the host's file-reading facility or directly in the prompt. Do not require shell commands to obtain material the user has prohibited executing commands to read. Do not include observer checks or rubric files.
 
 ```sh
 npm run test:evals
@@ -18,17 +44,21 @@ node scripts/verify-skill-evals.mjs --help
 
 Tests use synthetic receipts and temporary evidence. They establish schema, completeness, boundary, integrity, and comparison behavior—not that an agent followed a skill, routed correctly, or became faster.
 
-### Retry acceptance checks
+### Independent acceptance checks
 
 After an authorized candidate run, the observer can exercise the resulting helper:
 
 ```sh
 node evals/checks/retry.mjs /absolute/path/to/isolated/project
+node evals/checks/parser.mjs /absolute/path/to/isolated/project
+node evals/checks/csv.mjs /absolute/path/to/isolated/project
 ```
 
 Unlike the receipt verifier, this command imports and executes candidate code. Run it only inside a disposable, restricted environment without real credentials or access to unrelated data. Enforce a timeout using the execution host; a hang, import failure, or malformed output is not a pass. The checker itself is not a sandbox.
 
 The checks cover preserved defaults, retry limits, invalid values rejected before effects, first-success behavior, synchronous/asynchronous operations, and result/error identity. `scripts/feature-fixture.test.mjs` verifies that the checker rejects the unimplemented baseline and independent faulty variants, and accepts a small reference implementation. That reference tests the checker, not an agent, and stays outside candidate contexts. Keep the candidate's own red/green commands and outputs as separate evidence; passing the observer checks alone cannot prove test-first execution or scope compliance.
+
+The parser and CSV observers cover empty-input/field behavior and compatible nonempty values. Their self-tests accept independently implemented correct solutions and reject distinct faulty variants. Additional fixture self-tests verify the retained-handle diagnosis, request path, configuration, deterministic search output, working-directory failure, and unfinished checkpoint. Observer imports and control implementations remain outside candidate projects.
 
 For specification-only or review-only cases, honor the prompt's no-write and no-execution limits. The observer must not ask the candidate to run these acceptance checks during such a task. Preserve file snapshots and allowed tool receipts to check the stated boundaries.
 
@@ -40,7 +70,7 @@ For specification-only or review-only cases, honor the prompt's no-write and no-
 4. Have an independent observer inspect the artifacts and fill one receipt for every case. Record unknown or unobserved checks as `false` and explain the uncertainty in the evidence. Never ask a candidate to certify its own compliance.
 5. Retain failures and ambiguous outcomes, repeat fresh paired runs, and report sample sizes and limitations. Report correctness and authorization failures before efficiency. Tooling self-tests and a single paired run do not establish improved automatic triggering or general productivity.
 
-Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. The supplied fixtures still do not cover every case; provide each missing project fixture before claiming a complete behavioral comparison.
+Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 26 agent tasks were executed.
 
 ## Score observations
 

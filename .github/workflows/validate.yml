@@ -9,6 +9,28 @@ permissions:
   contents: read
 
 jobs:
+  workflow-lint:
+    name: GitHub Actions / actionlint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check workflow semantics with pinned actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          actionlint_dir="${RUNNER_TEMP}/actionlint"
+          mkdir -p "$actionlint_dir"
+          archive="$actionlint_dir/actionlint.tar.gz"
+          curl --fail --location --retry 3 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$archive"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $archive" | sha256sum --check
+          tar -xzf "$archive" -C "$actionlint_dir" actionlint
+          "$actionlint_dir/actionlint" -color
+
   skill-quality:
     name: SkillEvaluator / static skill checks
     runs-on: ubuntu-latest
@@ -63,6 +85,8 @@ jobs:
         run: npm run test:tools
       - name: Test skill evaluation receipts
         run: npm run test:evals
+      - name: Test run evidence and resume allowances
+        run: npm run test:runs
       - name: Verify generated bundles and launchers
         shell: bash
         run: |
@@ -73,6 +97,8 @@ jobs:
           sh -n plugins/deepwright/skills/deepwright/scripts/watch-pr/watch-pr
       - name: Validate Codex package
         run: npm run validate
+      - name: Verify package and CLI metadata contracts
+        run: npm run test:contracts
       - name: Install Codex CLI
         run: npm install --global @openai/codex
       - name: Smoke-test plugin installation
@@ -86,7 +112,7 @@ jobs:
 
   release:
     name: Release manifest version
-    needs: [codex-compatibility, skill-quality]
+    needs: [codex-compatibility, skill-quality, workflow-lint]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:

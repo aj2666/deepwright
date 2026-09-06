@@ -18,7 +18,9 @@ npm audit --prefix plugins/deepwright/skills/deepwright/scripts --package-lock-o
 npm test
 ```
 
-`npm test` runs package/documentation validation, helper typechecking/build/tests, and evaluation tests. Commit rebuilt bundles when helper source changes; CI checks that rebuilding produces no differences. CI also checks shell launchers and performs fresh Codex marketplace registration and plugin installation on Linux / Node 20.19.0 and macOS / Node 24.
+`npm test` runs package/documentation validation, helper typechecking/build/tests, evaluation fixtures, metadata contract controls, and run-evidence recovery tests. Commit rebuilt bundles when helper source changes; CI checks that rebuilding produces no differences. Metadata validation and terminal discovery share the same parser; positive and independently defective distribution fixtures must exercise both the validator and the installed bundle. CI also checks shell launchers and performs fresh Codex marketplace registration and plugin installation on Linux / Node 20.19.0 and macOS / Node 24.
+
+A separate workflow job runs actionlint 1.7.12 from its pinned release archive, verified by SHA-256 before execution. When changing workflows, run the same version locally and retain the checksum check when updating it.
 
 Keep tests and fixtures when pruning documentation. The CSV evaluation fixture is intentionally defective; its neutral contract remains beside it. Offline scorer/verifier tests check the tooling, not actual model behavior. Use the [evaluation protocol](evals/README.md) for live comparisons.
 
@@ -84,6 +86,6 @@ The core skills do not require Node; optional helpers require Node 20.19+. AGENT
 
 ## Release and publication
 
-The existing main-branch workflow publishes a new manifest version only after both platform jobs pass. Keep repository and plugin versions aligned and provide a matching changelog section when making a release. Do not move previously published version tags.
+The existing main-branch workflow publishes a new manifest version only after both platform jobs, static skill quality, and workflow lint pass. Keep repository and plugin versions aligned and provide a matching changelog section when making a release. Do not move previously published version tags.
 
 Before changing repository visibility, review Git history, branches, tags, releases, and discussions for material not intended for publication. Deleting a file from the current tree does not remove its historical copies. Visibility changes and history rewrites are separate operations from a documentation cleanup.

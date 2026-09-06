@@ -74,6 +74,13 @@ Scale the brief to the unit. Missing scope, acceptance, verification, or permiss
 6. **Integrate.** Begin with the first verified unit, not after all workers finish. Use the selected GitHub backend for authorized pushes and PR operations. Keep the lowest dependency or PR frontier healthy before integrating descendants. Merge only when `permissions.md` contains explicit landing authority for that exact set and `playbooks/shipping.md` passes.
 7. **Close or checkpoint.** Reconcile every assigned unit to done, blocked, abandoned, or superseded. Confirm the predicate on the real artifact and every current head SHA against the verdict ledger. If unfinished, write `resume.md` with the next exact drain or unit; do not claim the program continues by itself.
 
+For a program whose evidence or allowance must survive a restart, use the optional
+[run evidence helper](../references/run-evidence.md) alongside the existing ledger.
+Keep one run ID and deadline, count claimed work iterations including failed ones,
+and carry remaining attempts into every checkpoint. Preserve the exact selected
+inputs behind material decisions, then verify mutable facts again on resume.
+The helper does not control host token usage or grant additional execution scope.
+
 #### Queue discipline
 
 - On collaborator completion, save the compact report and finish any atomic ledger or stack operation before reviewing it.

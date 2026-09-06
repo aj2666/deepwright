@@ -1,0 +1,8 @@
+version = 1
+
+[roles]
+code = "inherit-parent"
+review = "inherit-parent"
+
+[parallelism]
+swarm_workers = 2

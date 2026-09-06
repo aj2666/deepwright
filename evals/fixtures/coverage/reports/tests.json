@@ -1,0 +1,6 @@
+{
+  "command": "node --test --not-a-real-option",
+  "exitCode": 9,
+  "testsCollected": 0,
+  "stderr": "node: bad option: --not-a-real-option"
+}

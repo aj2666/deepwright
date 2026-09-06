@@ -35,6 +35,8 @@ For a broad topic, delegate independent, bounded, read-only source checks throug
 
 Verify every branch, PR, ticket, or status claim against its live source. Label anything that cannot be checked as unverified.
 
+Use the [coverage contract](../deepwright/references/evidence-coverage.md) when a read is incomplete or unavailable. Separate what an earlier evidence snapshot established from what a fresh check shows now. If the handoff names an existing [run evidence record](../deepwright/references/run-evidence.md), inspect it without creating or updating records; carry its remaining allowance and deadline forward.
+
 ## Prerequisites
 
 The current conversation or a supplied task summary is enough to start. Repository tools and authenticated service access are needed only for claims about those sources.

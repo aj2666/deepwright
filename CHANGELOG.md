@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Ground investigations in competing explanations, original evidence sources, and a useful next check; keep review agreement separate from proof and avoid extra process for simple questions.
+- Preserve complete, partial, unavailable, unattempted, and failed evidence coverage through reviews and handoffs. Add an optional run record for selected historical evidence and fixed attempt/deadline allowances across resumes.
+- Supply isolated project preparation for all 26 observer cases, including parser TDD, performance, hanging tests, unfinished checkpoints, partial coverage, and repeated-source rationale; add independent fixture acceptance controls.
+- Share strict metadata parsing between package validation and discovery, test malformed distributions against both paths, and gate CI/release on checksum-pinned actionlint.
+
 - Improve all 47 skills with concrete examples, narrower scope, useful failure guidance, and explicit MIT licensing; raise the static quality gate to grade A (90). Correct TypeScript invariant claims, validate configuration before writing, and remove unsupported universal workflow rules.
 - Add pinned NVIDIA SkillEvaluator static checks and per-skill CI reports, with a documented attribution policy and real positive/negative gate tests. Keep live evaluations separate from static quality scores.
 - Scale Feature design, planning, delegation, and review to the change; keep small developer tasks direct while preserving acceptance checks and authorization boundaries.
