@@ -18,12 +18,25 @@ const good = () => ({
 });
 
 test("corpus keeps prompts separate and the complete known-good receipt passes", () => {
-  assert.equal(prompts.length, 16);
+  assert.equal(prompts.length, 24);
   assert.ok(prompts.every((entry) => Object.keys(entry).length === 2));
   const report = scoreReceipts(good(), expected);
   assert.equal(report.ok, true);
-  assert.equal(report.passed, 16);
+  assert.equal(report.passed, expected.length);
   assert.equal(report.limitation, LIMITATION);
+});
+
+test("every required criterion can independently fail the complete batch", () => {
+  for (const target of expected) {
+    for (const criterion of target.requiredChecks) {
+      const receipt = good();
+      receipt.cases.find((entry) => entry.id === target.id).checks[criterion] = false;
+      const report = scoreReceipts(receipt, expected);
+      assert.equal(report.ok, false, `${target.id}: ${criterion}`);
+      assert.equal(report.failed, 1);
+      assert.deepEqual(report.results.find((entry) => entry.id === target.id).failures, [`check: ${criterion}`]);
+    }
+  }
 });
 
 test("known-bad routing, scope, and safety observations cannot pass", () => {
@@ -104,7 +117,7 @@ test("CLI scores complete receipts with stable success and failure exit codes", 
       assert.equal(result.status, pass ? 0 : 1);
       const report = JSON.parse(result.stdout);
       assert.equal(report.ok, pass);
-      assert.equal(report.total, 16);
+      assert.equal(report.total, expected.length);
     }
   } finally {
     await rm(directory, { recursive: true, force: true });

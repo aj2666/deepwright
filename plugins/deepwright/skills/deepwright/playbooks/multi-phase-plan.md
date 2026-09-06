@@ -2,13 +2,15 @@
 
 **You own the plan, not the code. The plan is a checklist an owner can run box by box and the user can audit from evidence.** Use for work that spans phases or dependent PRs. The plan is the deliverable; do not implement it in this pass.
 
-1. Skip the formal plan when one or two files have an obvious, low-risk approach. Say why and stop.
-2. Settle empirical questions with `playbooks/prototype.md` before writing. Ask the user only for product, risk, cost, or preference choices that evidence cannot settle. A prototype never expands the authorized scope.
+Read [the acceptance contract](../../spec/references/acceptance-contract.md). Reuse the authoritative requirements and carry their identifiers into each unit. Each unit should deliver a narrow, independently observable behavior, including the layers that behavior needs, rather than only a database, API, or UI layer. Name genuine blocking dependencies; work that can proceed independently should not wait merely because it appears later in a list. For broad mechanical migrations that cannot remain valid as independent slices, use expand, migrate, contract and name the integration point where the combined change is verified.
+
+1. For an obvious, low-risk change, return a short plan rather than the full program skeleton. Honor an explicit request for more detail.
+2. Settle empirical questions with `playbooks/prototype.md` only when its execution and scratch writes are authorized. Otherwise describe the needed probe as a blocked decision. Ask the user only for product, risk, cost, or preference choices that evidence cannot settle. A prototype never expands the authorized scope.
 3. Use host collaboration tools for parallel, read-only exploration when available. Give each subagent exact paths and questions; require file pointers, conventions, test commands, and entry points. Batch to current capacity. If collaboration is unavailable, explore sequentially. Do not request a fixed agent type, model, or remote environment.
-4. Copy the skeleton below into the user-named path or `.deepwright/plans/<program-slug>.md`. Fill every placeholder. One section represents one independently verifiable PR or local unit. Name the execution playbook in **How to read this**: `autopilot-full.md`, `autopilot-stack.md`, or `orchestrate.md`.
-5. Invoke `$deepwright:technical-writing`, then `$deepwright:unslop`. The body is a how-to; appendices contain explanation and reference. Use direct headings and concrete file and symbol names.
+4. Adapt the skeleton below in the conversation by default. Write a plan file only when authorized, using the user-named path, the existing project convention, or `.deepwright/plans/<program-slug>.md`. Fill known values and mark missing project details or decisions as blocked rather than inventing paths, commands, or permissions. One section represents one independently verifiable PR or local unit. Name the execution playbook in **How to read this**: `autopilot-full.md`, `autopilot-stack.md`, or `orchestrate.md`. The skeleton describes future execution; its file creation and external-action steps do not run during planning.
+5. Invoke `$deepwright:technical-writing`, then `$deepwright:unslop`. The body is a how-to; appendices contain explanation and reference. Use direct headings and concrete file and symbol names where verified; distinguish current navigation hints from durable behavior requirements.
 6. Validate the plan's headings, links, placeholders, authorization gates, and verification blocks directly against the skeleton below. Do not run a bundled validator unless its documented schema version explicitly matches this risk-based skeleton; an older fixed-lane validator is not authoritative.
-7. Return the plan path and validation result, then stop. Execution begins only after an explicit user request.
+7. Return the plan, its path when a file was authorized, validation result, and unresolved blockers, then stop. Execution begins only after an explicit user request.
 
 **Verification.** Tests alone are not sufficient for behavior-changing work. Every applicable unit, live, and performance block must be checked at the exact head SHA; write `n/a: <reason>` when a dimension truly does not apply. Choose independent lanes by risk and available capacity instead of requiring a fixed count or model. At minimum include gates, the load-bearing behavior, regression against the resolved default branch when comparable, and a receipts-and-diff audit. A blocked live surface is not a pass. Interaction changes require a user review gate before merge unless the user explicitly waives it.
 
@@ -74,6 +76,8 @@ Use an isolated worktree or clean checkout created for the lane. Never switch th
 - [ ] If video or screenshot capture is unavailable, mark the evidence blocked or provide a user-run recipe; never claim an artifact exists.
 
 ## <Task as a verb phrase> (<unit or PR id>)
+
+**Acceptance criteria.** <Identifiers and the observable behavior this unit delivers.>
 
 **Depends on.** <Unit id, or None.>
 
@@ -145,4 +149,4 @@ Use an isolated worktree or clean checkout created for the lane. Never switch th
 <Docs and source paths to read before editing. List invoked skills as `$deepwright:how`, `$deepwright:interrogate`, `$deepwright:swarm`, and `$deepwright:show-me-your-work` where applicable.>
 ````
 
-**Reply:** the plan path, units and dependencies, review-gated set, external-action permissions, prototype evidence, unresolved decisions, and validation result.
+**Reply:** the plan and its path when written, units and dependencies, review-gated set, external-action permissions, prototype evidence, unresolved decisions, and validation result.

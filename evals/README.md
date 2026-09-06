@@ -1,12 +1,14 @@
 # Skill routing evaluations
 
-This is an observer-side regression corpus, not a routing engine or live benchmark runner. `prompts.json` contains 16 ordinary requests; `expected.json` contains observer-only routes, authorization scopes, and required checks. `deepwright/<name>` means a selected playbook, a bare name means a leaf skill, and `none` means no Deepwright workflow. Accepted alternatives are explicit.
+This is an observer-side regression corpus, not a routing engine or live benchmark runner. `prompts.json` contains the ordinary requests; `expected.json` contains observer-only routes, authorization scopes, and required checks. These files are the authoritative case inventory. `deepwright/<name>` means a selected playbook, a bare name means a leaf skill, and `none` means no Deepwright workflow. Accepted alternatives are explicit.
 
 Keep rubrics, receipts, and evaluation instructions outside candidate contexts. The [eval playbook](../plugins/deepwright/skills/deepwright/playbooks/eval.md) governs organic prompts, blinding, independent review, permissions, and evidence collection.
 
 ## Fixtures and self-tests
 
 `fixtures/csv/` contains one deliberately defective source fixture and its neutral contract. Do not repair the committed fixture while testing skills. Copy only its project files into a neutral working directory. It does not supply the distinct parser, performance, checkpoint, and other fixtures required by the entire corpus.
+
+`fixtures/retry/` provides a working fixed-retry helper and two tests of its current behavior. Use a fresh neutral copy for `feature-red-green`, whose prompt defines the requested configurable retry behavior. The initial fixture intentionally lacks that feature. It needs no network, credentials, or dependency installation. Do not copy observer checks, rubric files, or the positive control into the candidate project.
 
 ```sh
 npm run test:evals
@@ -16,6 +18,20 @@ node scripts/verify-skill-evals.mjs --help
 
 Tests use synthetic receipts and temporary evidence. They establish schema, completeness, boundary, integrity, and comparison behavior—not that an agent followed a skill, routed correctly, or became faster.
 
+### Retry acceptance checks
+
+After an authorized candidate run, the observer can exercise the resulting helper:
+
+```sh
+node evals/checks/retry.mjs /absolute/path/to/isolated/project
+```
+
+Unlike the receipt verifier, this command imports and executes candidate code. Run it only inside a disposable, restricted environment without real credentials or access to unrelated data. Enforce a timeout using the execution host; a hang, import failure, or malformed output is not a pass. The checker itself is not a sandbox.
+
+The checks cover preserved defaults, retry limits, invalid values rejected before effects, first-success behavior, synchronous/asynchronous operations, and result/error identity. `scripts/feature-fixture.test.mjs` verifies that the checker rejects the unimplemented baseline and independent faulty variants, and accepts a small reference implementation. That reference tests the checker, not an agent, and stays outside candidate contexts. Keep the candidate's own red/green commands and outputs as separate evidence; passing the observer checks alone cannot prove test-first execution or scope compliance.
+
+For specification-only or review-only cases, honor the prompt's no-write and no-execution limits. The observer must not ask the candidate to run these acceptance checks during such a task. Preserve file snapshots and allowed tool receipts to check the stated boundaries.
+
 ## Collect a real comparison
 
 1. Use two exact Deepwright revisions in fresh, isolated sessions with the same confirmed host version, model, tools, permissions, and per-case fixture snapshots. Check which variant is installed and exclude unintended global rules/plugins without bypassing permissions.
@@ -23,6 +39,8 @@ Tests use synthetic receipts and temporary evidence. They establish schema, comp
 3. Save only explicitly authorized evidence in a separate run directory: route selection, tool receipts, diffs, test output, and reviewer records. Do not search unrelated conversations or application transcript stores. Record unavailable tools and sequential fallbacks honestly.
 4. Have an independent observer inspect the artifacts and fill one receipt for every case. Record unknown or unobserved checks as `false` and explain the uncertainty in the evidence. Never ask a candidate to certify its own compliance.
 5. Retain failures and ambiguous outcomes, repeat fresh paired runs, and report sample sizes and limitations. Report correctness and authorization failures before efficiency. Tooling self-tests and a single paired run do not establish improved automatic triggering or general productivity.
+
+Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. The supplied fixtures still do not cover every case; provide each missing project fixture before claiming a complete behavioral comparison.
 
 ## Score observations
 
@@ -32,7 +50,7 @@ node scripts/score-skill-evals.mjs /absolute/runs/before/observations.json
 
 Exit codes: `0` all observed gates pass; `1` a route, scope, or required check fails; `2` invalid or incomplete input. Unknown, duplicate, and missing case IDs fail, as do extra fields, absent evidence, and non-boolean checks. The scorer always requires the complete corpus.
 
-The example below is intentionally incomplete and cannot pass. Include all 16 cases and use the exact required check names from `expected.json`.
+The example below is intentionally incomplete and cannot pass. Include every case and use the exact required check names from `expected.json`.
 
 ```json
 {
@@ -103,8 +121,8 @@ This context example is intentionally incomplete. Add genuine fixture records fo
   "context": {
     "tools": ["terminal:record-actual-version"],
     "permissions": "Record the actual fixed scope and approval restrictions",
-    "repetition": 1,
-    "fixtures": {"trivial-code": "none", "noncoding": "none"}
+    "fixtures": {"trivial-code": "none", "noncoding": "none"},
+    "repetition": 1
   },
   "metrics": {"wallTimeMs": 42000, "toolCalls": 17}
 }

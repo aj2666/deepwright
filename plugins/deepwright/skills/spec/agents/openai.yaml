@@ -1,0 +1,7 @@
+interface:
+  display_name: "Spec"
+  short_description: "Define buildable behavior and acceptance criteria"
+  brand_color: "#000000"
+  default_prompt: "Use $spec to define the requested behavior and how to verify it."
+policy:
+  allow_implicit_invocation: false

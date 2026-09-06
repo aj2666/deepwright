@@ -1,6 +1,6 @@
 ---
 name: interrogate
-description: "Run independent adversarial reviews of a design or diff. Use for $deepwright:interrogate."
+description: "Run independent adversarial reviews of a design or diff, including requirements coverage. Use for $deepwright:interrogate."
 ---
 
 # Interrogate
@@ -19,30 +19,26 @@ Identify what to review from context:
 - If on a feature branch, derive the repository's actual default or requested base branch and inspect the full changeset against it; never assume `main` or a remote name
 - If the user's message references recent work, gather the relevant files
 
-Package the diff (or file contents) plus any surrounding context files the reviewers need to understand the code.
+Package the diff (or file contents) plus any surrounding context files the reviewers need to understand the code. Pin the base and head revisions. For local work in progress, include relevant staged, unstaged, and untracked changes, and identify the snapshot; a committed-HEAD diff alone can omit the change the user asked to review. A changed snapshot invalidates affected findings and evidence.
 
-## Step 2, State the Intent
+## Step 2, State the Intent and Requirements
 
-Before spawning reviewers, state the intent explicitly. What is this code trying to accomplish? Derive this from:
+State what the change is meant to accomplish. Prefer the user's request and approved specification over an implementer's summary. Read referenced issues or specs when available; do not infer the requirements solely from the code being reviewed. A PR description or commit message can help locate intent but cannot override the user's scope.
 
-- The user's message
-- Commit messages
-- PR description if one exists
-- The code itself
-
-Write one clear paragraph. Reviewers challenge whether the work achieves the intent well, not whether the intent itself is correct. If you're unsure about the intent, ask the user before proceeding.
+Read [the acceptance contract](../spec/references/acceptance-contract.md). Reuse supplied criterion identifiers and requirement sources. For a small change, a short checklist from the request is enough; do not demand a formal specification. If intent is genuinely missing, report that limitation and continue the engineering review; requirements compliance remains blocked rather than inventing a spec. Ask only when a consequential ambiguity cannot be resolved from the available evidence.
 
 ## Step 3, Spawn Reviewers
 
 Read [the shared configuration contract](../deepwright/references/configuration.md) before choosing `parallelism.reviewers` or `roles.review`, including when Interrogate is invoked directly. Follow its validation and explicit-user/project/default precedence. Use the host's collaboration mechanism when available, cap concurrent reviewers to advertised free capacity, and process the remainder in bounded waves. Reviewers are read-only and inherit the parent model unless the host confirms the configured override. Never guess a model slug or retry with a different product's model name. If the host cannot delegate, run one careful local review and disclose the reduced independence.
 
 Read `references/reviewer-prompt.md`, `references/rubric.md`, and `references/code-quality-review.md` before delegating. Embed their relevant contents and the explicit untrusted-evidence/no-write contract directly in every reviewer brief; do not expect workers to resolve plugin-relative paths. Fill the template with:
-1. The stated intent
-2. The diff or file contents
+1. The stated intent and the authoritative requirement source
+2. The diff or file contents and the reviewed revisions or snapshot
 3. The review rubric
 4. The code-quality lens
+5. The acceptance contract, criterion list, and existing verification receipts
 
-The same filled template goes to all reviewers, so every reviewer applies the code-quality lens.
+The same filled template goes to all reviewers. Each applies correctness, engineering-quality, and requirements-coverage lenses. Keep these dimensions visible; clean code can implement the wrong requirement. Reviewers inspect existing evidence rather than run tests that may write files or contact services under a read-only review.
 
 Each reviewer produces structured findings as described in the prompt template. Track reviewers by stable labels such as `Reviewer A`; include a model name only when the host explicitly confirms it.
 
@@ -55,6 +51,8 @@ As results come back, build a unified picture:
 3. **Identify lone-reviewer findings**. Still worth checking, but weight them accordingly.
 4. **Deduplicate**. Reviewers may describe the same issue differently. Merge these and note which reviewers raised it.
 5. **Note disagreements**. Opposing findings are useful context for the verdict.
+
+Reconcile criterion coverage separately from finding counts. Every criterion must retain its evidence state and source. Report missing or partial behavior and unrequested scope separately from style and design concerns. Agreement without matching evidence is not proof.
 
 ## Step 5, Lead Judgment
 
@@ -76,25 +74,36 @@ For each finding, include:
 
 ## Output Format
 
-Present the verdict in this structure:
+Present the verdict in this structure, omitting empty finding sections rather than padding them:
 
 ### Intent
-> [The stated intent paragraph from Step 2]
+
+The intended outcome, requirement sources, and exact reviewed revisions or working-tree snapshot.
+
+### Acceptance Coverage
+
+For each criterion: identifier, proved / failed / blocked / not applicable, matching evidence, and any limitation. Explain why a criterion is not applicable; absent evidence is blocked. If no authoritative requirement source is available, say so. A requirements gap cannot be dismissed merely because all tooling checks passed.
 
 ### Reviewers
-- Reviewer [label]: [confirmed model name when available], [N findings] (one bullet per reviewer)
+
+Reviewer labels, available independence, and finding counts. No invented model names.
 
 ### Act On
-[Findings that should be addressed. For each: description, which reviewers raised it, why it matters.]
+
+Findings that should be addressed, the reviewers who raised them, and why they matter.
 
 ### Consider
-[Findings worth thinking about. For each: description, which reviewers raised it, tradeoff involved.]
+
+Legitimate tradeoffs needing attention.
 
 ### Noted
-[Valid but low-priority. Brief list.]
+
+Valid but low-priority observations.
 
 ### Dismissed
-[Rejected findings with brief rationale. This shows the user what was filtered out and why, so they can override your judgment if they disagree.]
+
+Rejected findings with brief rationale so the user can challenge the judgment.
 
 ### Agreement Map
-[Where did reviewers agree, where did they diverge, and what does the pattern of agreement/disagreement tell us?]
+
+Where reviewers agreed or diverged, what the evidence supports, and unresolved verification gaps.
