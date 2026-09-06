@@ -1,0 +1,2 @@
+# Base Tier 1 only: no LLM clients, paid providers, or live-agent runner.
+skillevaluator @ git+https://github.com/NVIDIA/SkillEvaluator.git@73b27dad60d3927e202ea6099ce79bb25053fd2b

@@ -112,7 +112,7 @@ npm ci --prefix plugins/deepwright/skills/deepwright/scripts
 npm test
 ```
 
-CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, package/documentation validation, and real Codex CLI installation on Linux and macOS. Desktop interaction and live-agent behavior require separate manual checks; passing tooling tests does not establish improved model routing or productivity.
+CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. Desktop interaction and live-agent behavior require separate manual checks; passing tooling tests does not establish improved model routing or productivity.
 
 See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 

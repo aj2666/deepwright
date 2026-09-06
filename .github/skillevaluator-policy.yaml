@@ -1,0 +1,6 @@
+profile: deepwright
+severity_overrides:
+  # Authorship is maintained in the plugin manifest and distribution notices.
+  # Do not invent or duplicate author emails in every skill. A supplied author
+  # still has to satisfy the upstream format check.
+  SCHEMA.author_missing: medium

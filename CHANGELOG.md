@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add pinned NVIDIA SkillEvaluator static checks and per-skill CI reports, with a documented attribution policy and real positive/negative gate tests. Keep live evaluations separate from static quality scores.
 - Scale Feature design, planning, delegation, and review to the change; keep small developer tasks direct while preserving acceptance checks and authorization boundaries.
 - Close retry-observer false passes for asynchronous default retries and non-Error rejection identity, with failing-before regression controls.
 

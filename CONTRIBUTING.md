@@ -22,6 +22,42 @@ npm test
 
 Keep tests and fixtures when pruning documentation. The CSV evaluation fixture is intentionally defective; its neutral contract remains beside it. Offline scorer/verifier tests check the tooling, not actual model behavior. Use the [evaluation protocol](evals/README.md) for live comparisons.
 
+## Static skill checks
+
+CI also runs the base installation of [NVIDIA SkillEvaluator](https://github.com/NVIDIA/SkillEvaluator) on all 47 bundled skills. Its source revision and Python dependencies are pinned in [.github/requirements/skillevaluator.txt](.github/requirements/skillevaluator.txt). This separate job runs without provider credentials or live-agent execution, preserves per-skill JSON/Markdown reports in the `skillevaluator-reports` artifact, and gates the release job alongside the existing checks.
+
+| Check | What it contributes |
+| --- | --- |
+| Schema | Frontmatter, naming, structure, and instruction-body checks |
+| PII | Pattern-based sensitive-data checks on supported text files |
+| License | Detected per-skill license declarations; absent declarations remain warnings |
+| Unicode | Hidden or suspicious Unicode payload detection on supported files |
+| Quality | Heuristic scores for correctness, discoverability, reliability, and efficiency; minimum 70 per skill |
+| Lint | Advisory Python script checks; our Node and shell checks remain necessary |
+
+The [policy overlay](.github/skillevaluator-policy.yaml) makes only missing per-skill author metadata advisory: the plugin manifest and distribution notices own attribution. Supplied author values still undergo format validation. Keep package license validation: SkillEvaluator does not establish that every skill inherits the correct plugin license. Its scores are editing signals, not measurements of agent usefulness; do not add boilerplate sections or invented metadata merely to raise them.
+
+To reproduce the CI gate, use Python 3.13 in an isolated environment outside the checkout:
+
+```sh
+python3.13 -m venv /tmp/deepwright-skill-check-env
+/tmp/deepwright-skill-check-env/bin/python -m pip install -r .github/requirements/skillevaluator.txt
+PATH="/tmp/deepwright-skill-check-env/bin:$PATH" npm run check:skills
+PATH="/tmp/deepwright-skill-check-env/bin:$PATH" python3 -m unittest discover -s scripts -p test_skillevaluator.py
+```
+
+Each default run creates a fresh report directory under the system temporary directory and prints its path. To inspect one skill or choose an output location, pass the target and a new directory:
+
+```sh
+PATH="/tmp/deepwright-skill-check-env/bin:$PATH" npm run check:skills -- plugins/deepwright/skills/spec /tmp/deepwright-spec-report
+```
+
+The integration tests run the real evaluator against valid and defective fixtures, including malformed frontmatter, hidden Unicode, excessive instruction context, an empty catalog, and a mixed passing/failing catalog. Nonzero exits remain failures; reports from earlier runs are never reused.
+
+For dependency updates, change the reviewed upstream commit in [.github/requirements/skillevaluator.in](.github/requirements/skillevaluator.in), regenerate the lock with `uv pip compile --python 3.13 .github/requirements/skillevaluator.in --output-file .github/requirements/skillevaluator.txt`, then rerun both the fixtures and the full catalog. Review score and policy changes before raising the threshold.
+
+The enabled subset excludes the external security scanners, LLM rubric scoring, semantic overlap, and live evaluation. A later live pilot needs reviewed tasks, confirmed plugin invocation and sibling-skill access, a restricted execution environment, and explicit provider/runtime configuration. Do not treat standalone skill staging as proof that Deepwright's plugin-qualified invocations work. See the [evaluation protocol](evals/README.md) for the independent behavioral evidence still required.
+
 ## Manual release checks
 
 Automated CLI installation does not exercise the desktop UI, confirm model availability, or prove skill activation in another session.
