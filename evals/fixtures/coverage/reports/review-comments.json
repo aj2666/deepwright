@@ -1,0 +1,7 @@
+{
+  "source": "supplied review-comment export",
+  "returned": 1,
+  "total": 40,
+  "nextCursor": "page-2",
+  "items": [{"id": 1, "body": "The numeric type guard reads clearly."}]
+}

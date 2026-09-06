@@ -82,6 +82,8 @@ Require a compact return: query performed, result or null result, source pointer
 
 ## 4. Verify and synthesize
 
+When plausible explanations compete, read [testing an explanation](../deepwright/references/investigation-evidence.md). Identify the next record that could distinguish them before extending the search; if no authorized source can answer, preserve the uncertainty. Embed the relevant guidance when delegating that synthesis.
+
 Check that every citation resolves and supports the sentence attached to it. Show contradictions instead of resolving them by instinct. Separate:
 
 - **Direct:** a source explicitly states the reason.

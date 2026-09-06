@@ -1,0 +1,7 @@
+{
+  "command": "search for TODO in number.mjs",
+  "exitCode": 0,
+  "pathsInspected": ["number.mjs"],
+  "matches": [],
+  "complete": true
+}

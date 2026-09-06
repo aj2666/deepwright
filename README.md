@@ -99,6 +99,10 @@ Small additions can use direct implementation and a local final review. Architec
 
 The [acceptance contract](plugins/deepwright/skills/spec/references/acceptance-contract.md) distinguishes proved, failed, blocked, and not-applicable criteria. Missing evidence remains blocked. A green test suite or an implementer's claim does not prove every requirement, and a read-only review does not run tests that may write files or contact services.
 
+For uncertain investigations, How and Why compare plausible explanations using the next observation that could distinguish them. They trace repeated claims to their original source and stop when another check would not change the answer. [Investigation guidance](plugins/deepwright/skills/deepwright/references/investigation-evidence.md) keeps this extra work conditional on a material uncertainty.
+
+Reviews and handoffs retain [evidence coverage](plugins/deepwright/skills/deepwright/references/evidence-coverage.md): complete, partial, unavailable, not run, or error. For longer authorized tasks, an optional [run evidence helper](plugins/deepwright/skills/deepwright/references/run-evidence.md) preserves selected historical files and carries a fixed attempt allowance and deadline across resumes. It records bookkeeping; host permissions and execution limits remain the host's responsibility.
+
 ## Optional configuration
 
 Deepwright works without configuration. Use `$deepwright:setup-deepwright` to inspect preferences or explicitly request changes to `.codex/deepwright.toml`. It never edits Codex's main configuration.
@@ -112,7 +116,7 @@ npm ci --prefix plugins/deepwright/skills/deepwright/scripts
 npm test
 ```
 
-CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. Desktop interaction and live-agent behavior require separate manual checks; passing tooling tests does not establish improved model routing or productivity.
+CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 26 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
 
 See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 

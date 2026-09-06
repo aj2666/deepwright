@@ -50,8 +50,14 @@ Exit codes are `0` success, `1` read/validation failure, and `64` usage error. M
 
 Status reports local plugin metadata, not active-session state. Model availability, MCP connections and actual implicit invocation cannot be observed by this standalone process. Use `doctor` for environment checks and a harmless fresh-session invocation for host-level verification. Neither output grants authorization or changes the user's task scope.
 
+## Optional run evidence
+
+For tasks that need historical evidence and a remaining work allowance across resumes, the separate dependency-free `plugins/deepwright/skills/deepwright/scripts/run-evidence.mjs` supports `init`, `claim`, `record`, and `status`. Invoke it with Node and explicit paths. `status` is read-only; the other commands write a dedicated run directory. This is separate from the discovery helper's read-only commands.
+
+The [run evidence reference](../plugins/deepwright/skills/deepwright/references/run-evidence.md) provides the JSON schemas and complete command examples. A run keeps one fixed attempt limit and deadline, preserves selected files by content hash, and refuses inconsistent history. Claim an attempt before beginning the agreed iteration; checkpoints can still record unfinished work after exhaustion. The helper does not launch agents or enforce host token, cost, permission, or running-process limits.
+
 ## Maintenance
 
 Edit `SKILL.md` and `agents/openai.yaml` as the source of truth. Discovery reads their current values. Keep their supported one-line metadata shape; malformed or unsupported metadata fails clearly rather than silently inventing catalog entries. Playbook browsing validates the router table against its actual files. The catalog does not read every playbook body or inject all skills into model context. Config defaults live in the shared runtime module and are checked against the human-readable contract.
 
-Run `npm run test:tools`, `npm run test:evals`, and `npm run validate` after changes. Commit rebuilt helper bundles using the existing build workflow. See [manual release checks](../CONTRIBUTING.md#manual-release-checks) for the CLI, desktop and fallback verification boundaries.
+Run `npm test` after changes. Commit rebuilt helper bundles using the existing build workflow. See [manual release checks](../CONTRIBUTING.md#manual-release-checks) for the CLI, desktop and fallback verification boundaries.

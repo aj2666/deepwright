@@ -36,6 +36,12 @@ Read the files listed above. Use the explanation as a map, but form your own opi
 
 Find architectural problems, not line-level bugs or style issues. Ask whether this subsystem is built well for what it needs to do and how it will need to evolve.
 
+When a disputed explanation or recommendation is supplied, test its strongest
+plausible alternative against the original evidence. Identify a concrete
+observation that distinguishes them, or say why the available evidence cannot.
+Do not treat several summaries of the same source as independent confirmation or
+invent an objection merely to fill the critique.
+
 For each finding:
 
 1. **Severity**: `structural` | `concern` | `observation`

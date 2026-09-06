@@ -25,6 +25,10 @@ Phrasing: confident, present tense. "This exists because X." Cite the source.
 
 Multiple pieces of indirect evidence converge. No single source states it explicitly, but the pattern across sources makes it likely.
 
+Check their origins before counting them as corroboration. A ticket copying a PR
+description and a later summary citing that ticket repeat one account; they do
+not independently strengthen it. State what each distinct observation adds.
+
 Examples:
 - The PR title says "improve performance," the ticket is labeled "perf," and the surrounding commits all touch the same hot path
 - Multiple tests were added alongside the change, all exercising edge cases with very large inputs

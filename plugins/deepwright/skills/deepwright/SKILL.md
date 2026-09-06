@@ -2,6 +2,8 @@
 name: deepwright
 description: "Route repository investigations, specifications, feature work, fixes, reviews, and refactors through verified playbooks. Use for Owl tasks; not greetings or syntax questions."
 license: MIT
+metadata:
+  tags: [codex, engineering, verification, orchestration, workflow]
 ---
 
 # Deepwright
@@ -30,6 +32,8 @@ Use the Specification playbook when the deliverable is requirements or acceptanc
 8. Hand back the result, evidence, tradeoffs, and remaining risks in plain language.
 
 Scale the selected playbook to the task. Do not create interviews, architecture exercises, delegation, or checkpoint files for a small change that follows an established pattern. Explain omitted verification or a material evidence limitation; optional steps do not need a ceremonial skip list. Preserve authorization boundaries and responsibility for the final result.
+
+For a materially uncertain explanation, use [investigation evidence](references/investigation-evidence.md) to choose the observation that can distinguish plausible causes. In reviews and handoffs, use [evidence coverage](references/evidence-coverage.md) to keep incomplete checks visible. These references apply when the selected task needs them, not to every request.
 
 ## Authorization and safety
 
@@ -145,6 +149,7 @@ Resolve helpers from this skill directory and run project-sensitive commands fro
 | `scripts/deepwright` | Check runtime/layout, discover workflows, inspect project settings | `doctor --json`, `skills review --compact`, `config check` |
 | `scripts/orch/orch` | Track authorized coordination state | `--help` before selecting a state-changing command |
 | `scripts/watch-pr/watch-pr` | Observe PR checks and review status through authenticated GitHub access | `--help` to select the actual PR and watch limits |
+| `scripts/run-evidence.mjs` | Preserve selected evidence and a fixed attempt allowance across resumes | `node scripts/run-evidence.mjs --help`; read the [run record contract](references/run-evidence.md) before writing |
 
 Run `scripts/deepwright doctor` before relying on a helper. `status` reports local discovery/configuration validity; it does not verify another session's activation, model availability, or MCP connections.
 

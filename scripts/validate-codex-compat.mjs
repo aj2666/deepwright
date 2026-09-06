@@ -5,6 +5,7 @@ import { constants } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { loadCatalog } from "../plugins/deepwright/skills/deepwright/scripts/discovery/metadata.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pluginRoot = path.join(repoRoot, "plugins", "deepwright");
@@ -116,35 +117,19 @@ const skillDirs = (await readdir(skillsRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort();
+// Use the same parser and catalog invariants as the bundled discovery CLI.
+// Release-only interface, licensing, executable, and documentation checks follow.
+try {
+  await loadCatalog(pluginRoot);
+} catch (error) {
+  fail(error instanceof Error ? error.message : String(error));
+}
 for (const directory of skillDirs) {
-  const skillPath = path.join(skillsRoot, directory, "SKILL.md");
-  if (!(await exists(skillPath))) {
-    fail(`${directory} has no SKILL.md`);
-    continue;
-  }
-  const source = await readFile(skillPath, "utf8");
-  const match = source.match(/^---\n([\s\S]*?)\n---\n/);
-  if (!match) {
-    fail(`${directory}/SKILL.md has invalid frontmatter`);
-    continue;
-  }
-  const name = scalar(match[1], "name");
-  const description = scalar(match[1], "description");
-  if (name !== directory) fail(`${directory}/SKILL.md name is ${name ?? "missing"}`);
-  if (!description) fail(`${directory}/SKILL.md has no description`);
-  if (description && description.length > 1024) fail(`${directory}/SKILL.md description is too long`);
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name ?? "")) fail(`${directory} has an invalid skill name`);
-  if (`deepwright:${name}`.length > 64) fail(`deepwright:${name} exceeds 64 characters`);
-
   const policyPath = path.join(skillsRoot, directory, "agents", "openai.yaml");
   if (!(await exists(policyPath))) {
     fail(`${directory} has no agents/openai.yaml`);
   } else {
-    const policy = await readFile(policyPath, "utf8");
-    const expected = directory === "deepwright" ? "true" : "false";
-    if (!policy.includes(`allow_implicit_invocation: ${expected}`)) {
-      fail(`${directory} implicit invocation must be ${expected}`);
-    }
+    const policy = (await readFile(policyPath, "utf8")).replace(/\r\n/g, "\n");
     const flatPolicy = policy.replace(/^\s+/gm, "");
     const displayName = scalar(flatPolicy, "display_name");
     const shortDescription = scalar(flatPolicy, "short_description");
