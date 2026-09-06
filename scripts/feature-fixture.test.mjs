@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const fixture = fileURLToPath(new URL("../evals/fixtures/retry/", import.meta.url));
 const checks = fileURLToPath(new URL("../evals/checks/retry.mjs", import.meta.url));
-const expectedCheckCount = 43;
+const expectedCheckCount = 47;
 function run(project) {
   const result = spawnSync(process.execPath, [checks, project], {
     encoding: "utf8", timeout: 15_000, maxBuffer: 1024 * 1024,
@@ -60,7 +60,7 @@ test("baseline fixture fails the requested feature without failing its existing 
   const report = readReport(run(fixture));
   assert.equal(report.ok, false);
   const defaults = report.results.filter((entry) => /omitted options|empty options/.test(entry.name));
-  assert.equal(defaults.length, 2);
+  assert.equal(defaults.length, 4);
   assert.ok(defaults.every((entry) => entry.pass));
   const invalid = report.results.filter((entry) => entry.name.startsWith("rejects invalid"));
   assert.equal(invalid.length, 15);
@@ -86,6 +86,8 @@ const mutants = [
   ["rejected valid middle limits", reference.replace("maxRetries > 5", "maxRetries > 5 || maxRetries === 3 || maxRetries === 4"), /maxRetries=[34]/],
   ["missing await", reference.replace("return await operation(attempt);", "return operation(attempt);"), /async/],
   ["truthy retry default", reference.replace("  if (!Number", "  maxRetries = maxRetries || 2;\n  if (!Number"), /maxRetries=0/],
+  ["normalized non-Error rejection", reference.replace("throw error;", 'throw error instanceof Error ? error : new Error("normalized");'), /non-Error/],
+  ["missing await for default retries", reference.replace("return await operation(attempt);", "return arguments.length < 2 || arguments[1].maxRetries === undefined ? operation(attempt) : await operation(attempt);"), /options.*async/],
 ];
 for (const [name, source, failingCheck] of mutants) {
   test(`observer rejects ${name} for a matching behavioral failure`, async (t) => {

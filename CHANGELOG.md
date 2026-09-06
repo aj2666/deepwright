@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Scale Feature design, planning, delegation, and review to the change; keep small developer tasks direct while preserving acceptance checks and authorization boundaries.
+- Close retry-observer false passes for asynchronous default retries and non-Error rejection identity, with failing-before regression controls.
+
 - Add Spec and a specification-only route that preserve settled decisions, identify consequential ambiguity, and draft in the conversation unless file output is authorized.
 - Share acceptance criteria and evidence states across specification, feature implementation, TDD, planning, and requirements-aware Interrogate review.
 - Extend TDD to feature development with behavioral slices, independent expected results, compatibility checks, and explicit verification gaps.

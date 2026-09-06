@@ -85,6 +85,18 @@ Use `$deepwright:spec` to turn an idea or existing conversation into acceptance 
 
 For an authorized feature build, Owl carries those same criteria through design, behavioral test slices, real-surface verification, and final requirements-aware review. A small, clear change needs a short checklist, not a formal spec or repeated interview. Multi-phase plans tie each unit to observable behavior and genuine dependencies; planning alone does not publish tickets or start the build.
 
+Start with the outcome you need. For example, in a Codex CLI prompt:
+
+```text
+$deepwright:deepwright add a case-insensitive name filter to this list using the existing UI pattern. Keep current behavior when the filter is empty, add a focused regression check, and work locally.
+```
+
+```text
+$deepwright:interrogate review my current changes against the requested behavior. Include uncommitted files, identify actionable defects, and explain what the available test evidence establishes. Do not edit or post comments.
+```
+
+Small additions can use direct implementation and a local final review. Architecture exploration and multiple workers are reserved for changes that benefit from them; acceptance checks still apply.
+
 The [acceptance contract](plugins/deepwright/skills/spec/references/acceptance-contract.md) distinguishes proved, failed, blocked, and not-applicable criteria. Missing evidence remains blocked. A green test suite or an implementer's claim does not prove every requirement, and a read-only review does not run tests that may write files or contact services.
 
 ## Optional configuration

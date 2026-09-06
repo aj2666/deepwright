@@ -11,16 +11,19 @@ assert.equal(typeof request, "function", "request must remain a public function"
 const cases = [];
 function check(name, run) { cases.push({ name, run }); }
 
-for (const [name, args] of [["omitted options", []], ["empty options", [{}]]]) {
-  check(`${name} preserve two retries and final-error identity`, async () => {
-    const attempts = [];
-    const errors = [new Error("first"), new Error("second"), new Error("final")];
-    await assert.rejects(request((attempt) => {
-      attempts.push(attempt);
-      throw errors[attempt];
-    }, ...args), (error) => error === errors[2]);
-    assert.deepEqual(attempts, [0, 1, 2]);
-  });
+for (const asynchronous of [false, true]) {
+  for (const [name, args] of [["omitted options", []], ["empty options", [{}]]]) {
+    check(`${name} preserve two retries and final-error identity (${asynchronous ? "async" : "sync"})`, async () => {
+      const attempts = [];
+      const errors = [new Error("first"), new Error("second"), new Error("final")];
+      const operation = (attempt) => {
+        attempts.push(attempt);
+        throw errors[attempt];
+      };
+      await assert.rejects(request(asynchronous ? async (attempt) => operation(attempt) : operation, ...args), (error) => error === errors[2]);
+      assert.deepEqual(attempts, [0, 1, 2]);
+    });
+  }
 }
 
 // These literal sequences describe the allowed contract, not a candidate's algorithm.
@@ -30,6 +33,19 @@ const limits = [
 ];
 for (const asynchronous of [false, true]) {
   const mode = asynchronous ? "async" : "sync";
+  check(`preserves non-Error final rejections (${mode})`, async () => {
+    for (const value of [undefined, null, false, 0, -0, "", NaN, 42, "failure", 0n, Symbol("failure"), {}]) {
+      const attempts = [];
+      const operation = (attempt) => {
+        attempts.push(attempt);
+        if (attempt < 2) throw new Error("transient");
+        throw value;
+      };
+      const run = asynchronous ? async (attempt) => operation(attempt) : operation;
+      await assert.rejects(request(run, { maxRetries: 2 }), (error) => Object.is(error, value));
+      assert.deepEqual(attempts, [0, 1, 2]);
+    }
+  });
   for (const [maxRetries, expectedAttempts] of limits) {
     check(`maxRetries=${maxRetries} bounds attempts and preserves the final error (${mode})`, async () => {
       const attempts = [];

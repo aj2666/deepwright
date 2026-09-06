@@ -28,7 +28,7 @@ Use the Specification playbook when the deliverable is requirements or acceptanc
 7. Verify the real artifact, not only a proxy such as compilation or self-report.
 8. Hand back the result, evidence, tradeoffs, and remaining risks in plain language.
 
-For a skipped playbook step, keep the step visible and state the concrete reason. Do not silently drop verification, safety, or ownership steps.
+Scale the selected playbook to the task. Do not create interviews, architecture exercises, delegation, or checkpoint files for a small change that follows an established pattern. Explain omitted verification or a material evidence limitation; optional steps do not need a ceremonial skip list. Preserve authorization boundaries and responsibility for the final result.
 
 ## Authorization and safety
 
