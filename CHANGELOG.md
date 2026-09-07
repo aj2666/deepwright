@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Add a conditional completion-order check to Bug fix for older asynchronous work that can publish into newer shared or visible state.
 - Add conditional product-interface and service/data guidance to Feature, Architect, and Interrogate: keyboard and focus behavior, composed loading/failure/retry states, responsive layout, authorization, durable success, concurrency, and compatibility. Expand terminal discovery for these existing workflows.
 - Resolve newly authored capabilities through their owning plugin manifest, including nonstandard skill roots, and preserve the existing router and catalog during Reflect improvements.
 - Make the run-evidence command perform its operation through preserved symlink aliases while keeping eval, print, stdin, and module imports inert.
