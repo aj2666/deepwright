@@ -101,6 +101,39 @@ test("package validation and shipped CLI agree without installed dependencies", 
   ]);
 });
 
+test("release validation leaves retained root run evidence outside authored documentation checks", async (t) => {
+  const context = await fixture(t);
+  const evidence = join(context.root, ".deepwright", "runs", "review", "upstream", "source.md");
+  const source = "# Retained external evidence\n\n[Absent upstream file](missing-upstream.md)\n\nThe quoted source invokes $alpha.\n";
+  await put(evidence, source);
+  const result = run(context.root, validatorPath);
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /Documentation validation passed/);
+  assert.equal(await readFile(evidence, "utf8"), source);
+});
+
+for (const relative of [
+  "docs/new-untracked.md",
+  ".deepwright/plans/plan.md",
+  ".deepwright/runs-archive/source.md",
+  "docs/.deepwright/runs/guide.md",
+  pluginPath + "/.deepwright/runs/guide.md",
+  "docs/ignored-by-git/guide.md",
+]) {
+  test(`release validation still checks authored documentation at ${relative}`, async (t) => {
+    const context = await fixture(t);
+    await put(join(context.root, ".gitignore"), "docs/ignored-by-git/\n");
+    const document = join(context.root, relative);
+    await put(document, "# Authored documentation\n\n[Required contract](missing-authored-target.md)\n");
+    const broken = run(context.root, validatorPath);
+    assert.equal(broken.status, 1, broken.stdout + broken.stderr);
+    assert.ok(broken.stderr.includes(`${relative} has a broken link: missing-authored-target.md`), broken.stderr);
+    await put(join(dirname(document), "missing-authored-target.md"), "# Supplied contract\n");
+    const repaired = run(context.root, validatorPath);
+    assert.equal(repaired.status, 0, repaired.stdout + repaired.stderr);
+  });
+}
+
 const metadataViolations = [
   ["duplicate name", "---\nname: alpha\nname: alpha\ndescription: Valid text\n---\n", /one.*name field/],
   ["mismatched name", frontmatter("different"), /name must match/],

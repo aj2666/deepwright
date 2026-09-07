@@ -38,6 +38,8 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 When work crosses a serialized boundary or splits provider and consumer ownership, read [the shared-boundary contract](references/shared-boundary-contract.md). Include its authoritative artifact, dependent owners, and compatibility checks in the sketch and implementation briefs.
 
+When the design changes service access or persisted data, select the relevant invariants from [service and data work](../deepwright/references/service-data.md). Carry the enforcement point, atomic boundary, and applicable migration or recovery check into the sketch; a design-only request describes those checks without running them.
+
 Run `$deepwright:arena` with the design-sketch task and the Phase A grounding artifacts. Before delegating, read `references/runner-prompt.md` and `references/rationale-template.md` from this skill. Embed their relevant content plus the task and grounding directly in every runner brief; do not expect a delegated worker to resolve plugin-relative paths from the target repository. Each candidate produces a design package shaped by the supplied rationale template: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
 
 Apply [the configuration contract](../deepwright/references/configuration.md) to `parallelism.design_candidates` and `roles.code`: explicit task requirements precede valid project preferences, then defaults. Preserve the two-design minimum below even if the preference is one, using sequential candidates when capacity requires it. Inherit the parent model unless the host confirms the configured exact identifier. Independent structures matter more than invented model diversity.

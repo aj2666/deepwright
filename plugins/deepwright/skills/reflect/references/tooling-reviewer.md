@@ -52,10 +52,14 @@ target a visible skill that should clearly have activated; route it as
 `tune description: <skill path>`. Drop speculative changes to skills outside the
 task.
 
-Use the skill path supplied in the inventory. New repository skills belong at
-`.agents/skills/<skill-name>/`; personal skills belong at
-`$HOME/.agents/skills/<skill-name>/` only when the user explicitly requests
-personal scope.
+Use the skill path supplied in the inventory and resolve proposed destinations
+from the named catalog and its package metadata. Keep existing skills in place;
+route new distributed plugin skills to the manifest-declared skills directory,
+preserving invocation names, UI metadata, and callers. For a requested
+project-local addition, follow the existing convention or
+`.agents/skills/<skill-name>/`. Propose `$HOME/.agents/skills/<skill-name>/` only
+for an explicitly requested personal installation; catalog maintenance never
+implies global installation.
 
 Return up to five durable learnings, only when supported by evidence. An empty
 review is valid; do not invent findings to meet a quota. For each include:

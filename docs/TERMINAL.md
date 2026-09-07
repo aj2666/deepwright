@@ -14,6 +14,9 @@ In the examples below, `deepwright` means the executable at `plugins/deepwright/
 | `deepwright skills review` | Metadata search; not semantic task routing |
 | `deepwright skills "design review" --compact` | One-line results matching all words across metadata fields |
 | `deepwright playbooks performance` | Request shapes and canonical paths from the existing router table |
+| `deepwright playbooks accessibility` | Feature workflow with conditional product-interface guidance |
+| `deepwright playbooks backend` | Feature workflow with conditional API and persisted-data guidance |
+| `deepwright skills security --compact` | Focused Interrogate review entry point |
 | `deepwright skill interrogate` | Summary, canonical file, invocation and policy |
 | `deepwright invoke interrogate` | Codex CLI token and desktop picker guidance |
 | `deepwright invoke deepwright --host agents` | Opt-in AGENTS.md pointer text |

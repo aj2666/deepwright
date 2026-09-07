@@ -6,7 +6,7 @@ Keep rubrics, receipts, and evaluation instructions outside candidate contexts. 
 
 ## Fixtures and self-tests
 
-All 34 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
+All 39 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:
 
 ```sh
 node scripts/prepare-skill-eval.mjs list
@@ -37,6 +37,10 @@ The destination's parent must exist. Preparation refuses an existing destination
 | `batch-import` | Original batch-size rationale, later derivative claims, and a separate concurrency change |
 | `retry-review` | Uncommitted retry options over the `retry` base, with an author report and saved source from the earlier implementation |
 | `shipping-context` | Reviewed and current base/head source snapshots for a checkout change whose stable patch ID stays the same |
+| `reading-list` | Browser list and real HTTP/filesystem service awaiting a form/save feature, with failure recovery and concurrent persistence requirements |
+| `cache` + `cache-update` | Uncommitted item-editing overlay whose cache invalidation races an awaited save; deterministic HTTP interleaving checks |
+| `service-review` | Resource-ownership and false-success defects alongside intentional preview cancellation and public metadata |
+| `plugin-authoring` | A named plugin with a manifest-owned `workflows/` directory, scoped save-flow incident, and existing skill/application to preserve |
 
 These projects require no credentials, dependency installation, or external service. Use host-enforced bounds when executing candidates: the hanging-process fixture intentionally needs termination, and candidate code may hang. Search timings are informational; compare identical workloads and verify responses without a flaky CI speed threshold.
 
@@ -62,6 +66,8 @@ After an authorized candidate run, the observer can exercise the resulting helpe
 node evals/checks/retry.mjs /absolute/path/to/isolated/project
 node evals/checks/parser.mjs /absolute/path/to/isolated/project
 node evals/checks/csv.mjs /absolute/path/to/isolated/project
+node evals/checks/reading-list.mjs /absolute/path/to/isolated/project /absolute/path/to/isolated/scratch
+node evals/checks/cache-update.mjs /absolute/path/to/isolated/project
 ```
 
 Unlike the receipt verifier, this command imports and executes candidate code. Run it only inside a disposable, restricted environment without real credentials or access to unrelated data. Enforce a timeout using the execution host; a hang, import failure, or malformed output is not a pass. The checker itself is not a sandbox.
@@ -69,6 +75,12 @@ Unlike the receipt verifier, this command imports and executes candidate code. R
 The checks cover preserved defaults, retry limits, invalid values rejected before effects, first-success behavior, synchronous/asynchronous operations, and result/error identity. `scripts/feature-fixture.test.mjs` verifies that the checker rejects the unimplemented baseline and independent faulty variants, and accepts a small reference implementation. That reference tests the checker, not an agent, and stays outside candidate contexts. Keep the candidate's own red/green commands and outputs as separate evidence; passing the observer checks alone cannot prove test-first execution or scope compliance.
 
 The parser and CSV observers cover empty-input/field behavior and compatible nonempty values. Their self-tests accept independently implemented correct solutions and reject distinct faulty variants. Additional fixture self-tests verify the retained-handle diagnosis, request path, configuration, deterministic search output, working-directory failure, and unfinished checkpoint. Observer imports and control implementations remain outside candidate projects.
+
+The reading-list observer launches the actual loopback HTTP server against disposable JSON storage. It checks validation before mutation, server-owned identity, preservation of existing data, concurrent additions, process restart, a real filesystem failure, and recovery. Its optional scratch parent must be writable inside the execution boundary. These service checks do not establish browser behavior: separately exercise the form by keyboard, pending duplicate prevention, failure feedback with retained input, retry, reload, and narrow/wide layouts. A delayed request may control timing while still continuing to the real service; label that intervention and keep real storage-failure evidence.
+
+The cache-update observer holds an actual save while requests pass through the HTTP server, router, item service, cache, and store. A read during that save exposes early invalidation; the first read after an acknowledged update must be fresh. It also checks rejected/failed updates and inherited behavior. The fixture uses an in-memory store; it does not establish durable storage, arbitrary overlapping writes, or every possible interleaving.
+
+The service-review fixture supplies an explicit access and success contract plus intentional cancellation/public metadata controls. Its ground-truth tests belong to the observer; no-command candidates receive only the allowed source and skill material. The authoring fixture declares `workflows/` in its plugin manifest. Check that the generated capability lands in that owning root, resolves its references and metadata, preserves the existing skill/application, and receives a fresh forward task. The proposal-only case must leave the project unchanged despite the older approval in its supplied record.
 
 For specification-only or review-only cases, honor the prompt's no-write and no-execution limits. The observer must not ask the candidate to run these acceptance checks during such a task. Preserve file snapshots and allowed tool receipts to check the stated boundaries.
 
@@ -80,7 +92,7 @@ For specification-only or review-only cases, honor the prompt's no-write and no-
 4. Have an independent observer inspect the artifacts and fill one receipt for every case. Record unknown or unobserved checks as `false` and explain the uncertainty in the evidence. Never ask a candidate to certify its own compliance.
 5. Retain failures and ambiguous outcomes, repeat fresh paired runs, and report sample sizes and limitations. Report correctness and authorization failures before efficiency. Tooling self-tests and a single paired run do not establish improved automatic triggering or general productivity.
 
-Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 34 agent tasks were executed.
+Use the same observer-side corpus and fixture versions for both arms. Expanding the corpus changes its fingerprint: receipts from the old case set are not comparable to new ones. Preserve the baseline plugin revision unchanged and rerun it against the shared corpus rather than injecting candidate skills into it. A newly added explicit skill may be unavailable in the baseline; record that limitation instead of treating it as a successful invocation. A partial smoke run is useful evidence but is not a complete batch and cannot pass the full scorer. Having all fixtures available does not establish that the 39 agent tasks were executed.
 
 ## Score observations
 
@@ -200,6 +212,6 @@ The read-only tool verifies each receipt and evidence artifact before grouping f
 
 Two distinct reported repetitions mark a candidate failure as recurring for investigation. Byte-identical receipts and evidence do not establish another trial; retain genuine per-trial execution evidence rather than relabelling copies. These guards still do not prove independence, causal skill failure, or a general success rate. Expected routes locate review scope; they do not establish blame. Inspect the underlying trace to distinguish routing, authority, behavioral, environment, capability, and observer defects before proposing a correction. Aggregate counts cannot hide a regression, permit efficiency claims while correctness fails, or automatically approve a change.
 
-The new fixture controls exercise real serialized provider/consumer incompatibility, a save failure hidden by a weak assertion, and the composed picker handler. Their passing controls prove those fixture mechanisms and the maintenance tooling; they do not establish that a model follows the new instructions. Forward tests must keep observer expectations out of the candidate's context and report partial smoke trials separately from the full 34-case paired evaluation.
+The new fixture controls exercise real serialized provider/consumer incompatibility, a save failure hidden by a weak assertion, and the composed picker handler. Their passing controls prove those fixture mechanisms and the maintenance tooling; they do not establish that a model follows the new instructions. Forward tests must keep observer expectations out of the candidate's context and report partial smoke trials separately from the full 39-case paired evaluation.
 
 The ordinary review case does not name Interrogate: it checks whether a natural correctness-review request reaches the right scope, includes the uncommitted change, and distinguishes an earlier green report from evidence for the current source. Its optional-input contract also distinguishes omission from an invalid supplied value, including a value that defaulting would otherwise erase. Its checked-source copy lets a no-command reviewer compare the supplied bytes without hashing or executing Git. The Shipping fixture uses actual Git diffs and Node behavior to establish that equivalent patches can behave differently after a base change. Its self-test does not establish that an agent refreshed a verdict or that a merge occurred. The local bug case also checks proportionality: clear defects can be handled directly while retaining reproduction, regression checks, and final review.

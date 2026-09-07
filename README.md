@@ -57,15 +57,20 @@ After updating the checkout, restart the app, complete any update or reinstall o
 
 ## Choose a workflow
 
-| Task | Skill |
-|---|---|
-| Route an engineering task | [Deepwright / Owl](plugins/deepwright/skills/deepwright/SKILL.md) |
-| Define behavior and acceptance criteria | [Spec](plugins/deepwright/skills/spec/SKILL.md) |
-| Understand behavior or rationale | [How](plugins/deepwright/skills/how/SKILL.md) / [Why](plugins/deepwright/skills/why/SKILL.md) |
-| Design before implementation | [Architect](plugins/deepwright/skills/architect/SKILL.md) |
-| Review correctness, quality, and requirements without fixes | [Interrogate](plugins/deepwright/skills/interrogate/SKILL.md) |
-| Build features or fix bugs through a test loop | [TDD](plugins/deepwright/skills/tdd/SKILL.md) |
-| Inspect or change project preferences | [Setup Deepwright](plugins/deepwright/skills/setup-deepwright/SKILL.md) |
+| Task | Entry point | Result to verify |
+|---|---|---|
+| Route an engineering task | [Deepwright / Owl](plugins/deepwright/skills/deepwright/SKILL.md) | The smallest workflow within the requested boundary |
+| Understand behavior, dependencies, or rationale | [How](plugins/deepwright/skills/how/SKILL.md) / [Why](plugins/deepwright/skills/why/SKILL.md) | Cited paths, observations, and unresolved questions |
+| Define behavior and acceptance criteria | [Spec](plugins/deepwright/skills/spec/SKILL.md) | Grounded criteria and consequential open decisions |
+| Design an interface or shared contract | [Architect](plugins/deepwright/skills/architect/SKILL.md) | Caller/provider contract and integration checks |
+| Build a feature or fix a bug | [Feature](plugins/deepwright/skills/deepwright/playbooks/feature.md) / [Bug fix](plugins/deepwright/skills/deepwright/playbooks/bug-fix.md), using [TDD](plugins/deepwright/skills/tdd/SKILL.md) | Working behavior, regression evidence, and final review |
+| Change a frontend or accessible interaction | Feature with [product-interface guidance](plugins/deepwright/skills/deepwright/references/product-interface.md) | Composed journey, keyboard/focus, recovery, and applicable layout checks |
+| Change a backend, API, or stored data | Feature with [service/data guidance](plugins/deepwright/skills/deepwright/references/service-data.md) | Enforced access, durable effects, real serialization, and relevant failure checks |
+| Review correctness, security, and requirements | [Interrogate](plugins/deepwright/skills/interrogate/SKILL.md) | Reachable findings and evidence gaps, without edits |
+| Improve an existing system | [Perf issue](plugins/deepwright/skills/deepwright/playbooks/perf-issue.md) / [Refactoring](plugins/deepwright/skills/deepwright/playbooks/refactoring.md) | Comparable measurements or preserved behavioral contracts |
+| Prepare delivery | [Opening a PR](plugins/deepwright/skills/deepwright/playbooks/opening-a-pr.md) / [Shipping](plugins/deepwright/skills/deepwright/playbooks/shipping.md) | Current artifact readiness, with publication authority checked separately |
+| Improve or extend the kit | [Reflect](plugins/deepwright/skills/reflect/SKILL.md) / [Authoring](plugins/deepwright/skills/deepwright/playbooks/authoring-a-skill.md) | A scoped change in its owning catalog and proportional validation |
+| Inspect or change project preferences | [Setup Deepwright](plugins/deepwright/skills/setup-deepwright/SKILL.md) | Validated local preferences and explicit host limitations |
 
 From a checkout, the optional helper reads canonical metadata and prints guidance:
 
@@ -73,6 +78,8 @@ From a checkout, the optional helper reads canonical metadata and prints guidanc
 plugins/deepwright/skills/deepwright/scripts/deepwright
 plugins/deepwright/skills/deepwright/scripts/deepwright skills review --compact
 plugins/deepwright/skills/deepwright/scripts/deepwright playbooks performance
+plugins/deepwright/skills/deepwright/scripts/deepwright playbooks accessibility
+plugins/deepwright/skills/deepwright/scripts/deepwright skills security --compact
 plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
 plugins/deepwright/skills/deepwright/scripts/deepwright status --json
 ```
@@ -111,6 +118,10 @@ For authorized landing, [Shipping](plugins/deepwright/skills/deepwright/playbook
 
 Interrogate adds conditional [failure-visibility and test-quality lenses](plugins/deepwright/skills/interrogate/references/focused-lenses.md). For UI state bugs, How traces the [whole click path](plugins/deepwright/skills/how/references/click-path-audit.md), including hidden resets and asynchronous completion order, and identifies a check of the composed user action.
 
+Frontend and service guidance load only for the affected boundary. A form change may need keyboard submission, focus, error recovery, and narrow-screen checks; a service change may need resource ownership, concurrent persistence, or migration recovery. A small utility does not acquire a database or accessibility audit. Reviews inspect source and existing evidence; these references preserve a no-execution request.
+
+The workflows adapt to the repository's tools and conventions. The supplied acceptance projects use JavaScript, Node HTTP/filesystem services, and browser DOM; their results do not qualify native mobile, game engines, infrastructure deployment, or every framework. Each new environment needs its own real-surface checks.
+
 For uncertain investigations, How and Why compare plausible explanations using the next observation that could distinguish them. They trace repeated claims to their original source and stop when another check would not change the answer. [Investigation guidance](plugins/deepwright/skills/deepwright/references/investigation-evidence.md) keeps this extra work conditional on a material uncertainty.
 
 Reviews and handoffs retain [evidence coverage](plugins/deepwright/skills/deepwright/references/evidence-coverage.md): complete, partial, unavailable, not run, or error. For longer authorized tasks, an optional [run evidence helper](plugins/deepwright/skills/deepwright/references/run-evidence.md) preserves selected historical files and carries a fixed attempt allowance and deadline across resumes. It records bookkeeping; host permissions and execution limits remain the host's responsibility.
@@ -118,6 +129,8 @@ Reviews and handoffs retain [evidence coverage](plugins/deepwright/skills/deepwr
 [Autonomous runs](plugins/deepwright/skills/deepwright/playbooks/autonomous-run.md) continue available local work through the authorized milestones, even when monitoring or delegation is unavailable. Diagnosis, planning, and review requests keep their narrower stops. Iterations preserve inherited work, require existing commit authorization, and only revert changes whose ownership is established.
 
 [Skill authoring](plugins/deepwright/skills/deepwright/playbooks/authoring-a-skill.md) chooses validation by the changed behavior. Instructions affecting decisions, permissions, tools, delegation, or verification need scoped behavioral evaluation; a subjective label does not exempt them. Editorial changes can use lighter checks.
+
+Approved plugin additions stay in the owning manifest's skills directory. Reflect and Authoring update existing skills in place; they do not silently create a project-local duplicate or install a personal copy.
 
 ## Optional configuration
 
@@ -134,7 +147,7 @@ npm ci --prefix plugins/deepwright/skills/deepwright/scripts
 npm test
 ```
 
-CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 34 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
+CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 39 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
 
 See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 

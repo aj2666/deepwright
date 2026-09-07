@@ -1,6 +1,6 @@
 ---
 name: deepwright
-description: "Route repository investigations, specifications, feature work, fixes, reviews, and refactors through verified playbooks. Use for Owl tasks; not greetings or syntax questions."
+description: "Route repository investigations, specifications, frontend and backend features, fixes, reviews, and refactors through verified playbooks. Use for Owl tasks; not greetings or syntax questions."
 license: MIT
 metadata:
   tags: [codex, engineering, verification, orchestration, workflow]
@@ -113,7 +113,7 @@ Read only the selected skill or playbook plus the references it needs.
 | Iteratively improve one metric | `playbooks/hillclimb.md` |
 | Diagnose a live runtime symptom | `playbooks/runtime-forensics.md` |
 | Diagnose a captured trace or profile | `playbooks/trace-forensics.md` |
-| Add or change behavior | `playbooks/feature.md` |
+| Add or change behavior, including frontend accessibility, backend API, or persisted data | `playbooks/feature.md` |
 | Preserve behavior while changing structure | `playbooks/refactoring.md` |
 | Build a disposable experiment to decide | `playbooks/prototype.md` |
 | Match an existing UI exactly | `playbooks/visual-parity.md` |
