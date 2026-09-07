@@ -1,5 +1,6 @@
-import { readFile, readdir } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { dirname, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 import { defaultPluginRoot, loadCatalog } from "./catalog.ts";
 import { main } from "./cli.ts";
@@ -11,18 +12,34 @@ async function run(argv: string[]) {
   expect(code, stderr).toBe(0);
   return JSON.parse(stdout);
 }
-async function markdownFiles(directory: string): Promise<string[]> {
+async function markdownFiles(directory: string, root = directory): Promise<string[]> {
   const result: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     if (["node_modules", ".git"].includes(entry.name)) continue;
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) result.push(...await markdownFiles(path));
+    if (path === join(root, ".deepwright", "runs")) continue;
+    if (entry.isDirectory()) result.push(...await markdownFiles(path, root));
     else if (entry.isFile() && entry.name.endsWith(".md")) result.push(path);
   }
   return result;
 }
 
 describe("specification package integration", () => {
+  it("excludes retained root run evidence while checking authored and nested Markdown", async () => {
+    const root = await mkdtemp(join(tmpdir(), "deepwright-docs-"));
+    const paths = ["README.md", ".deepwright/notes.md", ".deepwright/runs/retained.md", "nested/.deepwright/runs/authored.md", "docs/ignored.md"];
+    try {
+      for (const path of paths) {
+        await mkdir(dirname(join(root, path)), { recursive: true });
+        await writeFile(join(root, path), "$deepwright:unknown\n");
+      }
+      await writeFile(join(root, ".gitignore"), "docs/ignored.md\n");
+      expect((await markdownFiles(root)).map((path) => relative(root, path)).sort()).toEqual(paths.filter((path) => path !== ".deepwright/runs/retained.md").sort());
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("discovers Spec as an explicit skill with canonical invocation guidance", async () => {
     const result = await run(["skill", "spec", "--json"]);
     expect(result.skill).toMatchObject({ name: "spec", displayName: "Spec", implicit: false, invocation: "$deepwright:spec" });

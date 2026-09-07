@@ -1,6 +1,6 @@
 ---
 name: deepwright
-description: "Route repository investigations, specifications, frontend and backend features, fixes, reviews, and refactors through verified playbooks. Use for Owl tasks; not greetings or syntax questions."
+description: "Route repository investigations, specifications and acceptance criteria, frontend and backend features, fixes, read-only code reviews, refactors, and requested pause checkpoints through verified playbooks. Use for Owl tasks; not greetings or syntax questions."
 license: MIT
 metadata:
   tags: [codex, engineering, verification, orchestration, workflow]

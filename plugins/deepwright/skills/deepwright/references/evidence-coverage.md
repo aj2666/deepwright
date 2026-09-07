@@ -20,6 +20,22 @@ is partial even if every returned item was inspected. State the bounds of a
 complete check: "all changed files at this SHA" does not cover the whole product.
 An error in one source does not erase useful evidence from another.
 
+When reporting a command or tool check, use the last stage supported by its own
+receipt: inspecting source is not requesting execution; a submitted request may
+be denied before startup; a started process may have no completion; completion
+may establish an exit status while output or check results remain unobserved.
+Match the claimed check result to the receipt actually captured. A launcher's
+exit status is not automatically the test result.
+
+Match each claimed attempt, exit code, or failure reason to that operation's
+evidence. Reading an import does not establish a missing dependency, and a
+generic sandbox warning does not identify which command failed. An unavailable
+tool can be reported from the host's capability evidence without calling it.
+Use not-run only when no attempt was made; otherwise retain the observed stage
+and name the missing evidence without inventing a cause. Keep a successful
+fallback's result and narrower scope separate. No extra execution or record file
+is required merely to fill in these stages.
+
 When combining workers, preserve each source's coverage. Several workers repeating
 one result do not provide independent confirmation. Resolve overlapping claims
 against their original evidence. Mark acceptance criteria blocked when missing

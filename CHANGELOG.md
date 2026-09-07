@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Distinguish file inspection, requested execution, process startup, completion, and observed results in evidence reporting; keep validator failures and fallback checks tied to their actual receipts.
+- Clarify acceptance-criteria, read-only code review, and requested pause discovery; preserve unfinished work immediately at a pause and reuse the task's existing handoff when available.
+- Keep retained root run evidence out of skill-reference discovery checks while continuing to check authored documentation, including nested lookalike paths.
+
 - Add a conditional completion-order check to Bug fix for older asynchronous work that can publish into newer shared or visible state.
 - Add conditional product-interface and service/data guidance to Feature, Architect, and Interrogate: keyboard and focus behavior, composed loading/failure/retry states, responsive layout, authorization, durable success, concurrency, and compatibility. Expand terminal discovery for these existing workflows.
 - Resolve newly authored capabilities through their owning plugin manifest, including nonstandard skill roots, and preserve the existing router and catalog during Reflect improvements.
