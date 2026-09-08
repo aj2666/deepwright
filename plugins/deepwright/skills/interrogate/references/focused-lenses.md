@@ -15,3 +15,7 @@ Map changed behavior to actual assertions at the appropriate boundary. Distingui
 Propose a discriminating regression check: the concrete input or event order, the expected observable result, and the plausible defect it would catch. Avoid line-coverage targets and tests that mirror private implementation. Existing tests without matching execution receipts establish assertion coverage only. Under read-only review, describe the check; do not execute a test that might write or contact services.
 
 Keep confirmed defects separate from missing evidence. Rank by user impact and reachability, not by how many checklist items can be filled. If the available source cannot establish a failure, name the missing observation rather than asserting it occurred.
+
+## Agent configuration and extensions
+
+For changes to skills, host permissions, hooks, plugin installation, or tool-server launchers, use [agent-configuration security](agent-config-security.md). Trace active authority and data movement without executing the configuration. Keep scanner results, host enforcement, and source findings separate.

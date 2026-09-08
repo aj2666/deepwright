@@ -33,3 +33,7 @@ The prose that ships alongside the type sketch. One page. Sentence-case headings
 ## Next implementation step
 
 *The first thing to build against the sketch. One sentence. What you'd start writing immediately after synthesis (or after Phase D sign-off, if a checkpoint was opted into).*
+
+## Preserve a decision when requested
+
+For a consequential choice that needs a durable record, reuse the project's existing decision-record convention and the rationale above. Keep the draft in the response unless writing it is authorized; do not create a second decision log by default. Record context, considered alternatives, consequences, status, and the actual approval source. Distinguish a proposed design from an accepted decision. Mark reconstructed history and unknown original reasons explicitly instead of inventing deciders, dates, or rejected options. When replacing a decision, preserve its history and link the superseding record.

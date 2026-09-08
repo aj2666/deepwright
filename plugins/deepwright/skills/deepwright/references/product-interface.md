@@ -15,6 +15,8 @@ A small addition using a proven component may need only its changed state and on
 
 ## Verify the composed result
 
+When writing or debugging browser tests, use [browser verification](browser-verification.md) for action/wait ordering, observable readiness, isolated state, and honest retry evidence.
+
 Use the repository's existing harness or available host control on an authorized local surface. Exercise the action through the real entry point, then check the visible result and any required saved state. Inspect the resulting accessibility tree or semantic markup when that is the relevant contract. A direct store call does not prove that the control is reachable, named, or wired correctly.
 
 Retain a compact receipt: criterion, build or snapshot, viewport/input method, action sequence, observed outcome, and the artifact that supports it. Keep interaction assertions separate from screenshots. For exact visual matching, use [Visual parity](../playbooks/visual-parity.md); an image match does not establish behavior or accessibility.
