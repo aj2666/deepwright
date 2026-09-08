@@ -13,6 +13,8 @@ In the examples below, `deepwright` means the executable at `plugins/deepwright/
 | `deepwright skills` | All existing skills, sorted by name |
 | `deepwright skills review` | Metadata search; not semantic task routing |
 | `deepwright skills "design review" --compact` | One-line results matching all words across metadata fields |
+| `deepwright find "review my code for security problems"` | Ranked suggestions from skill and playbook metadata |
+| `deepwright find "make this API faster" --limit 2 --json` | Up to two results per kind, with paths, scores, and matched terms |
 | `deepwright playbooks performance` | Request shapes and canonical paths from the existing router table |
 | `deepwright playbooks accessibility` | Feature workflow with conditional product-interface guidance |
 | `deepwright playbooks backend` | Feature workflow with conditional API and persisted-data guidance |
@@ -27,9 +29,19 @@ In the examples below, `deepwright` means the executable at `plugins/deepwright/
 | `deepwright config template` | Default TOML printed to stdout; nothing written |
 | `deepwright doctor` | Existing environment/installation checks |
 
-Discovery, invocation, configuration and status accept `--json`. `--compact` is exclusive to human `skills` output and cannot combine with `--json`. Search is case-insensitive, requires every whitespace-separated term somewhere in the combined metadata, and preserves name order; it does not infer intent. Playbooks are not additional skill tokens: ask Deepwright to use the fitting playbook. Names may be plain slugs, such as `interrogate`; use the exact names from `skills`. Unknown names and options fail with a usage error. Shell quoting matters when typing a dollar-prefixed Codex token: the simplest approach is to use a plain slug in this helper and paste its result into Codex.
+Discovery, invocation, configuration and status accept `--json`. `--compact` is exclusive to human `skills` output and cannot combine with `--json`. The existing `skills` and `playbooks` searches are case-insensitive, require every whitespace-separated term somewhere in the combined metadata, and preserve name order. Playbooks are not additional skill tokens: ask Deepwright to use the fitting playbook. Names may be plain slugs, such as `interrogate`; use the exact names from `skills`. Unknown names and options fail with a usage error. Shell quoting matters when typing a dollar-prefixed Codex token: the simplest approach is to use a plain slug in this helper and paste its result into Codex.
 
 All discovery commands are read-only. Human output escapes terminal control characters; JSON remains machine-readable. The helper never evaluates task text as shell commands and does not offer an execute flag.
+
+## Ranked suggestions
+
+Use `find` when you have a task description rather than an exact catalog term. It ranks the same canonical names, display names, and descriptions using BM25 lexical scoring. It splits identifiers, normalizes Unicode and common English plurals, and ignores common connecting words. It does not understand synonyms or infer the requested permissions. Skill bodies and reference contents do not affect ranking.
+
+Results have separate skill and playbook limits, each defaulting to three. `--limit` accepts integers from 1 to 10 and applies to each kind. Exact canonical names take precedence over display-name matches, then lexical scores determine order with name ties resolved deterministically. Scores compare entries within one query and kind; they are not confidence percentages and should not be compared across catalogs or queries.
+
+The JSON envelope includes `schemaVersion: 1`, `tool`, `command`, `query`, `limit`, `algorithm`, `skills`, and `playbooks`. Each result retains canonical metadata plus `score` and normalized `matchedTerms`. Descriptions are capped at 240 Unicode code points with an ellipsis when shortened. No full instruction bodies are returned. Read the selected files in full and follow their applicable references before using them. A result never activates a skill or grants permission to act.
+
+A supplied empty query, a query made entirely of ignored words, or a query with no lexical overlap returns empty arrays and exits 0, unless the query matches an exact name such as `deepwright`. Missing queries, inputs over 4096 UTF-8 bytes, and invalid limits exit 64. Catalog read or validation failures exit 1 without partial suggestions. Discovery rebuilds its metadata view on every call, so edits and removals take effect without a cache reset. If the optional helper is unavailable, use the canonical skill and playbook files directly.
 
 ## Native invocation versus fallback
 

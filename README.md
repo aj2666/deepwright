@@ -77,6 +77,8 @@ From a checkout, the optional helper reads canonical metadata and prints guidanc
 ```bash
 plugins/deepwright/skills/deepwright/scripts/deepwright
 plugins/deepwright/skills/deepwright/scripts/deepwright skills review --compact
+plugins/deepwright/skills/deepwright/scripts/deepwright find "review my code for security problems"
+plugins/deepwright/skills/deepwright/scripts/deepwright find "make this API faster" --limit 2 --json
 plugins/deepwright/skills/deepwright/scripts/deepwright playbooks performance
 plugins/deepwright/skills/deepwright/scripts/deepwright playbooks accessibility
 plugins/deepwright/skills/deepwright/scripts/deepwright skills security --compact
@@ -84,7 +86,7 @@ plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
 plugins/deepwright/skills/deepwright/scripts/deepwright status --json
 ```
 
-These discovery commands do not launch agents or modify files. All skills remain available through the catalog. See the [terminal reference](docs/TERMINAL.md) for command options and opt-in, print-only AGENTS.md / CLAUDE.md pointers.
+`find` ranks concise metadata and returns separate skill and playbook suggestions. Existing `skills` and `playbooks` searches retain literal matching. Read selected files in full; a suggestion is not authorization to execute. These discovery commands do not launch agents or modify files. All skills remain available through the catalog. See the [terminal reference](docs/TERMINAL.md) for command options and opt-in, print-only AGENTS.md / CLAUDE.md pointers.
 
 ## Specify, build, and review
 

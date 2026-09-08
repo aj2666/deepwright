@@ -4,6 +4,8 @@ This is an observer-side regression corpus, not a routing engine or live benchma
 
 Keep rubrics, receipts, and evaluation instructions outside candidate contexts. The [eval playbook](../plugins/deepwright/skills/deepwright/playbooks/eval.md) governs organic prompts, blinding, independent review, permissions, and evidence collection.
 
+The separate [discovery benchmark](discovery/README.md) compares literal filtering, lexical overlap, and ranked metadata suggestions on a frozen query corpus. Run `npm run benchmark:discovery` for its report. Its selection checks do not replace this corpus's actual workflow, scope, or artifact checks.
+
 ## Fixtures and self-tests
 
 All 39 cases have a preparation declaration in `fixtures.json`. Cases needing a project use the supplied sources; conversation-only cases receive an empty directory. Keep the committed defects intact and prepare each run in a fresh directory outside this repository:

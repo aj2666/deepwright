@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add optional ranked workflow discovery with separate skill/playbook limits, exact-name precedence, compact metadata, and no execution or persistent index. Preserve existing literal-search commands.
+- Move conditional principle, helper, and delegation detail into linked references while keeping task boundaries and verification rules in the main router.
+- Add a frozen discovery query corpus and a reproducible literal/lexical/BM25 comparison with strict observer controls. Keep selection quality, instruction size, and actual agent outcomes separate.
+
 - Distinguish file inspection, requested execution, process startup, completion, and observed results in evidence reporting; keep validator failures and fallback checks tied to their actual receipts.
 - Clarify acceptance-criteria, read-only code review, and requested pause discovery; preserve unfinished work immediately at a pause and reuse the task's existing handoff when available.
 - Keep retained root run evidence out of skill-reference discovery checks while continuing to check authored documentation, including nested lookalike paths.

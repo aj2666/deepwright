@@ -1296,8 +1296,66 @@ async function loadPlaybooks(pluginRoot) {
   return playbooks;
 }
 
+// discovery/ranking.mjs
+var MAX_QUERY_BYTES = 4096;
+var stopWords = new Set("a an and are as at be been being by can could do does for from had has have i in into is it its me my of on or our please so than that the their them there these they this those to us use was we were what when which who will with would you your deepwright".split(" "));
+function inflection(word) {
+  if (word.length > 4 && word.endsWith("ies")) return word.slice(0, -3) + "y";
+  if (word.length > 4 && /(?:sses|shes|ches|xes|zes)$/u.test(word)) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith("s") && !/(?:ss|us|is)$/u.test(word)) return word.slice(0, -1);
+  return word;
+}
+function searchTerms(text) {
+  return (text.normalize("NFKC").replace(/([a-z])([A-Z])/gu, "$1 $2").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter((word) => !stopWords.has(word)).map(inflection);
+}
+function searchDocument(entry) {
+  const name = searchTerms(entry.name);
+  const display = searchTerms(entry.displayName ?? "");
+  return [...name, ...name, ...name, ...display, ...display, ...searchTerms(entry.description)];
+}
+function validateSearch(query, limit = 3) {
+  if (typeof query !== "string" || Buffer.byteLength(query, "utf8") > MAX_QUERY_BYTES) {
+    throw new RangeError("find query must be a string of at most " + MAX_QUERY_BYTES + " UTF-8 bytes");
+  }
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10) {
+    throw new RangeError("limit must be an integer from 1 to 10");
+  }
+}
+function rankEntries(entries, query, limit = 3) {
+  validateSearch(query, limit);
+  const terms = [...new Set(searchTerms(query))];
+  const exactQuery = query.normalize("NFKC").trim().toLowerCase().replace(/^\$?deepwright:/u, "");
+  if (exactQuery.length === 0 || entries.length === 0) return [];
+  const documents = entries.map((entry) => {
+    const tokens = searchDocument(entry);
+    const counts = /* @__PURE__ */ new Map();
+    for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+    return { entry, counts, length: tokens.length };
+  });
+  const averageLength = documents.reduce((sum, document) => sum + document.length, 0) / documents.length || 1;
+  const frequencies = new Map(terms.map((term) => [term, documents.filter((document) => document.counts.has(term)).length]));
+  const hits = documents.flatMap(({ entry, counts, length }) => {
+    const exact = entry.name.normalize("NFKC").toLowerCase() === exactQuery ? 2 : (entry.displayName ?? "").normalize("NFKC").toLowerCase() === exactQuery ? 1 : 0;
+    const matchedTerms = terms.filter((term) => counts.has(term));
+    if (!exact && matchedTerms.length === 0) return [];
+    const score = matchedTerms.reduce((sum, term) => {
+      const frequency = counts.get(term);
+      const documentFrequency = frequencies.get(term);
+      const inverseFrequency = Math.log(1 + (documents.length - documentFrequency + 0.5) / (documentFrequency + 0.5));
+      return sum + inverseFrequency * frequency * 2.2 / (frequency + 1.2 * (0.25 + 0.75 * length / averageLength));
+    }, 0);
+    return [{ entry, exact, matchedTerms, score }];
+  });
+  const exactBoost = Math.max(0, ...hits.map((hit) => hit.score)) + 1;
+  return hits.map(({ entry, exact, score, matchedTerms }) => ({
+    ...entry,
+    score: score + exact * exactBoost,
+    matchedTerms
+  })).sort((left, right) => right.score - left.score || (left.name < right.name ? -1 : left.name > right.name ? 1 : 0)).slice(0, limit);
+}
+
 // discovery/cli.ts
-var commands = ["home", "doctor", "skills", "skill", "playbooks", "invoke", "status", "config"];
+var commands = ["home", "doctor", "skills", "skill", "playbooks", "find", "invoke", "status", "config"];
 var USAGE2 = [
   "Usage: deepwright <command> [options]",
   "",
@@ -1305,6 +1363,7 @@ var USAGE2 = [
   "  doctor [--json]                         check runtime and plugin layout",
   "  skills [query] [--compact|--json]       list or search skill metadata",
   "  playbooks [query] [--json]              browse the canonical router table",
+  "  find <query> [--limit 1..10] [--json]   rank metadata; default 3 per kind",
   "  skill <name> [--json]                   inspect a skill and its invocation",
   "  invoke <name> [--host codex|agents|claude] [--json]",
   "                                         print guidance; never execute it",
@@ -1321,6 +1380,7 @@ function parse2(argv) {
   const seen = /* @__PURE__ */ new Set();
   const positionals = [];
   let host = "codex";
+  let limit = 3;
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
     if (!argument.startsWith("-")) {
@@ -1328,9 +1388,14 @@ function parse2(argv) {
       continue;
     }
     const flag = argument === "-h" ? "--help" : argument;
-    if (!["--json", "--help", "--host", "--compact"].includes(flag)) throw new UsageError("unknown option: " + argument);
+    if (!["--json", "--help", "--host", "--compact", "--limit"].includes(flag)) throw new UsageError("unknown option: " + argument);
     if (seen.has(flag)) throw new UsageError("duplicate option: " + flag);
     seen.add(flag);
+    if (flag === "--limit") {
+      const value2 = argv[++index];
+      if (value2 === void 0 || !/^(?:[1-9]|10)$/u.test(value2)) throw new UsageError("--limit must be an integer from 1 to 10");
+      limit = Number(value2);
+    }
     if (flag === "--host") {
       const value2 = argv[++index];
       if (value2 !== "codex" && value2 !== "agents" && value2 !== "claude") {
@@ -1342,6 +1407,7 @@ function parse2(argv) {
   const command = positionals[0] ?? "home";
   if (!commands.includes(command)) throw new UsageError("expected a valid command");
   if (seen.has("--host") && command !== "invoke") throw new UsageError("--host is only valid with invoke");
+  if (seen.has("--limit") && command !== "find") throw new UsageError("--limit is only valid with find");
   if (seen.has("--compact") && command !== "skills") throw new UsageError("--compact is only valid with skills");
   if (seen.has("--compact") && seen.has("--json")) throw new UsageError("--compact and --json are mutually exclusive");
   const value = positionals[1];
@@ -1351,7 +1417,26 @@ function parse2(argv) {
   if (requiredName && value === void 0 && !seen.has("--help")) throw new UsageError(command + " requires a skill name");
   if (requiredName && value !== void 0 && !validName(value)) throw new UsageError("invalid skill name: " + value);
   if (command === "config" && !(value === void 0 && seen.has("--help")) && !["show", "check", "template"].includes(value ?? "")) throw new UsageError("config requires show, check, or template");
-  return { command, value, host, json: seen.has("--json"), compact: seen.has("--compact"), help: seen.has("--help") };
+  if (command === "find") {
+    if (value === void 0 && !seen.has("--help")) throw new UsageError("find requires a query");
+    try {
+      validateSearch(value ?? "", limit);
+    } catch (error) {
+      throw new UsageError(error instanceof Error ? error.message : String(error));
+    }
+  }
+  return { command, value, host, limit, json: seen.has("--json"), compact: seen.has("--compact"), help: seen.has("--help") };
+}
+function compactHit(hit) {
+  const characters = Array.from(hit.description);
+  return { ...hit, description: characters.length > 240 ? characters.slice(0, 239).join("") + "\u2026" : hit.description };
+}
+function rankedLines(label, entries) {
+  return [label + ":", ...entries.length === 0 ? ["  No matching metadata."] : entries.flatMap((entry) => [
+    "  " + entry.name + " \u2014 " + terminalText(entry.description),
+    "    " + jsonText(entry.path).trim(),
+    "    Score: " + entry.score.toFixed(3) + "; matched terms: " + terminalText(entry.matchedTerms.join(", "))
+  ])];
 }
 function skillLines(skill) {
   return [
@@ -1433,6 +1518,7 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
         "Desktop: type @ and select a Deepwright skill.",
         "",
         "Find:     deepwright skills review --compact",
+        'Suggest:  deepwright find "review code security"',
         "Route:    deepwright playbooks performance",
         "Inspect:  deepwright skill interrogate",
         "Invoke:   deepwright invoke interrogate",
@@ -1440,6 +1526,22 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
         "Health:   deepwright status   /   deepwright doctor",
         "",
         "Read-only helper. Paste skill tokens into Codex, not your shell."
+      ].join("\n") + "\n");
+    } else if (options.command === "find") {
+      const query = options.value;
+      const foundSkills = rankEntries(skills, query, options.limit).map(compactHit);
+      const foundPlaybooks = rankEntries(await loadPlaybooks(pluginRoot), query, options.limit).map(compactHit);
+      io.stdout(options.json ? jsonText({
+        ...envelope,
+        query,
+        limit: options.limit,
+        algorithm: "bm25",
+        skills: foundSkills,
+        playbooks: foundPlaybooks
+      }) : [
+        ...rankedLines("Skills", foundSkills),
+        ...rankedLines("Playbooks", foundPlaybooks),
+        "Suggestions only. Read selected files in full; scores measure lexical relevance, not permission or confidence."
       ].join("\n") + "\n");
     } else if (options.command === "playbooks") {
       const matches = searchEntries(await loadPlaybooks(pluginRoot), options.value ?? "");
