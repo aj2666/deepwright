@@ -19,7 +19,7 @@
     "build:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run build",
     "test:tools": "npm --prefix plugins/deepwright/skills/deepwright/scripts run check",
     "test:evals": "node --test scripts/score-skill-evals.test.mjs scripts/verify-skill-evals.test.mjs scripts/feature-fixture.test.mjs scripts/parser-fixture.test.mjs scripts/csv-fixture.test.mjs scripts/additional-fixtures.test.mjs scripts/prepare-skill-eval.test.mjs evals/fixtures/retry/request.test.mjs evals/fixtures/parser/parser.test.mjs evals/fixtures/parser/formatter.test.mjs scripts/ecc-fixtures.test.mjs scripts/skill-maintenance.test.mjs scripts/eval-entrypoints.test.mjs scripts/shipping-fixture.test.mjs scripts/review-fixture.test.mjs scripts/reading-list-fixture.test.mjs scripts/cache-update-fixture.test.mjs scripts/service-review-fixture.test.mjs scripts/benchmark-discovery.test.mjs",
-    "test:contracts": "node --test scripts/validate-codex-compat.test.mjs scripts/verify-installed-plugin.test.mjs",
+    "test:contracts": "node --test scripts/validate-codex-compat.test.mjs scripts/verify-installed-plugin.test.mjs scripts/unslop-contract.test.mjs",
     "test:runs": "node --test scripts/run-evidence.test.mjs",
     "eval:prepare": "node scripts/prepare-skill-eval.mjs",
     "eval:skills": "node scripts/score-skill-evals.mjs",

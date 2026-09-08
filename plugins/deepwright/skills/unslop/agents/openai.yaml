@@ -1,6 +1,6 @@
 interface:
   display_name: "Unslop"
-  short_description: "Remove generic AI phrasing and restore a human voice"
-  default_prompt: "Use $unslop to remove generic AI phrasing and restore a specific human voice."
+  short_description: "Rewrite AI-sounding prose without changing facts or voice"
+  default_prompt: "Use $unslop to remove generic AI patterns while preserving facts, uncertainty, and the writer's voice."
 policy:
   allow_implicit_invocation: false
