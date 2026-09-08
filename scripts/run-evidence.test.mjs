@@ -4,8 +4,8 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { claimAttempt, initialize, recordEvidence, status } from "../plugins/deepwright/skills/deepwright/scripts/run-evidence.mjs";
 import { validateCoverage } from "../plugins/deepwright/skills/deepwright/scripts/evidence-coverage.mjs";
 
@@ -316,12 +316,68 @@ test("CLI init, claim, record, and resumed status preserve the selected evidence
   assert.equal(await readFile(join(directory, "artifacts", resumed.json.records[0].payload.files[0].sha256), "utf8"), "selected source");
 });
 
-test("a symlinked CLI really executes instead of returning an empty successful response", async (t) => {
-  const { root, directory } = await fixture(t);
-  const alias = join(root, "run evidence.mjs");
-  await symlink(cli, alias);
-  const result = spawnSync(process.execPath, [alias, "status", directory], { encoding: "utf8", timeout: 10_000 });
+async function entrypoints(root) {
+  const scriptAlias = join(root, "run evidence.mjs");
+  const directoryAlias = join(root, "helper directory");
+  await symlink(cli, scriptAlias);
+  await symlink(dirname(cli), directoryAlias, "dir");
+  return [
+    { name: "direct", entry: cli, options: [] },
+    { name: "script symlink", entry: scriptAlias, options: [] },
+    { name: "directory alias", entry: join(directoryAlias, "run-evidence.mjs"), options: [] },
+    { name: "preserved directory alias", entry: join(directoryAlias, "run-evidence.mjs"), options: ["--preserve-symlinks-main"] },
+  ];
+}
+
+function invokeNode(args, input) {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const result = spawnSync(process.execPath, args, { env, input, encoding: "utf8", timeout: 10_000 });
   assert.ifError(result.error);
-  assert.equal(result.status, 0);
-  assert.equal(JSON.parse(result.stdout).runId, "parser-fix");
+  assert.equal(result.signal, null);
+  assert.equal(result.stderr, "");
+  return result;
+}
+
+test("direct and aliased CLI claims really consume the allowance and preserve refusal exits", async (t) => {
+  const { root, directory } = await fixture(t, 4, new Date(Date.now() - 1000), new Date(Date.now() + 60_000).toISOString());
+  const variants = await entrypoints(root);
+  for (const [index, variant] of variants.entries()) {
+    const result = invokeNode([...variant.options, variant.entry, "claim", directory]);
+    assert.equal(result.status, 0, variant.name);
+    assert.ok(result.stdout.trim(), `${variant.name}: a successful claim must print its event`);
+    assert.equal(JSON.parse(result.stdout).payload.attempt, index + 1, variant.name);
+    assert.equal((await status(directory)).consumedAttempts, index + 1, variant.name);
+  }
+  const before = await readFile(join(directory, "head.json"));
+  for (const variant of variants) {
+    const result = invokeNode([...variant.options, variant.entry, "claim", directory]);
+    assert.equal(result.status, 1, variant.name);
+    assert.equal(JSON.parse(result.stdout).ok, false);
+    assert.match(JSON.parse(result.stdout).error, /allowance exhausted/);
+    assert.deepEqual(await readFile(join(directory, "head.json")), before);
+    assert.equal((await status(directory)).consumedAttempts, variants.length);
+  }
+});
+
+test("import drivers do not execute claim arguments, print CLI output, or change the caller exit code", async (t) => {
+  const { root, directory } = await fixture(t, 100, new Date(Date.now() - 1000), new Date(Date.now() + 60_000).toISOString());
+  const before = await readFile(join(directory, "head.json"));
+  for (const variant of await entrypoints(root)) {
+    const source = `process.exitCode = 7; await import(${JSON.stringify(pathToFileURL(variant.entry).href)}); console.log("imported:" + process.exitCode);\n`;
+    const driver = join(root, "import driver.mjs");
+    await writeFile(driver, source);
+    for (const [args, input] of [
+      [[...variant.options, driver, variant.entry, "claim", directory]],
+      [[...variant.options, "--input-type=module", "--eval", source, variant.entry, "claim", directory]],
+      [[...variant.options, "--input-type=module", "-", variant.entry, "claim", directory], source],
+    ]) {
+      const result = invokeNode(args, input);
+      assert.equal(result.status, 7, `${variant.name}: ${result.stdout}`);
+      assert.equal(result.stdout, "imported:7\n");
+      assert.deepEqual(await readFile(join(directory, "head.json")), before);
+      assert.deepEqual(await readdir(join(directory, "events")), []);
+      assert.equal((await status(directory)).consumedAttempts, 0);
+    }
+  }
 });

@@ -313,4 +313,21 @@ export async function main(argv) {
   }
 }
 
-if (process.argv[1] && await realpath(process.argv[1]).catch(() => null) === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
+async function isMain() {
+  const entry = process.argv[1];
+  if (!entry || entry === "-") return false;
+  // Eval/print arguments are caller data, even when they name this module.
+  if (process.execArgv.some((argument) => /^-[ep]/.test(argument) ||
+      /^(?:--eval|--print)(?:=|$)/.test(argument))) return false;
+  const modulePath = fileURLToPath(import.meta.url);
+  if (resolve(entry) === modulePath) return true;
+  let entryPath;
+  try { entryPath = await realpath(entry); }
+  catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") return false;
+    throw error;
+  }
+  return entryPath === await realpath(modulePath);
+}
+
+if (await isMain()) process.exitCode = await main(process.argv.slice(2));

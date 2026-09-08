@@ -4,6 +4,7 @@ import { CONFIG_FIELDS, formatConfigTemplate, readConfig } from "../config/confi
 import { main as doctorMain } from "../doctor/doctor.ts";
 import { defaultPluginRoot, jsonText, loadCatalog, terminalText, validName, type Skill } from "./catalog.ts";
 import { loadPlaybooks, searchEntries } from "./workbench.ts";
+import { rankEntries, validateSearch, type RankedEntry } from "./ranking.mjs";
 
 interface Io {
   readonly stdout: (value: string) => void;
@@ -16,11 +17,11 @@ export interface Context {
 }
 
 type Host = "codex" | "agents" | "claude";
-type Command = "home" | "doctor" | "skills" | "skill" | "playbooks" | "invoke" | "status" | "config";
+type Command = "home" | "doctor" | "skills" | "skill" | "playbooks" | "find" | "invoke" | "status" | "config";
 type Guidance =
   | { readonly host: "codex"; readonly cli: string; readonly desktop: string; readonly note: string }
   | { readonly host: "agents" | "claude"; readonly target: string; readonly pointer: string; readonly note: string };
-const commands: readonly string[] = ["home", "doctor", "skills", "skill", "playbooks", "invoke", "status", "config"];
+const commands: readonly string[] = ["home", "doctor", "skills", "skill", "playbooks", "find", "invoke", "status", "config"];
 const USAGE = [
   "Usage: deepwright <command> [options]",
   "",
@@ -28,6 +29,7 @@ const USAGE = [
   "  doctor [--json]                         check runtime and plugin layout",
   "  skills [query] [--compact|--json]       list or search skill metadata",
   "  playbooks [query] [--json]              browse the canonical router table",
+  "  find <query> [--limit 1..10] [--json]   rank metadata; default 3 per kind",
   "  skill <name> [--json]                   inspect a skill and its invocation",
   "  invoke <name> [--host codex|agents|claude] [--json]",
   "                                         print guidance; never execute it",
@@ -45,6 +47,7 @@ function parse(argv: readonly string[]) {
   const seen = new Set<string>();
   const positionals: string[] = [];
   let host: Host = "codex";
+  let limit = 3;
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
     if (!argument.startsWith("-")) {
@@ -52,9 +55,14 @@ function parse(argv: readonly string[]) {
       continue;
     }
     const flag = argument === "-h" ? "--help" : argument;
-    if (!["--json", "--help", "--host", "--compact"].includes(flag)) throw new UsageError("unknown option: " + argument);
+    if (!["--json", "--help", "--host", "--compact", "--limit"].includes(flag)) throw new UsageError("unknown option: " + argument);
     if (seen.has(flag)) throw new UsageError("duplicate option: " + flag);
     seen.add(flag);
+    if (flag === "--limit") {
+      const value = argv[++index];
+      if (value === undefined || !/^(?:[1-9]|10)$/u.test(value)) throw new UsageError("--limit must be an integer from 1 to 10");
+      limit = Number(value);
+    }
     if (flag === "--host") {
       const value = argv[++index];
       if (value !== "codex" && value !== "agents" && value !== "claude") {
@@ -66,6 +74,7 @@ function parse(argv: readonly string[]) {
   const command = positionals[0] ?? "home";
   if (!commands.includes(command)) throw new UsageError("expected a valid command");
   if (seen.has("--host") && command !== "invoke") throw new UsageError("--host is only valid with invoke");
+  if (seen.has("--limit") && command !== "find") throw new UsageError("--limit is only valid with find");
   if (seen.has("--compact") && command !== "skills") throw new UsageError("--compact is only valid with skills");
   if (seen.has("--compact") && seen.has("--json")) throw new UsageError("--compact and --json are mutually exclusive");
   const value = positionals[1];
@@ -76,7 +85,25 @@ function parse(argv: readonly string[]) {
   if (requiredName && value !== undefined && !validName(value)) throw new UsageError("invalid skill name: " + value);
   if (command === "config" && !(value === undefined && seen.has("--help")) &&
       !["show", "check", "template"].includes(value ?? "")) throw new UsageError("config requires show, check, or template");
-  return { command: command as Command, value, host, json: seen.has("--json"), compact: seen.has("--compact"), help: seen.has("--help") };
+  if (command === "find") {
+    if (value === undefined && !seen.has("--help")) throw new UsageError("find requires a query");
+    try { validateSearch(value ?? "", limit); }
+    catch (error) { throw new UsageError(error instanceof Error ? error.message : String(error)); }
+  }
+  return { command: command as Command, value, host, limit, json: seen.has("--json"), compact: seen.has("--compact"), help: seen.has("--help") };
+}
+
+function compactHit<T extends { readonly description: string }>(hit: T): T {
+  const characters = Array.from(hit.description);
+  return { ...hit, description: characters.length > 240 ? characters.slice(0, 239).join("") + "…" : hit.description };
+}
+
+function rankedLines(label: string, entries: readonly ({ readonly name: string; readonly path: string; readonly description: string } & RankedEntry)[]): string[] {
+  return [label + ":", ...(entries.length === 0 ? ["  No matching metadata."] : entries.flatMap((entry) => [
+    "  " + entry.name + " — " + terminalText(entry.description),
+    "    " + jsonText(entry.path).trim(),
+    "    Score: " + entry.score.toFixed(3) + "; matched terms: " + terminalText(entry.matchedTerms.join(", ")),
+  ]))];
 }
 
 function skillLines(skill: Skill): string[] {
@@ -168,6 +195,7 @@ export async function main(
         "Desktop: type @ and select a Deepwright skill.",
         "",
         "Find:     deepwright skills review --compact",
+        'Suggest:  deepwright find "review code security"',
         "Route:    deepwright playbooks performance",
         "Inspect:  deepwright skill interrogate",
         "Invoke:   deepwright invoke interrogate",
@@ -175,6 +203,17 @@ export async function main(
         "Health:   deepwright status   /   deepwright doctor",
         "",
         "Read-only helper. Paste skill tokens into Codex, not your shell.",
+      ].join("\n") + "\n");
+    } else if (options.command === "find") {
+      const query = options.value!;
+      const foundSkills = rankEntries(skills, query, options.limit).map(compactHit);
+      const foundPlaybooks = rankEntries(await loadPlaybooks(pluginRoot), query, options.limit).map(compactHit);
+      io.stdout(options.json ? jsonText({
+        ...envelope, query, limit: options.limit, algorithm: "bm25", skills: foundSkills, playbooks: foundPlaybooks,
+      }) : [
+        ...rankedLines("Skills", foundSkills),
+        ...rankedLines("Playbooks", foundPlaybooks),
+        "Suggestions only. Read selected files in full; scores measure lexical relevance, not permission or confidence.",
       ].join("\n") + "\n");
     } else if (options.command === "playbooks") {
       const matches = searchEntries(await loadPlaybooks(pluginRoot), options.value ?? "");

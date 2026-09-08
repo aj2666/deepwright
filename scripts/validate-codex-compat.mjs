@@ -10,6 +10,7 @@ import { loadCatalog } from "../plugins/deepwright/skills/deepwright/scripts/dis
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pluginRoot = path.join(repoRoot, "plugins", "deepwright");
 const skillsRoot = path.join(pluginRoot, "skills");
+const runEvidenceRoot = path.join(repoRoot, ".deepwright", "runs");
 const errors = [];
 
 function fail(message) {
@@ -30,6 +31,9 @@ async function filesUnder(root) {
   for (const entry of await readdir(root, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name === ".git") continue;
     const target = path.join(root, entry.name);
+    // Retained local run evidence is not authored repository documentation.
+    // Match the exact root so similarly named directories in the plugin stay checked.
+    if (entry.isDirectory() && target === runEvidenceRoot) continue;
     if (entry.isDirectory()) found.push(...(await filesUnder(target)));
     if (entry.isFile()) found.push(target);
   }

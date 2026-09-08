@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Add optional ranked workflow discovery with separate skill/playbook limits, exact-name precedence, compact metadata, and no execution or persistent index. Preserve existing literal-search commands.
+- Move conditional principle, helper, and delegation detail into linked references while keeping task boundaries and verification rules in the main router.
+- Add a frozen discovery query corpus and a reproducible literal/lexical/BM25 comparison with strict observer controls. Keep selection quality, instruction size, and actual agent outcomes separate.
+
+- Distinguish file inspection, requested execution, process startup, completion, and observed results in evidence reporting; keep validator failures and fallback checks tied to their actual receipts.
+- Clarify acceptance-criteria, read-only code review, and requested pause discovery; preserve unfinished work immediately at a pause and reuse the task's existing handoff when available.
+- Keep retained root run evidence out of skill-reference discovery checks while continuing to check authored documentation, including nested lookalike paths.
+
+- Add a conditional completion-order check to Bug fix for older asynchronous work that can publish into newer shared or visible state.
+- Add conditional product-interface and service/data guidance to Feature, Architect, and Interrogate: keyboard and focus behavior, composed loading/failure/retry states, responsive layout, authorization, durable success, concurrency, and compatibility. Expand terminal discovery for these existing workflows.
+- Resolve newly authored capabilities through their owning plugin manifest, including nonstandard skill roots, and preserve the existing router and catalog during Reflect improvements.
+- Make the run-evidence command perform its operation through preserved symlink aliases while keeping eval, print, stdin, and module imports inert.
+- Extend the observer corpus to 39 cases with a persisted reading-list feature, asynchronous cache-update defect, requirements-aware service review, and scoped plugin authoring/proposal tasks. Keep browser, service, live-agent, and native-installation evidence distinct.
+- Exclude only root run evidence from documentation validation while retaining checks for authored, ignored, untracked, and similarly named nested documentation.
+- Add a read-only verifier for saved native skill-catalog responses and exact independent package contents. Keep installation, capture authenticity, and agent invocation outside its verdict.
+
 - Continue authorized local autonomous programs across their milestones without requiring a monitoring tool. Preserve narrower request boundaries and inherited diffs; commit only with existing authorization and revert only identified, separable attempt changes.
 - Evaluate skill changes according to their behavioral effect, including prose labeled subjective. Keep editorial-only checks proportionate and distinguish implemented instructions from behavior verified in live tasks.
 
@@ -15,11 +31,11 @@
 - Add existing-behavior specification with code/test anchors and explicit contradictions; coordinate separately owned providers and consumers through one shared contract and real boundary checks.
 - Add conditional error-handling and test-quality review lenses, UI click-path tracing, and bounded research before introducing dependencies or substantial helpers.
 - Preserve project-scoped lessons with counterexamples and verification context. Add read-only matched-evaluation failure analysis and content-based catalog maintenance with dependent-skill invalidation; no automatic skill promotion or hidden observation hooks.
-- Extend the isolated observer corpus to 32 cases with six focused workflow fixtures and deterministic controls for the new tools. Attribute the adapted ECC concepts and retain its MIT notice.
+- Extend the isolated observer corpus with six focused workflow fixtures and deterministic controls for the new tools. Attribute the adapted ECC concepts and retain its MIT notice.
 
 - Ground investigations in competing explanations, original evidence sources, and a useful next check; keep review agreement separate from proof and avoid extra process for simple questions.
 - Preserve complete, partial, unavailable, unattempted, and failed evidence coverage through reviews and handoffs. Add an optional run record for selected historical evidence and fixed attempt/deadline allowances across resumes.
-- Supply isolated project preparation for all 26 observer cases, including parser TDD, performance, hanging tests, unfinished checkpoints, partial coverage, and repeated-source rationale; add independent fixture acceptance controls.
+- Supply isolated project preparation for observer cases including parser TDD, performance, hanging tests, unfinished checkpoints, partial coverage, and repeated-source rationale; add independent fixture acceptance controls.
 - Share strict metadata parsing between package validation and discovery, test malformed distributions against both paths, and gate CI/release on checksum-pinned actionlint.
 
 - Improve all 47 skills with concrete examples, narrower scope, useful failure guidance, and explicit MIT licensing; raise the static quality gate to grade A (90). Correct TypeScript invariant claims, validate configuration before writing, and remove unsupported universal workflow rules.

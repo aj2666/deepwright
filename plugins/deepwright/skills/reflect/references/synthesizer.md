@@ -44,10 +44,15 @@ Apply every criterion to every finding:
 - **Already covered:** read the in-scope target skill before accepting an edit; reject duplicates or propose a precise placement or wording fix when existing guidance failed to fire.
 - **Authorization:** proposals require explicit approval for application; recognize existing approval for the same concrete improvement, but never treat approval to reflect as approval for an external write.
 
-Use paths from the supplied inventory. If a new skill is justified, propose
-`.agents/skills/<skill-name>/` for repository scope. Propose
-`$HOME/.agents/skills/<skill-name>/` only when the user explicitly requested a
-personal skill. Substantive creation should later run through `$skill-creator`.
+Use paths from the supplied inventory and resolve proposed destinations from
+the named catalog and its package metadata. Keep existing skills in place;
+route justified new distributed plugin skills to the manifest-declared skills
+directory, preserving invocation names, UI metadata, and callers. For a
+requested project-local addition, follow the existing convention or
+`.agents/skills/<skill-name>/`. Propose `$HOME/.agents/skills/<skill-name>/` only
+for an explicitly requested personal installation; catalog maintenance never
+implies global installation. Substantive creation should later run through
+`$skill-creator`.
 
 Output exactly this structure. Do not add a preamble or closing note. Keep each
 table cell to one sentence.

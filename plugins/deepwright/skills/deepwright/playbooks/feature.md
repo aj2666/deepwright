@@ -6,6 +6,8 @@ Before introducing a dependency or substantial helper, use [reuse research](../.
 
 Before implementation, read [the acceptance contract](../../spec/references/acceptance-contract.md) and ground the requested behavior in the user's instructions or existing specification. Small, clear changes need only a short checklist. Invoke `$deepwright:spec` when a specification is requested or consequential behavior remains ambiguous; read [its workflow](../../spec/SKILL.md) rather than inventing a second requirements process. A spec-only request stops there. An already authorized build proceeds without repeated approval for settled decisions.
 
+For frontend or native interaction changes, select the applicable journey and accessibility checks from [product interfaces](../references/product-interface.md). For backend, API, or persisted-data changes, select the affected access, storage, and compatibility checks from [service and data work](../references/service-data.md). A change crossing both boundaries may need both; small established changes load only the relevant guidance. Carry those checks with the same acceptance criteria into implementation and review.
+
 1. Inspect the affected interface, callers, and existing tests. Invoke `$deepwright:how` when the subsystem needs investigation; direct source inspection is enough for a familiar, local change.
 2. Follow an established design for a small, compatible addition. Invoke `$deepwright:architect` when the change introduces a consequential interface, data model, migration, or unresolved design tradeoff. State the chosen approach and its reason.
 3. For a small change, keep a compact behavior-and-verification checklist. For work spanning dependent units or multiple workers, record the coordination decisions:

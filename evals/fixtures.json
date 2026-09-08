@@ -32,5 +32,10 @@
   {"id":"reflect-scoped-lesson","project":"lessons","overlay":null},
   {"id":"design-reuse","project":"reuse","overlay":null},
   {"id":"review-uncommitted-retry","project":"retry","overlay":"retry-review"},
-  {"id":"shipping-context-readiness","project":"shipping-context","overlay":null}
+  {"id":"shipping-context-readiness","project":"shipping-context","overlay":null},
+  {"id":"feature-reading-list","project":"reading-list","overlay":null},
+  {"id":"bug-cache-update","project":"cache","overlay":"cache-update"},
+  {"id":"review-resource-boundary","project":"service-review","overlay":null},
+  {"id":"author-plugin-capability","project":"plugin-authoring","overlay":null},
+  {"id":"reflect-plugin-proposal","project":"plugin-authoring","overlay":null}
 ]

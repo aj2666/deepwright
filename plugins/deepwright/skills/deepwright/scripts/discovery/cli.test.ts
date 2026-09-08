@@ -46,6 +46,20 @@ async function run(argv: readonly string[], context: { pluginRoot?: string; cwd?
   return { code, stdout: stdout.join(""), stderr: stderr.join("") };
 }
 
+async function rankedFixture() {
+  const context = await fixture();
+  const directory = join(context.pluginRoot, "skills", "deepwright", "playbooks");
+  await mkdir(directory);
+  const names = ["one", "two", "three", "four"];
+  for (const name of names) await writeFile(join(directory, name + ".md"), "Private instruction body for " + name + ".\n");
+  const skill = join(context.pluginRoot, "skills", "deepwright", "SKILL.md");
+  await writeFile(skill, await readFile(skill, "utf8") + [
+    "", "## Playbook router", "", "| Request shape | Playbook |", "| --- | --- |",
+    ...names.map((name) => "| Investigate workflow | `playbooks/" + name + ".md` |"), "",
+  ].join("\n"));
+  return context;
+}
+
 async function snapshot(root: string): Promise<unknown> {
   const values: unknown[] = [];
   for (const entry of (await readdir(root, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -202,6 +216,92 @@ describe("read-only skill discovery", () => {
     const result = await run(["skills", "steps investigate", "--compact"], context);
     expect(result.code).toBe(0);
     expect(result.stdout).toBe("alpha — First Steps\n");
+  });
+
+  it("ranks a natural request while preserving literal search", async () => {
+    const query = "review my code for security problems";
+    const literal = await run(["skills", query, "--json"]);
+    expect(JSON.parse(literal.stdout).skills).toEqual([]);
+    const result = await run(["find", query, "--json"]);
+    expect(result.code, result.stderr).toBe(0);
+    const found = JSON.parse(result.stdout);
+    expect(found).toMatchObject({
+      schemaVersion: 1, tool: "deepwright", command: "find", query, limit: 3, algorithm: "bm25",
+    });
+    expect(found.skills[0].name).toBe("interrogate");
+    expect(found.skills[0].matchedTerms).toContain("security");
+    expect(found.skills).toHaveLength(3);
+    expect(found.playbooks.length).toBeLessThanOrEqual(3);
+    expect(found.playbooks.map((entry: { name: string }) => entry.name)).not.toContain("perf-issue");
+  });
+
+  it("bounds each result kind independently and leaves files untouched", async () => {
+    const context = await rankedFixture();
+    const before = await snapshot(context.root);
+    const result = await run(["find", "investigate the workflow", "--limit", "2", "--json"], context);
+    expect(result.code, result.stderr).toBe(0);
+    const found = JSON.parse(result.stdout);
+    expect(found.skills).toHaveLength(2);
+    expect(found.playbooks).toHaveLength(2);
+    expect(found.skills.every((entry: { path: string; score: number }) => entry.path.startsWith(context.pluginRoot) && entry.score > 0)).toBe(true);
+    expect(result.stdout).not.toContain("Private instruction body");
+    expect(result.stdout).not.toContain("Canonical workflow body");
+    const human = await run(["find", "investigate the workflow", "--limit", "1"], context);
+    expect(human.stdout).toContain("Skills:");
+    expect(human.stdout).toContain("Playbooks:");
+    expect(human.stdout).toContain("Read selected files in full");
+    expect(await snapshot(context.root)).toEqual(before);
+  });
+
+  it("finds the performance playbook from a plain-language speed request", async () => {
+    const result = await run(["find", "make this API faster", "--json"]);
+    expect(result.code, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout).playbooks[0].name).toBe("perf-issue");
+  });
+
+  it.each(["", "the and my", "quasars nebulae", "$(touch sentinel)"])("returns empty suggestions safely for %j", async (query) => {
+    const context = await rankedFixture();
+    const before = await snapshot(context.root);
+    const result = await run(["find", query, "--json"], context);
+    expect(result.code, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ query, skills: [], playbooks: [] });
+    expect(await snapshot(context.root)).toEqual(before);
+  });
+
+  it.each([
+    ["find"], ["find", "review", "extra"], ["find", "review", "--limit"],
+    ["find", "review", "--limit", "0"], ["find", "review", "--limit", "-1"],
+    ["find", "review", "--limit", "11"], ["find", "review", "--limit", "1.0"],
+    ["find", "review", "--limit", "01"], ["find", "review", "--limit", "Infinity"],
+    ["find", "review", "--limit", "2", "--limit", "3"],
+    ["find", "review", "--compact"], ["find", "review", "--host", "codex"],
+    ["skills", "review", "--limit", "2"], ["find", "x".repeat(4097)], ["find", "é".repeat(2049)],
+  ])("rejects invalid ranked-search arguments before reading files (%#)", async (...args) => {
+    const result = await run([...args, "--json"], { pluginRoot: "/nonexistent/deepwright" });
+    expect(result.code).toBe(64);
+    expect(result.stdout).toBe("");
+    expect(JSON.parse(result.stderr).exitCode).toBe(64);
+  });
+
+  it("keeps ranked-search help available without a plugin", async () => {
+    const result = await run(["find", "--help"], { pluginRoot: "/nonexistent/deepwright" });
+    expect(result.code).toBe(0);
+    expect(result.stdout).toContain("find <query>");
+  });
+
+  it("refreshes changed metadata and fails on a broken catalog rather than serving stale results", async () => {
+    const context = await rankedFixture();
+    const skill = join(context.pluginRoot, "skills", "alpha", "SKILL.md");
+    const source = await readFile(skill, "utf8");
+    await writeFile(skill, source.replace("Investigate alpha workflow", "Inspect permissions"));
+    expect(JSON.parse((await run(["find", "permissions", "--json"], context)).stdout).skills.map((entry: { name: string }) => entry.name)).toEqual(["alpha"]);
+    await writeFile(skill, source);
+    expect(JSON.parse((await run(["find", "permissions", "--json"], context)).stdout).skills).toEqual([]);
+    await rm(join(context.pluginRoot, "skills", "deepwright", "playbooks", "one.md"));
+    const result = await run(["find", "workflow", "--json"], context);
+    expect(result.code).toBe(1);
+    expect(result.stdout).toBe("");
+    expect(JSON.parse(result.stderr).error).toBeTruthy();
   });
 
   it("shows provenance, validates, and prints templates without requiring a plugin or writing", async () => {

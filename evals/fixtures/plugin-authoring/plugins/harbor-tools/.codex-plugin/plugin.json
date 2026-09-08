@@ -1,0 +1,6 @@
+{
+  "name": "harbor-tools",
+  "version": "0.1.0",
+  "description": "Focused maintenance workflows for a local notes application.",
+  "skills": "./workflows/"
+}

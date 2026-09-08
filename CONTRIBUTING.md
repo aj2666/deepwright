@@ -24,6 +24,19 @@ A separate workflow job runs actionlint 1.7.12 from its pinned release archive, 
 
 Keep tests and fixtures when pruning documentation. The CSV evaluation fixture is intentionally defective; its neutral contract remains beside it. Offline scorer/verifier tests check the tooling, not actual model behavior. Use the [evaluation protocol](evals/README.md) for live comparisons.
 
+Validation excludes the root `.deepwright/runs/` scratch-evidence directory so retained logs and research cannot become distribution documentation. Authored documentation elsewhere, including `.deepwright/plans/`, untracked files, and similarly named nested directories, remains checked. Keep one authoritative plan for a release program and reference supporting receipts from it.
+
+Match verification to the surface being shipped:
+
+| Surface | Required evidence |
+| --- | --- |
+| Skill instructions and references | Package links/metadata, content snapshot, focused behavioral tasks with ordinary prompts, scope counterexamples, and independent artifact review |
+| Optional Node helpers and bundled dependencies | Real command effects and failures, import/alias controls, typecheck, reproducible bundle, dependency audit, and license notices |
+| Maintainer evaluation tools and fixtures | Independently correct and faulty controls, retained failures, host execution bounds, and no observer answers in candidate contexts |
+| Host installation and activation | Supported isolated installation, native discovery with exact loaded contents, then a fresh task demonstrating invocation and sibling-reference access |
+
+Treat these as separate evidence. A source-tree validator does not establish installed bytes, and a native discovery response does not establish that an agent followed a workflow. Match baseline and candidate host/model/permissions/fixture conditions; disclose supplied-instruction staging and unavailable native installation instead of promoting them to installation evidence.
+
 For catalog maintenance, `npm run skills:stocktake -- snapshot` prints content fingerprints for maintained skill files; save snapshots outside the catalog, then use `compare <before.json> <after.json>` to select changes and dependent skills for review. It includes references, metadata, scripts, assets, and bundles; it excludes `.git` and `node_modules`. Review dynamic dependencies manually. `npm run eval:analyze -- <baseline/run.json> <candidate/run.json> [...]` groups failures from verified matched pairs without editing skills. Both repository tools are covered by `test:evals`; neither is an installed plugin command or a quality/promotion oracle.
 
 ## Static skill checks
@@ -103,6 +116,18 @@ scorer to accept a partial maintenance trial.
 ## Manual release checks
 
 Automated CLI installation does not exercise the desktop UI, confirm model availability, or prove skill activation in another session.
+
+### Exact native catalog and package contents
+
+Where an authorized host exposes Codex's native `skills/list` method, save the actual request for one explicit project cwd and its complete matching JSON-RPC response. Use a frozen expected package separately from the installed package:
+
+```sh
+npm run verify:installed -- --request /absolute/evidence/request.json --response /absolute/evidence/response.json --cwd /absolute/project --plugin-id deepwright@deepwright --expected-plugin /absolute/frozen/plugins/deepwright
+```
+
+The request must use `method: "skills/list"`, a string or integer `id`, and `params.cwds` containing exactly the expected cwd; optional `forceReload` is boolean. The response must have the same id and exactly that cwd in `result.data`. The verifier checks loading errors, enabled plugin-qualified skills, plugin identity, descriptions, and native skill paths. It derives one independent loaded package root and compares every regular file, including manifest, references, assets, bundles, and licenses; only `.git` and `node_modules` directories are excluded. Symlinked package contents, overlapping source/loaded roots, duplicate or missing skills, and different bytes fail closed.
+
+Exit 0 means the saved catalog and current package bytes match, 1 means a mismatch, and 2 means invalid or unavailable evidence. JSON inputs are limited to 8 MiB each; each package tree to 64 MiB and 10,000 files. This read-only repository helper neither installs the plugin nor obtains/authenticates native responses. Its synthetic controls establish verifier behavior only. If native capture or a supported isolated installation is unavailable, record that gate as unverified. Separately observe a fresh task's invocation and sibling-file access; matching catalog bytes do not prove either.
 
 ### CLI and discovery
 

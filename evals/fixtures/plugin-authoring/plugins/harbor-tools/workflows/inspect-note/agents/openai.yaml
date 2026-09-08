@@ -1,0 +1,6 @@
+interface:
+  display_name: "Inspect Note"
+  short_description: "Explain a supplied note's save path and evidence."
+  default_prompt: "Use $harbor-tools:inspect-note to explain this note's save path."
+policy:
+  allow_implicit_invocation: false

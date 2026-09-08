@@ -1,6 +1,6 @@
 ---
 name: interrogate
-description: "Review a design or change with independent adversarial passes, check requirement coverage, and synthesize an evidenced verdict without edits. Use for $deepwright:interrogate."
+description: "Review correctness, security, and requirement coverage in a design or change with independent adversarial passes; synthesize an evidenced verdict without edits. Use for $deepwright:interrogate."
 license: MIT
 ---
 
@@ -43,6 +43,8 @@ Read [the acceptance contract](../spec/references/acceptance-contract.md). Reuse
 ## Step 3, Spawn Reviewers
 
 For changes to error handling or tests, read [the focused lenses](references/focused-lenses.md) and include the relevant questions in the existing brief. For UI state transitions, include [click-path tracing](../how/references/click-path-audit.md). These are conditional lenses, not additional mandatory reviewers.
+
+For changed UI behavior or accessibility, use the applicable [product-interface review questions](../deepwright/references/product-interface.md#review-and-evidence). For service access, API, or persisted-data changes, use the applicable [service/data review questions](../deepwright/references/service-data.md#review-and-evidence). Include only checks relevant to the changed path in the existing brief. These references do not start a build or live drive: reviewers inspect source and matching receipts and describe missing checks within this read-only workflow.
 
 Read [the shared configuration contract](../deepwright/references/configuration.md) before choosing `parallelism.reviewers` or `roles.review`, including when Interrogate is invoked directly. Follow its validation and explicit-user/project/default precedence. Use the host's collaboration mechanism when available, cap concurrent reviewers to advertised free capacity, and process the remainder in bounded waves. Reviewers are read-only and inherit the parent model unless the host confirms the configured override. Never guess a model slug or retry with a different product's model name. If the host cannot delegate, run one careful local review and disclose the reduced independence.
 
