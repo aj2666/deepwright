@@ -2,6 +2,8 @@
 name: deepwright-maintain
 description: "Audit Deepwright itself or implement an explicitly authorized, evidence-backed repair in its development checkout. Invoke explicitly; not for ordinary project work, automatic memory collection, or self-approved releases."
 license: Apache-2.0
+metadata:
+  tags: [deepwright, maintenance, evaluation]
 ---
 
 # Maintain Deepwright
