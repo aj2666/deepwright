@@ -75,6 +75,44 @@ For dependency updates, change the reviewed upstream commit in [.github/requirem
 
 The enabled subset excludes the external security scanners, LLM rubric scoring, semantic overlap, and live evaluation. A later live pilot needs reviewed tasks, confirmed plugin invocation and sibling-skill access, a restricted execution environment, and explicit provider/runtime configuration. Do not treat standalone skill staging as proof that Deepwright's plugin-qualified invocations work. See the [evaluation protocol](evals/README.md) for the independent behavioral evidence still required.
 
+## Maintain Deepwright itself
+
+The repository-local [maintainer skill](.agents/skills/deepwright-maintain/SKILL.md)
+coordinates Reflect, scoped lessons, skill authoring, and evaluation. It is not
+part of the distributed plugin and does not create a scheduler, collect hidden
+history, or change the installed plugin cache. Keep its `agents/openai.yaml`
+explicit-only policy; discovery settings do not grant write permission.
+
+From a fresh supported Codex session in this development checkout:
+
+```text
+$deepwright-maintain audit this checkout and the evidence I supply. Propose one justified improvement or return no change. Do not edit or publish.
+```
+
+Implementation, commits, publication, and installation retain their separate
+authorization boundaries. The maintainer must preserve inherited work and use
+an isolated candidate for authorized repairs. Missing live execution means
+behavior unverified, not improved. Explicit invocation and behavioral outcomes
+still require qualification in the actual host.
+
+With the pinned SkillEvaluator environment active, check the local skill with:
+
+```sh
+npm run check:skills -- .agents/skills/deepwright-maintain
+```
+
+CI runs this static check separately from the bundled catalog and retains both
+sets of reports. `npm test` does not include the SkillEvaluator gate. Static
+scores do not establish routing, scope compliance, or successful self-repair.
+
+The [maintenance evaluation plan](evals/maintenance-evaluation-plan.md) is for
+independent evaluators, not a runtime skill reference. Its scenarios are proposed,
+not executed fixtures. Do not inject it into candidate contexts; keep observer
+resources inaccessible through host-enforced boundaries. A separate directory
+alone is not isolation. Implement the live execution path and adversarial checks
+before relying on automatic promotion; do not weaken the existing full-corpus
+scorer to accept a partial maintenance trial.
+
 ## Manual release checks
 
 Automated CLI installation does not exercise the desktop UI, confirm model availability, or prove skill activation in another session.

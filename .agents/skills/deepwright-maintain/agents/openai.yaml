@@ -1,0 +1,6 @@
+interface:
+  display_name: "Maintain Deepwright"
+  short_description: "Evidence-backed maintenance of Deepwright itself"
+  default_prompt: "Use $deepwright-maintain to audit the named Deepwright development checkout and supplied evidence. Propose only justified improvements; do not edit, install, commit, or publish unless I explicitly authorize those actions."
+policy:
+  allow_implicit_invocation: false
