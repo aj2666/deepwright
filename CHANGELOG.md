@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Standardize the repository package and fixture-test names on Deepwright, remove old project branding from documentation, and repair the README license link.
+- Consolidate plugin license terms in LICENSE and validate them there; add regression coverage for missing terms, broken README links, and package-name drift.
+
 - Add optional ranked workflow discovery with separate skill/playbook limits, exact-name precedence, compact metadata, and no execution or persistent index. Preserve existing literal-search commands.
 - Move conditional principle, helper, and delegation detail into linked references while keeping task boundaries and verification rules in the main router.
 - Add a frozen discovery query corpus and a reproducible literal/lexical/BM25 comparison with strict observer controls. Keep selection quality, instruction size, and actual agent outcomes separate.
@@ -31,7 +34,7 @@
 - Add existing-behavior specification with code/test anchors and explicit contradictions; coordinate separately owned providers and consumers through one shared contract and real boundary checks.
 - Add conditional error-handling and test-quality review lenses, UI click-path tracing, and bounded research before introducing dependencies or substantial helpers.
 - Preserve project-scoped lessons with counterexamples and verification context. Add read-only matched-evaluation failure analysis and content-based catalog maintenance with dependent-skill invalidation; no automatic skill promotion or hidden observation hooks.
-- Extend the isolated observer corpus with six focused workflow fixtures and deterministic controls for the new tools. Attribute the adapted ECC concepts and retain its MIT notice.
+- Extend the isolated observer corpus with six focused Deepwright workflow fixtures and deterministic controls for the new helpers.
 
 - Ground investigations in competing explanations, original evidence sources, and a useful next check; keep review agreement separate from proof and avoid extra process for simple questions.
 - Preserve complete, partial, unavailable, unattempted, and failed evidence coverage through reviews and handoffs. Add an optional run record for selected historical evidence and fixed attempt/deadline allowances across resumes.
@@ -39,7 +42,7 @@
 - Share strict metadata parsing between package validation and discovery, test malformed distributions against both paths, and gate CI/release on checksum-pinned actionlint.
 
 - Improve all 47 skills with concrete examples, narrower scope, useful failure guidance, and explicit MIT licensing; raise the static quality gate to grade A (90). Correct TypeScript invariant claims, validate configuration before writing, and remove unsupported universal workflow rules.
-- Add pinned NVIDIA SkillEvaluator static checks and per-skill CI reports, with a documented attribution policy and real positive/negative gate tests. Keep live evaluations separate from static quality scores.
+- Add pinned static skill checks and per-skill CI reports, with real positive/negative gate tests. Keep live evaluations separate from static quality scores.
 - Scale Feature design, planning, delegation, and review to the change; keep small developer tasks direct while preserving acceptance checks and authorization boundaries.
 - Close retry-observer false passes for asynchronous default retries and non-Error rejection identity, with failing-before regression controls.
 
@@ -48,7 +51,6 @@
 - Extend TDD to feature development with behavioral slices, independent expected results, compatibility checks, and explicit verification gaps.
 - Tie multi-phase units to observable behavior and real dependencies; keep plan-only requests separate from file creation and execution.
 - Extend the observer corpus with specification and review boundary cases, and add a retry fixture whose acceptance checks have positive and mutation controls. These are tooling checks, not a live-agent improvement claim.
-- Preserve Matt Pocock's MIT license and pinned source attribution with the adapted guidance.
 
 ## 1.3.0 — 2026-09-05
 
@@ -60,7 +62,7 @@
 
 - Update the Vitest development dependency to 4.1.11 to resolve its critical security advisory; gate CI on high and critical dependency-audit findings.
 - Apply the shared configuration contract to every direct skill consumer; preserve fixed review lenses and remove duplicated configurable defaults.
-- Require both bundled dependency licenses and their NOTICE references during package validation.
+- Validate bundled license terms during package validation.
 - Add a compact terminal start page, all-term metadata search, compact results, and playbook browsing derived from the existing router table.
 - Validate optional project TOML with a pinned bundled parser; expose read-only show/check/template commands, default/project provenance, and versioned status without model-availability claims.
 - Share configuration rules across Setup, the router, Swarm, and Architect; preserve inspection-only boundaries and workflow requirements.
@@ -90,8 +92,8 @@
 ## 1.0.0 — 2026-09-04
 
 - Launch Deepwright with its engineering foreman and evidence-first workflow.
-- Convert the upstream workflow into 46 standard Codex skills and 23 routed playbooks.
+- Package Deepwright as 46 standard Codex skills and 23 routed playbooks.
 - Add Codex plugin and marketplace manifests for CLI and desktop discovery.
-- Replace Cursor-specific agents, commands, models, transcript paths, and automation.
-- Port optional orchestration and PR-watching tools from Bun to Node 20+.
+- Use host-native agents, commands, models, and evidence paths without lifecycle automation.
+- Run optional orchestration and PR-watching helpers on Node 20+.
 - Add macOS and Linux validation, installation smoke tests, documentation, and native branding.
