@@ -55,6 +55,23 @@ Clone the repository and open it as a Codex project in the ChatGPT desktop app. 
 
 After updating the checkout, restart the app, complete any update or reinstall offered in the Plugins Directory, and start a new chat. Desktop invocation uses the `@` picker rather than the CLI tokens above. See OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins) and [Build plugins](https://developers.openai.com/plugins/build/plugins).
 
+## Use Owl as a desktop pet
+
+<img src="plugins/deepwright/assets/pets/deepwright/preview.gif" alt="The Deepwright owl blinks" width="192">
+
+The Investigator Owl is available as a custom v2 pet for compatible Codex desktop versions, with nine animations and 16 gaze directions. Install it separately from the plugin.
+
+From the repository root, copy the pet into your Codex pet directory:
+
+```bash
+pet_dir="${CODEX_HOME:-$HOME/.codex}/pets/deepwright"
+mkdir -p "$pet_dir"
+cp plugins/deepwright/assets/pets/deepwright/pet.json "$pet_dir/pet.json"
+cp plugins/deepwright/assets/pets/deepwright/spritesheet.webp "$pet_dir/spritesheet.webp"
+```
+
+These commands replace an existing pet named `deepwright`. The [pet manifest](plugins/deepwright/assets/pets/deepwright/pet.json) and [spritesheet](plugins/deepwright/assets/pets/deepwright/spritesheet.webp) must stay together. The asset uses 192 × 208 cells in a 1536 × 2288 transparent atlas and is covered by the plugin's [MIT license](plugins/deepwright/LICENSE).
+
 ## Choose a workflow
 
 | Task | Entry point | Result to verify |
@@ -157,7 +174,7 @@ The `plugins/deepwright/skills/` directory contains the actual skill instruction
 
 ## Origins and license
 
-Deepwright is a substantial Codex-native adaptation of Cursor's MIT-licensed `pstack` plugin. Its workflow concepts were adapted into standard Codex skills and its optional helpers were ported from Bun to Node. Specification, testing, and requirements-review guidance also adapts material from Matt Pocock's MIT-licensed skills. Source revisions, attribution, and dependency notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Deepwright is a substantial Codex-native adaptation of Cursor's MIT-licensed `pstack` plugin. Its workflow concepts were adapted into standard Codex skills and its optional helpers were ported from Bun to Node. Specification, testing, and requirements-review guidance also adapts material from Matt Pocock's MIT-licensed skills. Source revisions, attribution, and dependency notices are preserved in [third-party notice](plugins/deepwright/NOTICE.md).
 
 Repository additions use the root [Apache-2.0 license](LICENSE). The distributed plugin retains its [MIT license](plugins/deepwright/LICENSE) and [notice](plugins/deepwright/NOTICE.md).
 
