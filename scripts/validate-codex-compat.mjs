@@ -51,22 +51,37 @@ const marketplacePath = path.join(repoRoot, ".agents", "plugins", "marketplace.j
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
 const rootPackage = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
-const bundledLicenses = ["commander-LICENSE", "smol-toml-LICENSE", "mattpocock-skills-LICENSE", "ecc-LICENSE"];
+const pluginLicensePath = path.join(pluginRoot, "LICENSE");
 
 for (const required of [
-  path.join(pluginRoot, "LICENSE"),
-  path.join(pluginRoot, "NOTICE.md"),
-  ...bundledLicenses.map((license) => path.join(pluginRoot, "third_party", license)),
+  pluginLicensePath,
   path.join(skillsRoot, "deepwright", "scripts", "dist", "deepwright.mjs"),
   path.join(skillsRoot, "deepwright", "scripts", "dist", "orch.mjs"),
   path.join(skillsRoot, "deepwright", "scripts", "dist", "watch-pr.mjs")
 ]) {
   if (!(await exists(required))) fail(`missing release file: ${path.relative(repoRoot, required)}`);
 }
-const pluginNotice = await readFile(path.join(pluginRoot, "NOTICE.md"), "utf8");
-for (const license of bundledLicenses) {
-  if (!pluginNotice.includes(`third_party/${license}`)) {
-    fail(`plugin NOTICE.md must reference the bundled ${license}`);
+// Deepwright ships one consolidated license file. Keep the retained copyright,
+// permission, and redistribution terms checked without requiring separate files.
+if (await exists(pluginLicensePath)) {
+  const pluginLicense = await readFile(pluginLicensePath, "utf8");
+  for (const notice of [
+    "Copyright (c) 2026 Lauren Tan",
+    "Copyright (c) 2011 TJ Holowaychuk",
+    "Copyright (c) Squirrel Chat et al., All rights reserved.",
+    "Copyright (c) 2026 Matt Pocock",
+    "Copyright (c) 2025 Siqi Chen",
+    "Copyright (c) 2026 Affaan Mustafa",
+    "Permission is hereby granted, free of charge",
+    "The above copyright notice and this permission notice shall be",
+    "THE SOFTWARE IS PROVIDED",
+    "Redistribution and use in source and binary forms, with or without",
+    "1. Redistributions of source code must retain the above copyright notice",
+    "2. Redistributions in binary form must reproduce the above copyright notice",
+    "3. Neither the name of the copyright holder nor the names of its contributors",
+    "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS"
+  ]) {
+    if (!pluginLicense.includes(notice)) fail(`plugin LICENSE must retain: ${notice}`);
   }
 }
 
@@ -102,6 +117,7 @@ if (!prompts.some((value) => /\b(?:Deepwright|Owl)\b/.test(value))) {
 if (prompts.some((value) => /\$deepwright(?::[a-z0-9-]+)?/i.test(value))) {
   fail("plugin defaultPrompt entries must be surface-neutral; keep CLI skill syntax in the CLI docs");
 }
+if (rootPackage.name !== "deepwright") fail("root package name must be deepwright");
 if (rootPackage.version !== manifest.version) fail("root and plugin versions must match");
 
 if (marketplace.name !== "deepwright") fail("marketplace name must be deepwright");
@@ -160,10 +176,7 @@ function validateSkillReferences(source, file) {
     }
   }
 }
-const legacyAllowed = new Set([
-  path.join(pluginRoot, "LICENSE"),
-  path.join(pluginRoot, "NOTICE.md")
-]);
+const legacyAllowed = new Set([pluginLicensePath]);
 const forbidden = [
   [/\.cursor-plugin\b/g, ".cursor-plugin"],
   [/(^|[~/])\.cursor\//gm, ".cursor path"],
@@ -178,7 +191,7 @@ const forbidden = [
   [/\bclaude-[a-z0-9._-]+/gi, "hardcoded Claude model"],
   [/\bgrok-[a-z0-9._-]+/gi, "hardcoded Grok model"],
   [/\/add-plugin\b/g, "legacy /add-plugin command"],
-  [/\buDeepwright\b/g, "broken upstack replacement"]
+  [/\buDeepwright\b/g, "broken Deepwright replacement"]
 ];
 for (const file of releaseFiles) {
   if (!textExtensions.has(path.extname(file))) continue;

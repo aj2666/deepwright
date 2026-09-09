@@ -7,9 +7,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const skillPath = path.join(root, "plugins", "deepwright", "skills", "unslop", "SKILL.md");
 const policyPath = path.join(root, "plugins", "deepwright", "skills", "unslop", "agents", "openai.yaml");
-const noticePath = path.join(root, "plugins", "deepwright", "NOTICE.md");
-const rootNoticePath = path.join(root, "THIRD_PARTY_NOTICES.md");
-const licensePath = path.join(root, "plugins", "deepwright", "third_party", "humanizer-LICENSE");
+const licensePath = path.join(root, "plugins", "deepwright", "LICENSE");
 
 const read = (file) => readFile(file, "utf8");
 
@@ -25,7 +23,6 @@ test("unslop keeps the humanization contract explicit", async () => {
   assert.match(skill, /### Cluster tells/);
   assert.match(skill, /A no-change result is valid\./);
   assert.match(skill, /does not prove who wrote the source/i);
-  assert.match(skill, /9862685f575c65a8247f90369951df1b3416e3d6/);
 });
 
 test("unslop remains explicit-only and advertises claim preservation", async () => {
@@ -34,19 +31,10 @@ test("unslop remains explicit-only and advertises claim preservation", async () 
   assert.match(policy, /allow_implicit_invocation: false/);
 });
 
-test("humanizer attribution ships with the distributed plugin", async () => {
-  const [notice, rootNotice, license] = await Promise.all([
-    read(noticePath),
-    read(rootNoticePath),
-    read(licensePath),
-  ]);
-
-  for (const text of [notice, rootNotice]) {
-    assert.match(text, /blader\/humanizer/);
-    assert.match(text, /9862685f575c65a8247f90369951df1b3416e3d6/);
-    assert.match(text, /humanizer-LICENSE/);
-  }
-
-  assert.match(license, /^MIT License\n/);
+test("Deepwright prose-editing license terms ship with the plugin", async () => {
+  const license = await read(licensePath);
+  assert.match(license, /Deepwright prose editing/);
+  assert.match(license, /^MIT License$/m);
   assert.match(license, /Copyright \(c\) 2025 Siqi Chen/);
+  assert.match(license, /The above copyright notice and this permission notice shall be included in all/);
 });

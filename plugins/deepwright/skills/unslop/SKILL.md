@@ -127,7 +127,3 @@ If the source contradicts itself or a requested rewrite would require inventing 
 ## Limitations
 
 Unslop improves prose. It does not prove who wrote the source, detect AI reliably, establish factual truth, or replace technical verification. Pattern lists change as models and writing conventions change; prefer observed structure, the writer's own sample, and the target genre over a brittle blacklist.
-
-## Source basis
-
-The pattern taxonomy is informed by Wikipedia's `Signs of AI writing` guidance and adapts workflow ideas from `blader/humanizer` 3.0.0 at commit `9862685f575c65a8247f90369951df1b3416e3d6`. Deepwright keeps its own scope, authorization, evidence, and output contracts. The upstream Humanizer MIT license is preserved in the plugin's third-party notices.

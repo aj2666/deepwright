@@ -43,7 +43,7 @@ git show --stat --oneline <commit>
 
 Derive the repository's actual default branch; never assume a branch or remote name. For pull requests and issues, prefer an installed GitHub connector. Use authenticated `gh` only when it is available and the target repository has been verified.
 
-Pass dynamic paths, search strings, symbols, and revisions as separately quoted arguments or structured tool fields. Use `--` before paths, validate revision syntax and resolution, and never paste repository or third-party text into a shell command. The templates below are shapes, not invitations to interpolate untrusted text.
+Pass dynamic paths, search strings, symbols, and revisions as separately quoted arguments or structured tool fields. Use `--` before paths, validate revision syntax and resolution, and never paste repository or external text into a shell command. The templates below are shapes, not invitations to interpolate untrusted text.
 
 Code describes mechanics, not intent. A code-shaped inference remains an inference unless a commit, review, ticket, document, or other record states the reason.
 

@@ -81,11 +81,10 @@ describe("specification package integration", () => {
     }
   });
 
-  it("ships the upstream license and its distribution notice", async () => {
-    const license = await readFile(join(pluginRoot, "third_party/mattpocock-skills-LICENSE"), "utf8");
+  it("ships specification license terms in the Deepwright plugin license", async () => {
+    const license = await readFile(join(pluginRoot, "LICENSE"), "utf8");
+    expect(license).toContain("Deepwright specification, testing, and requirements review");
     expect(license).toContain("Copyright (c) 2026 Matt Pocock");
-    const notice = await readFile(join(pluginRoot, "NOTICE.md"), "utf8");
-    expect(notice).toContain("third_party/mattpocock-skills-LICENSE");
-    expect(notice).toContain("3cca18b368ae95cdbdebbff572ccafa662551015");
+    expect(license).toContain("Permission is hereby granted, free of charge");
   });
 });
