@@ -45,6 +45,17 @@ to resolve. Ask what survives examination, without requiring an objection. A
 local pass is sufficient when delegation adds no useful independence or is
 unavailable; keep the distinction clear.
 
+## Refine an incomplete repository search
+
+When the first lookup misses the owning code, reuse terms, symbols, imports, and
+callers from the files actually found to narrow the next query. Name the missing
+boundary before widening the search. Include relevant tests, configuration, and
+negative cases; do not blanket-exclude tests or treat several matching files as
+complete coverage. Keep source paths and unread gaps with the returned findings.
+A worker lacking context should request the specific missing contract, not the
+whole repository. Follow the task's allowance and the stopping rule below rather
+than an arbitrary file count or invented relevance percentage.
+
 ## Choose whether to continue
 
 Reconcile returned evidence before dispatching more investigation. Name the

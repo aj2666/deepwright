@@ -14,6 +14,8 @@ Trace the request or job from its actual caller through enforcement and storage 
 
 Keep only the applicable checks. A response-field addition with one owner may need serialization and compatibility evidence; it does not automatically need a migration, retry design, or new infrastructure.
 
+For a staged schema change or backfill, use [migration safety](migration-safety.md) to check mixed-version writers, interrupted batches, stale reads, completion criteria, and recovery before removing the old data shape.
+
 ## Verify at the affected boundary
 
 Use the existing service and disposable storage harness when available. Exercise requests through the enforcement path and inspect the durable result, including a relevant rejected or interrupted operation. Use [TDD](../../tdd/SKILL.md) for behavioral slices and the shared boundary checks for real provider/consumer pairing. Mocking the authorization or persistence layer away does not prove its invariant.
