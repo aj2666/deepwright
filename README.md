@@ -1,23 +1,19 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="plugins/deepwright/assets/logo-dark.png">
-    <img src="plugins/deepwright/assets/logo.png" alt="Deepwright's Investigator Owl — sharp, skeptical, and curious" width="220">
+    <img src="plugins/deepwright/assets/logo.png" alt="Deepwright" width="220">
   </picture>
 </p>
 
 # Deepwright
 
-**Go deep. Ship sound.**
+Deepwright is a Codex plugin for investigating code, planning work, building features, fixing bugs, and reviewing changes. Describe what you need and what should stay untouched; Deepwright chooses a workflow for the task.
 
-Deepwright is an evidence-first engineering plugin for Codex, Claude Code, and Oh My Pi. Owl routes complex work through investigation, specification, design, implementation, review, and verification on the real artifact. The Investigator Owl keeps an eye on the evidence.
+## Install
 
-In Codex, one implicit router selects the smallest fitting workflow; focused skills remain explicitly invoked. Claude Code and Oh My Pi use their own skill discovery policies; see the host notes below. Optional Node 20.19+ helpers provide terminal discovery, project configuration checks, orchestration, and PR watching. The skills themselves do not require Node. The helper's start page reports the current skill and playbook inventory from the installed files.
+### Codex CLI
 
-Deepwright is a skills-only package with native Codex metadata and a shared Claude-compatible marketplace for Claude Code and Oh My Pi. It does not install lifecycle hooks, an MCP server, global settings, or background automation. A request to investigate, specify, plan, or review is not permission to implement, deploy, merge, or take other external actions.
-
-## Install in Codex CLI
-
-You need Codex CLI with plugin support and Git. While this repository is private, you also need repository access and working GitHub authentication.
+You need Codex CLI with plugin support and Git. This private repository also requires GitHub access and authentication.
 
 ```bash
 codex plugin marketplace add https://github.com/aj2666/deepwright.git --ref main --json
@@ -25,42 +21,15 @@ codex plugin add deepwright@deepwright --json
 codex plugin list --json
 ```
 
-SSH is also supported: use `git@github.com:aj2666/deepwright.git` as the marketplace source. Start a **new Codex session** after installation.
+For SSH, use `git@github.com:aj2666/deepwright.git` as the marketplace source. Start a new Codex session after installing.
 
-Give Owl a goal, a boundary, and a checkable finish condition:
+### macOS desktop
 
-```text
-$deepwright:deepwright investigate why this export loses columns. explain the cause and evidence without editing files.
-```
+Clone the repository and open it as a Codex project in the ChatGPT desktop app. Restart the app, install **Deepwright** from the Plugins Directory, then start a fresh chat. Use the `@` picker to choose Deepwright or a specific skill.
 
-```text
-$deepwright:owl-agent implement this feature, verify the result, and report what you tested. do not deploy or merge.
-```
+### Claude Code and Oh My Pi
 
-These are **Codex prompt tokens**, not shell commands. See the [Codex plugin CLI reference](https://learn.chatgpt.com/docs/developer-commands).
-
-## Update
-
-```bash
-codex plugin marketplace upgrade deepwright --json
-codex plugin add deepwright@deepwright --json
-codex plugin list --json
-```
-
-Start a fresh Codex session after reinstalling.
-
-## macOS desktop app
-
-Clone the repository and open it as a Codex project in the ChatGPT desktop app. Restart the app, then select the **Deepwright** source in the Plugins Directory and install the plugin. In a fresh chat, type `@` and select **Deepwright**, **Owl**, or a focused skill.
-
-After updating the checkout, restart the app, complete any update or reinstall offered in the Plugins Directory, and start a new chat. Desktop invocation uses the `@` picker rather than the CLI tokens above. See OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins) and [Build plugins](https://developers.openai.com/plugins/build/plugins).
-
-## Claude Code and Oh My Pi
-
-Both hosts load the same `plugins/deepwright/skills/` tree through the
-Claude-compatible marketplace. No copied skill catalog or extension runtime is needed.
-
-After these changes are published, install from GitHub:
+Claude Code and Oh My Pi load the same `plugins/deepwright/skills/` tree through the Claude-compatible marketplace. They do not need a copied skill catalog or extension runtime.
 
 ```bash
 claude plugin marketplace add https://github.com/aj2666/deepwright.git
@@ -72,139 +41,85 @@ omp plugin marketplace add https://github.com/aj2666/deepwright.git
 omp plugin install deepwright@deepwright
 ```
 
-For this local checkout, replace the marketplace URL with the absolute path to
-its repository root. For a session without installation, launch either host
-from your target project with `--plugin-dir /absolute/path/to/deepwright/plugins/deepwright`.
-Start a fresh session after installation or updates.
+For this local checkout, replace the marketplace URL with the absolute path to the repository root. For a session without installation, launch either host from your target project with `--plugin-dir /absolute/path/to/deepwright/plugins/deepwright`. Start a fresh session after installation or updates.
 
 | Host | Prompt to route a task | Prompt to review |
 |---|---|---|
 | Claude Code | `/deepwright:deepwright <task>` | `/deepwright:interrogate <task>` |
 | Oh My Pi | `/skill:deepwright <task>` | `/skill:interrogate <task>` |
 
-These are chat prompts, not shell commands. Oh My Pi requires skill slash
-commands to be enabled and uses unqualified skill names; check for collisions
-with another installed skill of the same name. Claude Code namespaces plugin skills.
+These are chat prompts, not shell commands. Oh My Pi requires skill slash commands to be enabled and uses unqualified skill names; check for collisions with another installed skill of the same name. Claude Code namespaces plugin skills. Supporting paths stay relative to the installed skill.
 
-The shared instructions contain Codex `$deepwright:<skill>` references. On these
-hosts, use the corresponding command above or read the linked canonical skill
-file. Supporting paths stay relative to the installed skill. Use the active
-host's tools, models, permissions, and delegation capabilities.
+## Use Deepwright
 
-`agents/openai.yaml` supplies Codex UI and implicit-invocation policy; the other
-hosts do not enforce that file. They may select focused skills automatically
-according to their own discovery rules. The optional `.codex/deepwright.toml`
-remains the shared helper's project configuration path and does not configure
-Claude Code or Oh My Pi model roles or concurrency.
+Enter these examples in a **Codex CLI prompt**, not in your terminal.
 
-Update with `claude plugin marketplace update deepwright` followed by
-`claude plugin update deepwright@deepwright`, or
-`omp plugin marketplace update deepwright` followed by
-`omp plugin upgrade deepwright@deepwright`.
+Investigate without changing files:
 
-See the [Claude Code plugin reference](https://code.claude.com/docs/en/plugins-reference)
-and [Oh My Pi's Claude-compatible loader](https://github.com/can1357/oh-my-pi/blob/main/packages/coding-agent/src/discovery/claude-plugins.ts).
+```text
+$deepwright:deepwright Explain why this export loses columns. Show the cause and evidence, but do not edit files.
+```
 
-## Choose a workflow
+Build a feature and check the result:
 
-| Task | Entry point | Result to verify |
-|---|---|---|
-| Route an engineering task | [Deepwright / Owl](plugins/deepwright/skills/deepwright/SKILL.md) | The smallest workflow within the requested boundary |
-| Understand behavior, dependencies, or rationale | [How](plugins/deepwright/skills/how/SKILL.md) / [Why](plugins/deepwright/skills/why/SKILL.md) | Cited paths, observations, and unresolved questions |
-| Define behavior and acceptance criteria | [Spec](plugins/deepwright/skills/spec/SKILL.md) | Grounded criteria and consequential open decisions |
-| Design an interface or shared contract | [Architect](plugins/deepwright/skills/architect/SKILL.md) | Caller/provider contract and integration checks |
-| Build a feature or fix a bug | [Feature](plugins/deepwright/skills/deepwright/playbooks/feature.md) / [Bug fix](plugins/deepwright/skills/deepwright/playbooks/bug-fix.md), using [TDD](plugins/deepwright/skills/tdd/SKILL.md) | Working behavior, regression evidence, and final review |
-| Change a frontend or accessible interaction | Feature with [product-interface guidance](plugins/deepwright/skills/deepwright/references/product-interface.md) | Composed journey, keyboard/focus, recovery, and applicable layout checks |
-| Change a backend, API, or stored data | Feature with [service/data guidance](plugins/deepwright/skills/deepwright/references/service-data.md) | Enforced access, durable effects, real serialization, and relevant failure checks |
-| Review correctness, security, and requirements | [Interrogate](plugins/deepwright/skills/interrogate/SKILL.md) | Reachable findings and evidence gaps, without edits |
-| Improve an existing system | [Perf issue](plugins/deepwright/skills/deepwright/playbooks/perf-issue.md) / [Refactoring](plugins/deepwright/skills/deepwright/playbooks/refactoring.md) | Comparable measurements or preserved behavioral contracts |
-| Prepare delivery | [Opening a PR](plugins/deepwright/skills/deepwright/playbooks/opening-a-pr.md) / [Shipping](plugins/deepwright/skills/deepwright/playbooks/shipping.md) | Current artifact readiness, with publication authority checked separately |
-| Improve or extend the kit | [Reflect](plugins/deepwright/skills/reflect/SKILL.md) / [Authoring](plugins/deepwright/skills/deepwright/playbooks/authoring-a-skill.md) | A scoped change in its owning catalog and proportional validation |
-| Inspect or change project preferences | [Setup Deepwright](plugins/deepwright/skills/setup-deepwright/SKILL.md) | Validated local preferences and explicit host limitations |
+```text
+$deepwright:deepwright Add a case-insensitive name filter. Keep the current behavior when the filter is empty, add tests, and verify the result. Do not deploy or merge.
+```
 
-From a checkout, the optional helper reads canonical metadata and prints guidance:
+Review your changes:
+
+```text
+$deepwright:interrogate Review my changes for bugs and missing requirements. Include uncommitted files. Do not edit files or post comments.
+```
+
+For a specific task, choose a skill directly:
+
+| Task | Skill |
+|---|---|
+| Define requirements before building | [Spec](plugins/deepwright/skills/spec/SKILL.md) - `$deepwright:spec` |
+| Understand how code works | [How](plugins/deepwright/skills/how/SKILL.md) - `$deepwright:how` |
+| Investigate a design decision | [Why](plugins/deepwright/skills/why/SKILL.md) - `$deepwright:why` |
+| Review code and requirements | [Interrogate](plugins/deepwright/skills/interrogate/SKILL.md) - `$deepwright:interrogate` |
+| Rewrite prose without changing its meaning | [Unslop](plugins/deepwright/skills/unslop/SKILL.md) - `$deepwright:unslop` |
+
+See the [workflow guide](plugins/deepwright/skills/deepwright/SKILL.md) for more tasks. A request to explain, plan, or review does not authorize implementation or shipping. Deepwright does not install background automation or change global settings.
+
+## Update
+
+```bash
+codex plugin marketplace upgrade deepwright --json
+codex plugin add deepwright@deepwright --json
+codex plugin list --json
+```
+
+Start a fresh Codex session afterward. On desktop, update your checkout, restart the app, complete any plugin update or reinstall, and start a new chat.
+
+## Optional helpers and settings
+
+The skills work without Node.js. The terminal helper requires Node 20.19 or newer and can help you find a workflow from a checkout:
 
 ```bash
 plugins/deepwright/skills/deepwright/scripts/deepwright
-plugins/deepwright/skills/deepwright/scripts/deepwright skills review --compact
 plugins/deepwright/skills/deepwright/scripts/deepwright find "review my code for security problems"
-plugins/deepwright/skills/deepwright/scripts/deepwright find "make this API faster" --limit 2 --json
-plugins/deepwright/skills/deepwright/scripts/deepwright playbooks performance
-plugins/deepwright/skills/deepwright/scripts/deepwright playbooks accessibility
-plugins/deepwright/skills/deepwright/scripts/deepwright skills security --compact
-plugins/deepwright/skills/deepwright/scripts/deepwright invoke interrogate
-plugins/deepwright/skills/deepwright/scripts/deepwright status --json
 ```
 
-`find` ranks concise metadata and returns separate skill and playbook suggestions. Existing `skills` and `playbooks` searches retain literal matching. Read selected files in full; a suggestion is not authorization to execute. These discovery commands do not launch agents or modify files. All skills remain available through the catalog. See the [terminal reference](docs/TERMINAL.md) for command options and opt-in, print-only AGENTS.md / CLAUDE.md pointers.
+These discovery commands print guidance; they do not launch agents or change files. See the [terminal guide](docs/TERMINAL.md) for all commands.
 
-## Specify, build, and review
-
-Use `$deepwright:spec` to turn an idea or existing conversation into acceptance criteria without starting implementation. It reuses settled decisions, investigates available facts, and surfaces consequential open choices. The draft stays in the conversation unless writing a document is authorized.
-
-Spec can also [document existing behavior](plugins/deepwright/skills/spec/references/existing-behavior.md) from active code paths and tests, retaining contradictions and unread gaps. Observed behavior does not become an approved requirement automatically.
-
-Architect uses [one shared contract](plugins/deepwright/skills/architect/references/shared-boundary-contract.md) for separately owned consumers and providers, including real serialization and compatibility checks. Before introducing a dependency or substantial helper, [reuse research](plugins/deepwright/skills/architect/references/reuse-research.md) compares existing repository capabilities with adopting, extending, or building.
-
-For an authorized feature build, Owl carries those same criteria through design, behavioral test slices, real-surface verification, and final requirements-aware review. A small, clear change needs a short checklist, not a formal spec or repeated interview. Multi-phase plans tie each unit to observable behavior and genuine dependencies; planning alone does not publish tickets or start the build.
-
-Start with the outcome you need. For example, in a Codex CLI prompt:
-
-```text
-$deepwright:deepwright add a case-insensitive name filter to this list using the existing UI pattern. Keep current behavior when the filter is empty, add a focused regression check, and work locally.
-```
-
-```text
-$deepwright:interrogate review my current changes against the requested behavior. Include uncommitted files, identify actionable defects, and explain what the available test evidence establishes. Do not edit or post comments.
-```
-
-Small additions and clear local bug fixes can use direct implementation and a separate local final review. A fix still needs a reproduced failure, a relevant regression check, and verification of the original behavior. Architecture exploration and multiple workers are reserved for changes that benefit from them.
-
-Ordinary requests such as “Does my uncommitted change preserve the required behavior?” route to Interrogate without needing an explicit leaf token. It reviews the current change against the requirements and distinguishes source findings from matching execution evidence. Explanations and architectural judgments use Investigation / How, and an explicitly requested skill keeps its own scope.
-
-The [acceptance contract](plugins/deepwright/skills/spec/references/acceptance-contract.md) distinguishes proved, failed, blocked, and not-applicable criteria. Missing evidence remains blocked. A green test suite or an implementer's claim does not prove every requirement, and a read-only review does not run tests that may write files or contact services.
-
-Specifications keep explicit input domains intact. An omitted option can use its specified default; a supplied value outside the allowed domain cannot become valid merely because a language convention would default it.
-
-For authorized landing, [Shipping](plugins/deepwright/skills/deepwright/playbooks/shipping.md) requires a verdict for the current base, head, and target. An unchanged patch ID does not preserve an old approval when the surrounding base changes; affected behavior and integration evidence need a fresh review before landing.
-
-Interrogate adds conditional [failure-visibility and test-quality lenses](plugins/deepwright/skills/interrogate/references/focused-lenses.md). For UI state bugs, How traces the [whole click path](plugins/deepwright/skills/how/references/click-path-audit.md), including hidden resets and asynchronous completion order, and identifies a check of the composed user action.
-
-Frontend and service guidance load only for the affected boundary. A form change may need keyboard submission, focus, error recovery, and narrow-screen checks; a service change may need resource ownership, concurrent persistence, or migration recovery. A small utility does not acquire a database or accessibility audit. Reviews inspect source and existing evidence; these references preserve a no-execution request.
-
-The workflows adapt to the repository's tools and conventions. The supplied acceptance projects use JavaScript, Node HTTP/filesystem services, and browser DOM; their results do not qualify native mobile, game engines, infrastructure deployment, or every framework. Each new environment needs its own real-surface checks.
-
-For uncertain investigations, How and Why compare plausible explanations using the next observation that could distinguish them. They trace repeated claims to their original source and stop when another check would not change the answer. [Investigation guidance](plugins/deepwright/skills/deepwright/references/investigation-evidence.md) keeps this extra work conditional on a material uncertainty.
-
-Reviews and handoffs retain [evidence coverage](plugins/deepwright/skills/deepwright/references/evidence-coverage.md): complete, partial, unavailable, not run, or error. For longer authorized tasks, an optional [run evidence helper](plugins/deepwright/skills/deepwright/references/run-evidence.md) preserves selected historical files and carries a fixed attempt allowance and deadline across resumes. It records bookkeeping; host permissions and execution limits remain the host's responsibility.
-
-[Autonomous runs](plugins/deepwright/skills/deepwright/playbooks/autonomous-run.md) continue available local work through the authorized milestones, even when monitoring or delegation is unavailable. Diagnosis, planning, and review requests keep their narrower stops. Iterations preserve inherited work, require existing commit authorization, and only revert changes whose ownership is established.
-
-[Skill authoring](plugins/deepwright/skills/deepwright/playbooks/authoring-a-skill.md) chooses validation by the changed behavior. Instructions affecting decisions, permissions, tools, delegation, or verification need scoped behavioral evaluation; a subjective label does not exempt them. Editorial changes can use lighter checks.
-
-Approved plugin additions stay in the owning manifest's skills directory. Reflect and Authoring update existing skills in place; they do not silently create a project-local duplicate or install a personal copy.
-
-## Optional configuration
-
-Deepwright works without configuration. Use `$deepwright:setup-deepwright` to inspect preferences or explicitly request changes to `.codex/deepwright.toml`. It never edits Codex's main configuration.
-
-The helper's `config show`, `config check`, and `config template` commands inspect settings, validate them, or print defaults without writing. Run them from the intended project root. Missing settings inherit defaults; invalid configuration is not partially applied. Only the active host can confirm model availability and concurrency. See the [configuration contract](plugins/deepwright/skills/deepwright/references/configuration.md).
+Deepwright works without configuration. Use `$deepwright:setup-deepwright` to inspect preferences or request changes to `.codex/deepwright.toml`. See the [settings reference](plugins/deepwright/skills/deepwright/references/configuration.md).
 
 ## Development
 
-Reflect proposes [scoped lessons](plugins/deepwright/skills/reflect/references/scoped-lessons.md) with evidence, counterexamples, and last verified context. It can analyze supplied recurring failures or review an explicitly named catalog without collecting hidden histories or changing skills automatically. Maintainers can use [matched-run failure analysis](evals/README.md#recurring-failure-analysis) and [catalog content snapshots](plugins/deepwright/skills/reflect/references/catalog-maintenance.md) to select focused improvements.
+From the repository root:
 
 ```bash
 npm ci --prefix plugins/deepwright/skills/deepwright/scripts
 npm test
 ```
 
-CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned static skill-evaluation job adds schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 39 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
+See [Contributing](CONTRIBUTING.md) for development and release checks, [Evaluations](evals/README.md) for workflow testing, and [Security](SECURITY.md) for reporting vulnerabilities.
 
-See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
-
-The `plugins/deepwright/skills/` directory contains the actual skill instructions, playbooks, principles, and supporting references—not disposable documentation. The marketplace lives in `.agents/plugins/marketplace.json`; the Codex plugin manifest is `plugins/deepwright/.codex-plugin/plugin.json`. Claude Code and Oh My Pi share `.claude-plugin/marketplace.json` and `plugins/deepwright/.claude-plugin/plugin.json`. Keep plugin versions synchronized; release validation rejects drift.
+The `plugins/deepwright/skills/` directory contains the actual skill instructions, playbooks, principles, and supporting references, not disposable documentation. The marketplace lives in `.agents/plugins/marketplace.json`; the Codex plugin manifest is `plugins/deepwright/.codex-plugin/plugin.json`. Claude Code and Oh My Pi share `.claude-plugin/marketplace.json` and `plugins/deepwright/.claude-plugin/plugin.json`. Keep plugin versions synchronized.
 
 ## License
 
-Deepwright repository additions use the root [Apache-2.0 license](LICENSE). License terms for the distributed Deepwright plugin are consolidated in its [LICENSE](plugins/deepwright/LICENSE).
+Repository additions use [Apache-2.0](LICENSE). The distributed plugin's license terms are in [plugins/deepwright/LICENSE](plugins/deepwright/LICENSE).
