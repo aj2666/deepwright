@@ -14,8 +14,7 @@ const cliPath = scriptsPath + "/dist/deepwright.mjs";
 const releaseFiles = [
   "package.json", ".agents/plugins/marketplace.json", validatorPath,
   pluginPath + "/.codex-plugin/plugin.json",
-  ...["LICENSE", "NOTICE.md", "third_party/commander-LICENSE", "third_party/smol-toml-LICENSE",
-    "third_party/mattpocock-skills-LICENSE", "third_party/ecc-LICENSE", "assets/icon.png", "assets/logo.png", "assets/logo-dark.png"]
+  ...["LICENSE", "assets/icon.png", "assets/logo.png", "assets/logo-dark.png"]
     .map((file) => pluginPath + "/" + file),
   ...["discovery/metadata.mjs", "dist/deepwright.mjs", "dist/orch.mjs", "dist/watch-pr.mjs",
     "deepwright", "check-plan.mjs", "worktree-audit.sh", "orch/orch", "watch-pr/watch-pr"]
@@ -265,21 +264,72 @@ test("both entrypoints accept the longest qualified name and confined metadata l
   assert.equal(JSON.parse(discovery.stdout).skills[0].invocation.length, 65); // '$' plus the 64-character qualified name.
 });
 
-for (const license of ['mattpocock-skills-LICENSE', 'ecc-LICENSE']) {
-  test(`release validation retains adapted guidance license and notice: ${license}`, async (t) => {
+test("release validation requires the consolidated Deepwright license", async (t) => {
+  const context = await fixture(t);
+  const filename = join(context.root, pluginPath, "LICENSE");
+  const content = await readFile(filename);
+  await rm(filename);
+  const missing = run(context.root, validatorPath);
+  assert.equal(missing.status, 1);
+  assert.match(missing.stderr, /missing release file: plugins\/deepwright\/LICENSE/);
+  await writeFile(filename, content);
+  assert.equal(run(context.root, validatorPath).status, 0);
+});
+
+for (const notice of [
+  "Copyright (c) 2026 Lauren Tan",
+  "Copyright (c) 2011 TJ Holowaychuk",
+  "Copyright (c) Squirrel Chat et al., All rights reserved.",
+  "Copyright (c) 2026 Matt Pocock",
+  "Copyright (c) 2025 Siqi Chen",
+  "Copyright (c) 2026 Affaan Mustafa",
+  "Permission is hereby granted, free of charge",
+  "The above copyright notice and this permission notice shall be",
+  "THE SOFTWARE IS PROVIDED",
+  "Redistribution and use in source and binary forms, with or without",
+  "1. Redistributions of source code must retain the above copyright notice",
+  "2. Redistributions in binary form must reproduce the above copyright notice",
+  "3. Neither the name of the copyright holder nor the names of its contributors",
+  "THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS",
+]) {
+  test(`release validation retains consolidated license text: ${notice}`, async (t) => {
     const context = await fixture(t);
-    const filename = join(context.root, pluginPath, 'third_party', license);
-    const content = await readFile(filename);
-    await rm(filename);
+    const filename = join(context.root, pluginPath, "LICENSE");
+    const content = await readFile(filename, "utf8");
+    assert.ok(content.includes(notice));
+    await writeFile(filename, content.replaceAll(notice, "omitted license text"));
     const missing = run(context.root, validatorPath);
-    assert.equal(missing.status, 1);
-    assert.match(missing.stderr, /missing release file/);
+    assert.equal(missing.status, 1, missing.stdout + missing.stderr);
+    assert.ok(missing.stderr.includes(`plugin LICENSE must retain: ${notice}`), missing.stderr);
     await writeFile(filename, content);
     assert.equal(run(context.root, validatorPath).status, 0);
-    const notice = join(context.root, pluginPath, 'NOTICE.md');
-    await writeFile(notice, (await readFile(notice, 'utf8')).replaceAll(`third_party/${license}`, 'omitted-license'));
-    const uncredited = run(context.root, validatorPath);
-    assert.equal(uncredited.status, 1);
-    assert.match(uncredited.stderr, /NOTICE.md must reference/);
   });
 }
+
+test("release validation accepts the Deepwright README license link and rejects broken links", async (t) => {
+  const context = await fixture(t);
+  const readme = join(context.root, "README.md");
+  const content = "# Deepwright\n\n[Deepwright plugin license](plugins/deepwright/LICENSE)\n";
+  await writeFile(readme, content);
+  assert.equal(run(context.root, validatorPath).status, 0);
+  await writeFile(readme, content + "\n[Removed document](removed-document.md)\n");
+  const broken = run(context.root, validatorPath);
+  assert.equal(broken.status, 1);
+  assert.match(broken.stderr, /README.md has a broken link: removed-document.md/);
+  await writeFile(readme, content);
+  assert.equal(run(context.root, validatorPath).status, 0);
+});
+
+test("release validation requires the Deepwright package name", async (t) => {
+  const context = await fixture(t);
+  const filename = join(context.root, "package.json");
+  const content = await readFile(filename, "utf8");
+  const metadata = JSON.parse(content);
+  metadata.name = "another-project";
+  await writeFile(filename, JSON.stringify(metadata));
+  const renamed = run(context.root, validatorPath);
+  assert.equal(renamed.status, 1);
+  assert.match(renamed.stderr, /root package name must be deepwright/);
+  await writeFile(filename, content);
+  assert.equal(run(context.root, validatorPath).status, 0);
+});

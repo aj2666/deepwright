@@ -43,7 +43,7 @@ For this illustrative TypeScript fragment:
 // Increment the counter.
 count += 1;
 
-// @ts-expect-error third-party input
+// @ts-expect-error external input
 render(payload);
 ```
 

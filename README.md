@@ -149,16 +149,12 @@ npm ci --prefix plugins/deepwright/skills/deepwright/scripts
 npm test
 ```
 
-CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned NVIDIA SkillEvaluator job adds static schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 39 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
+CI covers dependency auditing, typechecking, helper and evaluator tests, reproducible bundles, metadata rejection controls, workflow linting, package/documentation validation, and real Codex CLI installation on Linux and macOS. A pinned static skill-evaluation job adds schema, PII, license, Unicode, quality, and advisory Python lint checks, with downloadable reports for every skill. See [Static skill checks](CONTRIBUTING.md#static-skill-checks) to run them locally. The observer corpus supplies fresh project preparation for all 39 cases. Desktop interaction and live-agent behavior require separate checks; passing tooling tests does not establish improved model routing or productivity.
 
 See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 
 The `plugins/deepwright/skills/` directory contains the actual skill instructions, playbooks, principles, and supporting references—not disposable documentation. The marketplace lives in `.agents/plugins/marketplace.json`; the plugin manifest is `plugins/deepwright/.codex-plugin/plugin.json`.
 
-## Origins and license
+## License
 
-Deepwright is a substantial Codex-native adaptation of Cursor's MIT-licensed `pstack` plugin. Its workflow concepts were adapted into standard Codex skills and its optional helpers were ported from Bun to Node. Specification, testing, and requirements-review guidance also adapts material from Matt Pocock's MIT-licensed skills. Source revisions, attribution, and dependency notices are preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
-Repository additions use the root [Apache-2.0 license](LICENSE). The distributed plugin retains its [MIT license](plugins/deepwright/LICENSE) and [notice](plugins/deepwright/NOTICE.md).
-
-Deepwright is independent and is not affiliated with or endorsed by Cursor or OpenAI.
+Deepwright repository additions use the root [Apache-2.0 license](LICENSE). License terms for the distributed Deepwright plugin are consolidated in its [LICENSE](plugins/deepwright/LICENSE).

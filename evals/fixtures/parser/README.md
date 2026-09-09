@@ -16,4 +16,4 @@ and objects unchanged. An empty array produces an empty string.
 Run the existing tests with `node --test parser.test.mjs formatter.test.mjs`.
 Read a settings file with `node cli.mjs sample.settings` or
 `node cli.mjs empty.settings`. The CLI prints the parsed entries as JSON. These
-commands need only Node; they use no network or third-party packages.
+commands need only Node; they use no network or external packages.
