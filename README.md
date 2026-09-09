@@ -50,6 +50,23 @@ For this local checkout, replace the marketplace URL with the absolute path to t
 
 These are chat prompts, not shell commands. Oh My Pi requires skill slash commands to be enabled and uses unqualified skill names; check for collisions with another installed skill of the same name. Claude Code namespaces plugin skills. Supporting paths stay relative to the installed skill.
 
+## Use Owl as a desktop pet
+
+<img src="plugins/deepwright/assets/pets/deepwright/preview.gif" alt="The Deepwright owl blinks" width="192">
+
+The Investigator Owl is available as a custom v2 pet for compatible Codex desktop versions, with nine animations and 16 gaze directions. Install it separately from the plugin.
+
+From the repository root, copy the pet into your Codex pet directory:
+
+```bash
+pet_dir="${CODEX_HOME:-$HOME/.codex}/pets/deepwright"
+mkdir -p "$pet_dir"
+cp plugins/deepwright/assets/pets/deepwright/pet.json "$pet_dir/pet.json"
+cp plugins/deepwright/assets/pets/deepwright/spritesheet.webp "$pet_dir/spritesheet.webp"
+```
+
+These commands replace an existing pet named `deepwright`. The [pet manifest](plugins/deepwright/assets/pets/deepwright/pet.json) and [spritesheet](plugins/deepwright/assets/pets/deepwright/spritesheet.webp) must stay together. The asset uses 192 x 208 cells in a 1536 x 2288 transparent atlas and is covered by the plugin's [MIT license](plugins/deepwright/LICENSE).
+
 ## Use Deepwright
 
 Enter these examples in a **Codex CLI prompt**, not in your terminal.
