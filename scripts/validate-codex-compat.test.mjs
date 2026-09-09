@@ -14,6 +14,7 @@ const cliPath = scriptsPath + "/dist/deepwright.mjs";
 const releaseFiles = [
   "package.json", ".agents/plugins/marketplace.json", validatorPath,
   pluginPath + "/.codex-plugin/plugin.json",
+  ".claude-plugin/marketplace.json", pluginPath + "/.claude-plugin/plugin.json",
   ...["LICENSE", "assets/icon.png", "assets/logo.png", "assets/logo-dark.png"]
     .map((file) => pluginPath + "/" + file),
   ...["discovery/metadata.mjs", "dist/deepwright.mjs", "dist/orch.mjs", "dist/watch-pr.mjs",
@@ -98,6 +99,26 @@ test("package validation and shipped CLI agree without installed dependencies", 
     { name: "deepwright", implicit: true, invocation: "$deepwright:deepwright" },
     { name: "show-me-your-work", implicit: false, invocation: "$deepwright:show-me-your-work" },
   ]);
+});
+
+test("release validation rejects portable version drift and wrong install targets", async (t) => {
+  const context = await fixture(t);
+  const manifestFile = join(context.root, pluginPath, ".claude-plugin/plugin.json");
+  const original = await readFile(manifestFile, "utf8");
+  const manifest = JSON.parse(original);
+  manifest.version = "0.0.0";
+  await writeFile(manifestFile, JSON.stringify(manifest));
+  const drift = run(context.root, validatorPath);
+  assert.equal(drift.status, 1);
+  assert.match(drift.stderr, /portable plugin version must match/);
+  await writeFile(manifestFile, original);
+  const marketplaceFile = join(context.root, ".claude-plugin/marketplace.json");
+  const marketplace = JSON.parse(await readFile(marketplaceFile, "utf8"));
+  marketplace.plugins[0].source = "./wrong-directory";
+  await writeFile(marketplaceFile, JSON.stringify(marketplace));
+  const target = run(context.root, validatorPath);
+  assert.equal(target.status, 1);
+  assert.match(target.stderr, /portable marketplace must resolve/);
 });
 
 test("release validation leaves retained root run evidence outside authored documentation checks", async (t) => {

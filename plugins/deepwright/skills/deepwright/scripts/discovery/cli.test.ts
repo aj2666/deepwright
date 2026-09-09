@@ -118,7 +118,7 @@ describe("read-only skill discovery", () => {
     expect(human.stdout).toContain("activation is not checked");
   });
 
-  it.each(["codex", "agents", "claude"] as const)("prints %s guidance without file or process side effects", async (host) => {
+  it.each(["codex", "agents", "claude", "omp"] as const)("prints %s guidance without file or process side effects", async (host) => {
     const context = await fixture();
     await writeFile(join(context.cwd, "AGENTS.md"), "User instructions.\n");
     await writeFile(join(context.cwd, "CLAUDE.md"), "Other user instructions.\n");
@@ -130,7 +130,11 @@ describe("read-only skill discovery", () => {
     if (host === "codex") {
       expect(guidance.cli).toBe("$deepwright:alpha");
       expect(guidance.desktop).toContain("First Steps");
+    } else if (host === "omp") {
+      expect(guidance.prompt).toBe("/skill:alpha");
+      expect(guidance.note).toContain("fresh session");
     } else {
+      if (host === "claude") expect(guidance.prompt).toBe("/deepwright:alpha");
       expect(guidance.target).toBe(host === "agents" ? "AGENTS.md" : "CLAUDE.md");
       expect(guidance.pointer).toContain(JSON.stringify(join(context.pluginRoot, "skills", "alpha", "SKILL.md")));
       expect(guidance.pointer).toContain("grants no new permissions");

@@ -1,0 +1,11 @@
+{
+  "name": "deepwright",
+  "owner": { "name": "aj2666" },
+  "plugins": [
+    {
+      "name": "deepwright",
+      "source": "./plugins/deepwright",
+      "description": "Evidence-first engineering workflows for Claude Code and Oh My Pi."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "name": "deepwright",
   "version": "1.3.0",
-  "description": "Deepwright evidence-first engineering workflows for Codex CLI and the macOS desktop app.",
+  "description": "Deepwright evidence-first engineering workflows for Codex, Claude Code, and Oh My Pi.",
   "private": true,
   "license": "Apache-2.0",
   "homepage": "https://github.com/aj2666/deepwright#readme",

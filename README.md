@@ -9,11 +9,11 @@
 
 **Go deep. Ship sound.**
 
-Deepwright is an evidence-first engineering plugin for Codex. Owl routes complex work through investigation, specification, design, implementation, review, and verification on the real artifact. The Investigator Owl keeps an eye on the evidence.
+Deepwright is an evidence-first engineering plugin for Codex, Claude Code, and Oh My Pi. Owl routes complex work through investigation, specification, design, implementation, review, and verification on the real artifact. The Investigator Owl keeps an eye on the evidence.
 
-One implicit router selects the smallest fitting workflow; focused skills remain explicitly invoked. Optional Node 20.19+ helpers provide terminal discovery, project configuration checks, orchestration, and PR watching. The skills themselves do not require Node. The helper's start page reports the current skill and playbook inventory from the installed files.
+In Codex, one implicit router selects the smallest fitting workflow; focused skills remain explicitly invoked. Claude Code and Oh My Pi use their own skill discovery policies; see the host notes below. Optional Node 20.19+ helpers provide terminal discovery, project configuration checks, orchestration, and PR watching. The skills themselves do not require Node. The helper's start page reports the current skill and playbook inventory from the installed files.
 
-Deepwright is a native skills-only Codex package. It does not install lifecycle hooks, an MCP server, global settings, or background automation. A request to investigate, specify, plan, or review is not permission to implement, deploy, merge, or take other external actions.
+Deepwright is a skills-only package with native Codex metadata and a shared Claude-compatible marketplace for Claude Code and Oh My Pi. It does not install lifecycle hooks, an MCP server, global settings, or background automation. A request to investigate, specify, plan, or review is not permission to implement, deploy, merge, or take other external actions.
 
 ## Install in Codex CLI
 
@@ -54,6 +54,56 @@ Start a fresh Codex session after reinstalling.
 Clone the repository and open it as a Codex project in the ChatGPT desktop app. Restart the app, then select the **Deepwright** source in the Plugins Directory and install the plugin. In a fresh chat, type `@` and select **Deepwright**, **Owl**, or a focused skill.
 
 After updating the checkout, restart the app, complete any update or reinstall offered in the Plugins Directory, and start a new chat. Desktop invocation uses the `@` picker rather than the CLI tokens above. See OpenAI's [Plugins guide](https://learn.chatgpt.com/docs/plugins) and [Build plugins](https://developers.openai.com/plugins/build/plugins).
+
+## Claude Code and Oh My Pi
+
+Both hosts load the same `plugins/deepwright/skills/` tree through the
+Claude-compatible marketplace. No copied skill catalog or extension runtime is needed.
+
+After these changes are published, install from GitHub:
+
+```bash
+claude plugin marketplace add https://github.com/aj2666/deepwright.git
+claude plugin install deepwright@deepwright
+```
+
+```bash
+omp plugin marketplace add https://github.com/aj2666/deepwright.git
+omp plugin install deepwright@deepwright
+```
+
+For this local checkout, replace the marketplace URL with the absolute path to
+its repository root. For a session without installation, launch either host
+from your target project with `--plugin-dir /absolute/path/to/deepwright/plugins/deepwright`.
+Start a fresh session after installation or updates.
+
+| Host | Prompt to route a task | Prompt to review |
+|---|---|---|
+| Claude Code | `/deepwright:deepwright <task>` | `/deepwright:interrogate <task>` |
+| Oh My Pi | `/skill:deepwright <task>` | `/skill:interrogate <task>` |
+
+These are chat prompts, not shell commands. Oh My Pi requires skill slash
+commands to be enabled and uses unqualified skill names; check for collisions
+with another installed skill of the same name. Claude Code namespaces plugin skills.
+
+The shared instructions contain Codex `$deepwright:<skill>` references. On these
+hosts, use the corresponding command above or read the linked canonical skill
+file. Supporting paths stay relative to the installed skill. Use the active
+host's tools, models, permissions, and delegation capabilities.
+
+`agents/openai.yaml` supplies Codex UI and implicit-invocation policy; the other
+hosts do not enforce that file. They may select focused skills automatically
+according to their own discovery rules. The optional `.codex/deepwright.toml`
+remains the shared helper's project configuration path and does not configure
+Claude Code or Oh My Pi model roles or concurrency.
+
+Update with `claude plugin marketplace update deepwright` followed by
+`claude plugin update deepwright@deepwright`, or
+`omp plugin marketplace update deepwright` followed by
+`omp plugin upgrade deepwright@deepwright`.
+
+See the [Claude Code plugin reference](https://code.claude.com/docs/en/plugins-reference)
+and [Oh My Pi's Claude-compatible loader](https://github.com/can1357/oh-my-pi/blob/main/packages/coding-agent/src/discovery/claude-plugins.ts).
 
 ## Choose a workflow
 
@@ -153,7 +203,7 @@ CI covers dependency auditing, typechecking, helper and evaluator tests, reprodu
 
 See [Contributing and release checks](CONTRIBUTING.md), the [evaluation protocol](evals/README.md), and the [security policy](SECURITY.md).
 
-The `plugins/deepwright/skills/` directory contains the actual skill instructions, playbooks, principles, and supporting references—not disposable documentation. The marketplace lives in `.agents/plugins/marketplace.json`; the plugin manifest is `plugins/deepwright/.codex-plugin/plugin.json`.
+The `plugins/deepwright/skills/` directory contains the actual skill instructions, playbooks, principles, and supporting references—not disposable documentation. The marketplace lives in `.agents/plugins/marketplace.json`; the Codex plugin manifest is `plugins/deepwright/.codex-plugin/plugin.json`. Claude Code and Oh My Pi share `.claude-plugin/marketplace.json` and `plugins/deepwright/.claude-plugin/plugin.json`. Keep plugin versions synchronized; release validation rejects drift.
 
 ## License
 

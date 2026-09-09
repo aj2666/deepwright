@@ -154,3 +154,25 @@ The core skills do not require Node; optional helpers require Node 20.19+. AGENT
 The existing main-branch workflow publishes a new manifest version only after both platform jobs, static skill quality, and workflow lint pass. Keep repository and plugin versions aligned and provide a matching changelog section when making a release. Do not move previously published version tags.
 
 Before changing repository visibility, review Git history, branches, tags, releases, and discussions for material not intended for publication. Deleting a file from the current tree does not remove its historical copies. Visibility changes and history rewrites are separate operations from a documentation cleanup.
+
+## Claude Code and Oh My Pi packaging checks
+
+`npm test` checks the shared marketplace target, manifest identity/version parity,
+and host-specific helper invocation. For real host installation and discovery,
+with Claude Code, Bun, and Oh My Pi installed, run:
+
+```bash
+bun scripts/verify-portable-hosts.mjs /absolute/path/to/node_modules/@oh-my-pi/pi-coding-agent
+```
+
+The smoke uses temporary registries and caches, validates and installs through
+Claude Code, then uses the installed Oh My Pi source's marketplace installer and
+skill discovery provider. It compares every skill and supporting file with the
+source package and cleans up afterward. It makes no model calls and does not
+change your installed plugins. It requires Oh My Pi's distributed `src/` tree;
+loader API changes should fail visibly and be investigated. This verifies
+packaging and discovery, not live-agent routing or workflow quality.
+
+Verified locally with Claude Code 2.1.263 and Oh My Pi 18.1.14. For live behavior,
+start a fresh session in each host and invoke a read-only investigation against
+a small known fixture; verify the skill is loaded and the no-edit boundary holds.

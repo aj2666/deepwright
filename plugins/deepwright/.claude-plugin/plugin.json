@@ -1,0 +1,11 @@
+{
+  "name": "deepwright",
+  "version": "1.3.0",
+  "description": "Evidence-first engineering workflows for Claude Code and Oh My Pi.",
+  "author": { "name": "aj2666", "url": "https://github.com/aj2666" },
+  "homepage": "https://github.com/aj2666/deepwright#readme",
+  "repository": "https://github.com/aj2666/deepwright",
+  "license": "MIT",
+  "keywords": ["engineering", "verification", "orchestration", "workflow"],
+  "skills": "./skills/"
+}

@@ -120,6 +120,24 @@ if (prompts.some((value) => /\$deepwright(?::[a-z0-9-]+)?/i.test(value))) {
 if (rootPackage.name !== "deepwright") fail("root package name must be deepwright");
 if (rootPackage.version !== manifest.version) fail("root and plugin versions must match");
 
+// Claude Code and Oh My Pi share the Claude-compatible package and marketplace.
+const portableManifest = JSON.parse(await readFile(path.join(pluginRoot, ".claude-plugin", "plugin.json"), "utf8"));
+const portableMarketplace = JSON.parse(await readFile(path.join(repoRoot, ".claude-plugin", "marketplace.json"), "utf8"));
+for (const key of ["name", "version", "skills", "license", "repository"]) {
+  if (portableManifest[key] !== manifest[key]) fail(`portable plugin ${key} must match Codex manifest`);
+}
+if (portableMarketplace.name !== manifest.name || portableMarketplace.owner?.name !== manifest.author.name) {
+  fail("portable marketplace name and owner must match plugin identity");
+}
+if (portableMarketplace.plugins?.length !== 1 ||
+    portableMarketplace.plugins[0].name !== manifest.name ||
+    portableMarketplace.plugins[0].source !== "./plugins/deepwright") {
+  fail("portable marketplace must resolve deepwright to ./plugins/deepwright");
+}
+for (const key of ["agents", "hooks", "mcpServers", "lspServers", "commands", "interface"]) {
+  if (Object.hasOwn(portableManifest, key)) fail(`unsupported portable skills-only manifest field: ${key}`);
+}
+
 if (marketplace.name !== "deepwright") fail("marketplace name must be deepwright");
 const entry = marketplace.plugins?.find((plugin) => plugin.name === "deepwright");
 if (!entry) fail("marketplace does not contain deepwright");

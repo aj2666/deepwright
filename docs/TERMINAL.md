@@ -22,7 +22,8 @@ In the examples below, `deepwright` means the executable at `plugins/deepwright/
 | `deepwright skill interrogate` | Summary, canonical file, invocation and policy |
 | `deepwright invoke interrogate` | Codex CLI token and desktop picker guidance |
 | `deepwright invoke deepwright --host agents` | Opt-in AGENTS.md pointer text |
-| `deepwright invoke deepwright --host claude` | Opt-in CLAUDE.md pointer text |
+| `deepwright invoke deepwright --host claude` | Native Claude Code prompt plus optional CLAUDE.md fallback |
+| `deepwright invoke deepwright --host omp` | Native Oh My Pi skill prompt |
 | `deepwright status` | Local version, discovery policy and config validity without setting values |
 | `deepwright config show` | Effective preferences and default/project provenance |
 | `deepwright config check` | Strict TOML/schema validation without setting values |
@@ -47,11 +48,11 @@ A supplied empty query, a query made entirely of ignored words, or a query with 
 
 For Codex, native plugin discovery is preferred. Paste `$deepwright:interrogate` into a CLI prompt, or select the displayed Interrogate skill with `@` in the desktop app. The terminal command only explains these actions; it does not activate a chat session.
 
-Use fallback pointers only when the target agent can read the same checkout and lacks native skill discovery. `--host agents` and `--host claude` translate instruction-file conventions, not engineering behavior. Both reuse the same canonical skill body, without copying playbooks or principles.
+Use fallback pointers only when the target agent can read the same checkout and lacks native skill discovery. `--host agents` prints an instruction-file pointer. `--host claude` prints the native `/deepwright:<skill>` prompt plus a fallback pointer; `--host omp` prints `/skill:<skill>`. Both reuse the same canonical skill body, without copying playbooks or principles.
 
 The helper prints a short block for manual review. Merge a needed block into existing repository instructions; do not replace the file or duplicate an already-installed native plugin. Respect the target host's instruction precedence. No tool automatically writes AGENTS.md, CLAUDE.md, host configuration or global rules.
 
-The generated path is absolute and machine-local. Regenerate it after moving the checkout, and verify accessibility in remote containers or worker environments. If an agent cannot read the path, supply the required skill content explicitly or report the missing capability; do not claim it was loaded. These adapters do not register native slash commands, lifecycle hooks, worker types or MCP tools.
+The generated path is absolute and machine-local. Regenerate it after moving the checkout, and verify accessibility in remote containers or worker environments. If an agent cannot read the path, supply the required skill content explicitly or report the missing capability; do not claim it was loaded. The helper does not register slash commands or install anything. Native Claude Code and Oh My Pi discovery comes from installing the [shared package](../README.md#claude-code-and-oh-my-pi).
 
 ## Configuration and status
 

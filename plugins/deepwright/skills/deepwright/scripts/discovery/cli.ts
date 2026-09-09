@@ -16,11 +16,12 @@ export interface Context {
   readonly cwd?: string;
 }
 
-type Host = "codex" | "agents" | "claude";
+type Host = "codex" | "agents" | "claude" | "omp";
 type Command = "home" | "doctor" | "skills" | "skill" | "playbooks" | "find" | "invoke" | "status" | "config";
 type Guidance =
   | { readonly host: "codex"; readonly cli: string; readonly desktop: string; readonly note: string }
-  | { readonly host: "agents" | "claude"; readonly target: string; readonly pointer: string; readonly note: string };
+  | { readonly host: "omp"; readonly prompt: string; readonly note: string }
+  | { readonly host: "agents" | "claude"; readonly prompt?: string; readonly target: string; readonly pointer: string; readonly note: string };
 const commands: readonly string[] = ["home", "doctor", "skills", "skill", "playbooks", "find", "invoke", "status", "config"];
 const USAGE = [
   "Usage: deepwright <command> [options]",
@@ -31,7 +32,7 @@ const USAGE = [
   "  playbooks [query] [--json]              browse the canonical router table",
   "  find <query> [--limit 1..10] [--json]   rank metadata; default 3 per kind",
   "  skill <name> [--json]                   inspect a skill and its invocation",
-  "  invoke <name> [--host codex|agents|claude] [--json]",
+  "  invoke <name> [--host codex|agents|claude|omp] [--json]",
   "                                         print guidance; never execute it",
   "  status [--json]                         inspect package and config validity",
   "  config show|check|template [--json]     inspect settings; never write them",
@@ -65,8 +66,8 @@ function parse(argv: readonly string[]) {
     }
     if (flag === "--host") {
       const value = argv[++index];
-      if (value !== "codex" && value !== "agents" && value !== "claude") {
-        throw new UsageError("--host must be codex, agents, or claude");
+      if (value !== "codex" && value !== "agents" && value !== "claude" && value !== "omp") {
+        throw new UsageError("--host must be codex, agents, claude, or omp");
       }
       host = value;
     }
@@ -127,9 +128,17 @@ function invocation(skill: Skill, host: Host): Guidance {
       note: "Start a fresh session after installation. This helper prints guidance only; it does not launch Codex or check activation.",
     };
   }
+  if (host === "omp") {
+    return {
+      host,
+      prompt: "/skill:" + skill.name,
+      note: "Use this prompt in Oh My Pi with skill slash commands enabled. Start a fresh session after installation. Skill names are unqualified; check for collisions. Activation is not checked here.",
+    };
+  }
   const file = host === "agents" ? "AGENTS.md" : "CLAUDE.md";
   return {
     host,
+    ...(host === "claude" ? { prompt: "/deepwright:" + skill.name } : {}),
     target: file,
     pointer: [
       "For an explicit request to use the Deepwright " + skill.name + " skill,",
@@ -139,7 +148,8 @@ function invocation(skill: Skill, host: Host): Guidance {
       "When delegating, carry the resolved skill path, task scope, and permissions into the worker brief.",
       "If the skill is unavailable, report that limitation.",
     ].join(" "),
-    note: "Optional routing pointer only. Review it before adding it to " + file + "; no file was written and native plugin support is not implied.",
+    note: (host === "claude" ? "Use the native prompt after installing the plugin in Claude Code and starting a fresh session. Activation is not checked here. " : "") +
+      "Optional fallback pointer. Review it before adding it to " + file + "; no file was written. Do not duplicate an installed native skill.",
   };
 }
 
@@ -266,7 +276,10 @@ export async function main(
           "Invocation guidance only — nothing executed or written.",
           ...("cli" in guidance
             ? ["Codex CLI: " + guidance.cli, terminalText(guidance.desktop)]
-            : ["Optional " + guidance.target + " pointer:", guidance.pointer]),
+            : [
+              ...("prompt" in guidance && guidance.prompt ? ["Host prompt: " + guidance.prompt] : []),
+              ...("pointer" in guidance ? ["Optional " + guidance.target + " pointer:", guidance.pointer] : []),
+            ]),
           terminalText(guidance.note),
         ].join("\n") + "\n");
       }
