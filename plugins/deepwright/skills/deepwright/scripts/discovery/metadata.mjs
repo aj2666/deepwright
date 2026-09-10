@@ -100,12 +100,18 @@ export async function loadCatalog(pluginRoot) {
       if ((implicit === "true") !== expectedImplicit) {
         throw new Error("implicit invocation must be " + expectedImplicit + " for " + name);
       }
+      const disabled = field(frontmatter, "disable-model-invocation", "", "boolean");
+      if (!/^disable-model-invocation: *(true|false) *$/m.test(frontmatter)) {
+        throw new Error("disable-model-invocation must be an unquoted true or false boolean");
+      }
+      if ((disabled === "false") !== expectedImplicit) {
+        throw new Error("disable-model-invocation must be " + !expectedImplicit + " for " + name);
+      }
       skills.push({
         name,
         description,
         displayName: field(section(policy, "interface"), "display_name", "  "),
         path,
-        invocation: "$deepwright:" + name,
         implicit: implicit === "true",
       });
     } catch (error) {

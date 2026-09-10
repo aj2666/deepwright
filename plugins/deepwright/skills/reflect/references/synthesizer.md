@@ -52,7 +52,7 @@ requested project-local addition, follow the existing convention or
 `.agents/skills/<skill-name>/`. Propose `$HOME/.agents/skills/<skill-name>/` only
 for an explicitly requested personal installation; catalog maintenance never
 implies global installation. Substantive creation should later run through
-`$skill-creator`.
+the host's available skill-authoring instructions.
 
 Output exactly this structure. Do not add a preamble or closing note. Keep each
 table cell to one sentence.
@@ -61,7 +61,7 @@ table cell to one sentence.
 
 | Problem | Proposal | Routing |
 |---|---|---|
-| <evidence-backed failure mode> | <small decision-changing improvement> | <skill path and section, tune description, or new skill via $skill-creator> |
+| <evidence-backed failure mode> | <small decision-changing improvement> | <skill path and section, tune description, or new skill via host skill-authoring instructions> |
 
 ## Rejected
 

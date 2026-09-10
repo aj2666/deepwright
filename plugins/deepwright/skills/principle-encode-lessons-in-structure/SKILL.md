@@ -1,7 +1,8 @@
 ---
 name: principle-encode-lessons-in-structure
-description: "Turn recurring corrections into structural checks. Use for $deepwright:principle-encode-lessons-in-structure."
+description: "Use when concrete recurring failures justify a narrow type, helper, lint rule, or behavioral check that prevents the same mistake."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Encode Lessons in Structure

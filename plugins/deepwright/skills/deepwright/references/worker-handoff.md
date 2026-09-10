@@ -17,7 +17,7 @@ Use non-overlapping write ownership or separate worktrees for concurrent writers
 
 ## Host and review choices
 
-Use `$deepwright:swarm` for partitioned coverage, races, or gauntlets; `$deepwright:arena` to compare candidates and combine their strongest parts; and `$deepwright:interrogate` for adversarial review of a contested design. Read the selected skill in full.
+Use [Swarm](../../swarm/SKILL.md) for partitioned coverage, races, or gauntlets; [Arena](../../arena/SKILL.md) to compare candidates and combine their strongest parts; and [Interrogate](../../interrogate/SKILL.md) for adversarial review of a contested design. Read the selected skill in full.
 
 - Use the host's available subagent or collaboration mechanism. Spawn independent work in one batch when parallelism materially improves speed or confidence.
 - Keep raw bulk output in delegated threads and return short findings to the parent.

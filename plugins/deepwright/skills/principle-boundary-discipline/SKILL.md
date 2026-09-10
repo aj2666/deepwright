@@ -1,7 +1,8 @@
 ---
 name: principle-boundary-discipline
-description: "Validate boundaries and trust typed internals. Use for $deepwright:principle-boundary-discipline."
+description: "Use when raw or independently changing data enters a component; validate at that boundary and trust the invariants owned by typed internals."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Boundary Discipline

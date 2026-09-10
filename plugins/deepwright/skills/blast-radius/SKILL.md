@@ -1,7 +1,8 @@
 ---
 name: blast-radius
-description: "Trace downstream compatibility, data, timing, and dependency risks in a proposed change, then verify the facts its safety depends on. Use for $deepwright:blast-radius."
+description: "Trace downstream compatibility, data, timing, and dependency risks in a proposed change, then verify the facts its safety depends on."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Blast radius
@@ -10,7 +11,7 @@ license: MIT
 
 Find what a change could break somewhere else before it ships. A review request is read-only unless the user also asks for changes.
 
-Companion to `$deepwright:how` and `$deepwright:why`. `$deepwright:how` tells you what the code does. `$deepwright:why` tells you why it is shaped that way. Blast radius tells you what it breaks somewhere else.
+Companion to [How](../how/SKILL.md) and [Why](../why/SKILL.md). [How](../how/SKILL.md) tells you what the code does. [Why](../why/SKILL.md) tells you why it is shaped that way. Blast radius tells you what it breaks somewhere else.
 
 Listing the callers is not the job. The agent can grep those in a second. The job is the breakage grep won't show you.
 
@@ -36,12 +37,12 @@ Any safety fact you can't get to step 4, say so out loud. Don't write it up as s
 
 ## Instructions
 
-1. Read the change. Inspect the diff, the symbols it adds, changes, and deletes, and what it now does differently, including the part the diff does not spell out. Use `$deepwright:why` to pull the PR and commits when rationale matters.
+1. Read the change. Inspect the diff, the symbols it adds, changes, and deletes, and what it now does differently, including the part the diff does not spell out. Use [Why](../why/SKILL.md) to pull the PR and commits when rationale matters.
 2. Find the one fact it's safe because of. Most changes that look scary are safe because of a single fact, like "this call only drops already-dead cache entries and does nothing else". Find that fact. If it holds, most of the scary cases die at once. Spend your time here, not on a long list of maybes.
 3. Look where grep stops. Read the source of the library you call, and check its pinned version and any local patch. Work out when things run: microtasks, unmount and teardown, Solid versus React. Follow what a symbol search misses: the JSON an API returns, a DB column, a wire format, another language reading the same bytes, a feature flag, code three hops downstream.
-4. Be honest about each risk. Give it a real chance of happening and a real cost if it does. Keep the risks you confirmed; list the ones you checked and cleared separately. Apply `$deepwright:why`'s evidence rules. Cite a real `file:line`; never make up a caller or an API. A scoped null search is a result, not proof that nothing exists elsewhere.
+4. Be honest about each risk. Give it a real chance of happening and a real cost if it does. Keep the risks you confirmed; list the ones you checked and cleared separately. Apply [Why](../why/SKILL.md)'s evidence rules. Cite a real `file:line`; never make up a caller or an API. A scoped null search is a result, not proof that nothing exists elsewhere.
 5. Prove the one fact with the strongest safe evidence available. Prefer an existing test or command. For read-only work, keep any new probe in a task-owned scratch location and do not alter product data or external state. If you cannot prove it safely, mark it unproven.
-6. For a big or wide change, run `$deepwright:arena` with independent briefs and merge the strongest evidenced findings. Use only model overrides that the host confirms.
+6. For a big or wide change, run [Arena](../arena/SKILL.md) with independent briefs and merge the strongest evidenced findings. Use only model overrides that the host confirms.
 
 ## What to hand back
 
@@ -51,14 +52,14 @@ Any safety fact you can't get to step 4, say so out loud. Don't write it up as s
 - **Cleared.** What you checked and why it's fine.
 - **Before you merge.** The cheapest safe test or repro that catches the real bug, with any proposed repository change clearly labeled.
 
-Write it through `$deepwright:unslop`, cite real code, and strip anything private before it goes anywhere public.
+Write it through [Unslop](../unslop/SKILL.md), cite real code, and strip anything private before it goes anywhere public.
 
 **Reply:** the writeup above, with the one safety fact either proven or marked unproven.
 
 ## Examples
 
 ```text
-$deepwright:blast-radius Review removing `status` from the /jobs response.
+Review removing `status` from the /jobs response.
 The new client uses `state`; can this ship?
 ```
 

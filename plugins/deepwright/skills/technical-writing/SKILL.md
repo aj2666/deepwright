@@ -1,7 +1,8 @@
 ---
 name: technical-writing
-description: "Write or revise developer documentation, guides, PR descriptions, and commit messages for precise, readable technical communication. Use for $deepwright:technical-writing."
+description: "Write or revise developer documentation, guides, PR descriptions, and commit messages for precise, readable technical communication."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Technical writing
@@ -22,7 +23,7 @@ Three rules sit above the layers:
 
 The codebase is the word list. Write the real symbol, file, flag, or command name, not a synonym or a description of it.
 
-Don't invent jargon. Use the words a developer would say out loud: "move", "delete", "a budget that only decreases", not "evacuate", "ratchet", or "endgame". A named pattern is fine when the doc says what it means the first time. When a repeated offender suggests a reusable `unslop` rule, propose the rule in the response. Persist it only when the user explicitly authorizes skill maintenance, then use `$skill-creator` and its validation loop.
+Don't invent jargon. Use the words a developer would say out loud: "move", "delete", "a budget that only decreases", not "evacuate", "ratchet", or "endgame". A named pattern is fine when the doc says what it means the first time. When a repeated offender suggests a reusable `unslop` rule, propose the rule in the response. Persist it only when the user explicitly authorizes skill maintenance, then use the host's available skill-authoring instructions and their validation loop.
 
 ## Vary the rhythm
 
@@ -105,7 +106,7 @@ Source: Kohl, The Global English Style Guide (SAS Press). Guideline text fetched
 
 ## Voice and repo specifics
 
-- Apply `$deepwright:unslop` to every document this skill touches. That skill owns the catalog of generic AI vocabulary, filler, hedging, and formatting tells.
+- Apply [Unslop](../unslop/SKILL.md) to every document this skill touches. That skill owns the catalog of generic AI vocabulary, filler, hedging, and formatting tells.
 - PR descriptions and commit messages are writing too. Every layer except Diátaxis applies to them.
 - Product UI strings are not documentation. Use your product's copy guidelines for those.
 - Indent code snippets according to the language and target project's conventions. Write real paths and real symbols. Make every count or tree claim true at the commit that lands it, and include the command that regenerates it.
@@ -151,4 +152,4 @@ If source access is unavailable or a check fails, retain the supported material 
 
 Preserve exact quotations, legal text, code behavior, and required terminology. Apply prose rules around those elements; do not rewrite their contents for style. Run an available documentation checker when editing repository docs, and validate runnable examples with safe, relevant checks when possible. Do not execute a destructive example merely to prove that it works.
 
-Return the requested document or edited file, plus material verification gaps when needed. Keep editorial commentary outside the reusable artifact. Apply `$deepwright:unslop` when available; if it is missing, remove filler directly without treating that skill as a prerequisite to finishing the writing.
+Return the requested document or edited file, plus material verification gaps when needed. Keep editorial commentary outside the reusable artifact. Apply [Unslop](../unslop/SKILL.md) when available; if it is missing, remove filler directly without treating that skill as a prerequisite to finishing the writing.

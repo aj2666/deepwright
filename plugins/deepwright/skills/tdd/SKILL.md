@@ -2,6 +2,7 @@
 name: tdd
 description: "Build features and fix bugs through observable red-green-refactor steps. Use when a behavior change needs regression evidence."
 license: MIT
+disable-model-invocation: true
 ---
 
 # TDD

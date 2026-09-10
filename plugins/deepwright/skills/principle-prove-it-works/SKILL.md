@@ -1,7 +1,8 @@
 ---
 name: principle-prove-it-works
-description: "Verify behavior against the real artifact. Use for $deepwright:principle-prove-it-works."
+description: "Use when a change or delivery claim needs evidence; exercise the real artifact or closest authorized path and report the limits of that proof."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Prove It Works

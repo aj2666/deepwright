@@ -15,6 +15,6 @@ For a read-only review of code or a diff for correctness, regressions, or requir
 3. Follow the user's requested output format. Do not require a throughput marker,
    an additional prose-editing skill, or a fixed report template.
 
-No writes, PR, or babysit for a read-only request. Do not invoke `$deepwright:architect` unless the user asks to continue into a code change. If the investigation suggests a change, report it and wait for authorization before routing to Bug fix or Feature.
+No writes, PR, or babysit for a read-only request. Do not invoke [Architect](../../architect/SKILL.md) unless the user asks to continue into a code change. If the investigation suggests a change, report it and wait for authorization before routing to Bug fix or Feature.
 
 **Reply:** the investigation output. For "are we sure?" answers, include your real judgment with reasons. Push back if the premise is wrong (see Autonomy).

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { constants } from "node:fs";
 import { lstat, open, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -9,6 +10,8 @@ export const CONFIG_FIELDS = [
 ] as const;
 export type ConfigField = typeof CONFIG_FIELDS[number];
 export type Role = "code" | "research" | "review";
+export const CONFIG_HOSTS = ["codex", "claude", "agents", "omp"] as const;
+export type ConfigHost = typeof CONFIG_HOSTS[number];
 type Parallelism = "swarm_workers" | "design_candidates" | "reviewers";
 
 export interface ConfigSettings {
@@ -23,11 +26,26 @@ export const DEFAULT_CONFIG: ConfigSettings = Object.freeze({
   parallelism: Object.freeze({ swarm_workers: 4, design_candidates: 3, reviewers: 3 }),
 });
 export const MAX_CONFIG_BYTES = 64 * 1024;
-export type ConfigSources = Record<ConfigField, "default" | "project">;
+export type ConfigSource = "default" | "project" | "host";
+export type ConfigSources = Record<ConfigField, ConfigSource>;
+export type HostValidation = "not-performed" | "passed" | "failed";
+export type NativeRole = "task" | "smol" | "slow";
+export type NativeFallback = "native-role" | "native-default" | "native-session" | "native-priority";
+export type CatalogMatch = "yes" | "no" | "unknown";
+
+export interface HostRoleResolution {
+  readonly role: Role;
+  readonly nativeRole: NativeRole;
+  readonly projectOverride: boolean;
+  readonly nativeConfigured: boolean;
+  readonly fallback: NativeFallback | null;
+  readonly catalogMatch: CatalogMatch;
+}
+
 export interface ConfigIssue {
   readonly code: "unreadable" | "outside-project" | "not-regular-file" | "too-large" |
     "invalid-utf8" | "invalid-toml" | "unknown-field" | "invalid-type" | "unsupported-version" |
-    "invalid-model" | "invalid-parallelism";
+    "invalid-model" | "invalid-parallelism" | "host-unavailable" | "host-query-failed";
   readonly field?: ConfigField | "roles" | "parallelism";
   readonly message: string;
   readonly line?: number;
@@ -42,12 +60,42 @@ export interface ConfigReport {
   readonly settings: ConfigSettings | null;
   readonly sources: ConfigSources | null;
   readonly errors: readonly ConfigIssue[];
-  readonly hostValidation: "not-performed";
+  readonly host: ConfigHost;
+  readonly hostValidation: HostValidation;
+  readonly hostRoles: readonly HostRoleResolution[] | null;
   readonly unverifiedModelRoles: readonly Role[];
 }
 
+export interface HostCommandResult {
+  readonly found: boolean;
+  readonly ok: boolean;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+export type HostCommandRunner = (command: string, args: readonly string[], cwd?: string) => HostCommandResult;
+
 const roles: readonly Role[] = ["code", "research", "review"];
 const parallelism: readonly Parallelism[] = ["swarm_workers", "design_candidates", "reviewers"];
+export const OMP_NATIVE_ROLES = { code: "task", research: "smol", review: "slow" } as const;
+const OMP_THINKING_SUFFIX = /:(?:off|minimal|low|medium|high|xhigh|max|auto)$/u;
+
+export function runHostCommand(command: string, args: readonly string[], cwd?: string): HostCommandResult {
+  const result = spawnSync(command, args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 5_000,
+  });
+  const error = result.error as NodeJS.ErrnoException | undefined;
+  if (error?.code === "ENOENT") return { found: false, ok: false, stdout: "", stderr: "" };
+  return {
+    found: error === undefined,
+    ok: error === undefined && result.status === 0,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
 
 function defaults() {
   return {
@@ -61,17 +109,22 @@ function sources(): ConfigSources {
   return Object.fromEntries(CONFIG_FIELDS.map((field) => [field, "default"])) as ConfigSources;
 }
 
-function failure(path: string, state: "present" | "unreadable", errors: readonly ConfigIssue[]): ConfigReport {
+function failure(
+  path: string,
+  host: ConfigHost,
+  state: "present" | "unreadable",
+  errors: readonly ConfigIssue[],
+): ConfigReport {
   return {
-    path, state, validation: "failed", ok: false, settings: null, sources: null, errors,
-    hostValidation: "not-performed", unverifiedModelRoles: [],
+    path, host, state, validation: "failed", ok: false, settings: null, sources: null, errors,
+    hostValidation: "not-performed", hostRoles: null, unverifiedModelRoles: [],
   };
 }
 
-function missing(path: string): ConfigReport {
+function missing(path: string, host: ConfigHost): ConfigReport {
   return {
-    path, state: "missing", validation: "passed", ok: true, settings: defaults(), sources: sources(),
-    errors: [], hostValidation: "not-performed", unverifiedModelRoles: [],
+    path, host, state: "missing", validation: "passed", ok: true, settings: defaults(), sources: sources(),
+    errors: [], hostValidation: "not-performed", hostRoles: null, unverifiedModelRoles: [],
   };
 }
 
@@ -85,7 +138,7 @@ function isTable(value: unknown): value is Record<string, unknown> {
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 }
 
-function validate(path: string, parsed: Record<string, unknown>): ConfigReport {
+function validate(path: string, host: ConfigHost, parsed: Record<string, unknown>): ConfigReport {
   const settings = defaults();
   const provenance = sources();
   const errors: ConfigIssue[] = [];
@@ -144,18 +197,130 @@ function validate(path: string, parsed: Record<string, unknown>): ConfigReport {
       }
     }
   }
-  if (errors.length !== 0) return failure(path, "present", errors);
+  if (errors.length !== 0) return failure(path, host, "present", errors);
   return {
-    path, state: "present", validation: "passed", ok: true, settings, sources: provenance, errors: [],
-    hostValidation: "not-performed",
+    path, host, state: "present", validation: "passed", ok: true, settings, sources: provenance, errors: [],
+    hostValidation: "not-performed", hostRoles: null,
     unverifiedModelRoles: roles.filter((role) => settings.roles[role] !== "inherit-parent"),
   };
 }
 
-/** Read only this project's config; never search parents, write files, or probe a host. */
-export async function readConfig(cwd: string): Promise<ConfigReport> {
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return isTable(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function stringRecord(value: unknown): Record<string, string> | null {
+  if (!isTable(value)) return null;
+  const record: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string" && entry.trim() !== "") record[key] = entry.trim();
+  }
+  return record;
+}
+
+function modelSelectors(value: unknown): readonly string[] | null {
+  if (!isTable(value) || !Array.isArray(value.models)) return null;
+  const selectors: string[] = [];
+  for (const model of value.models) {
+    if (!isTable(model) || typeof model.selector !== "string" || model.selector.trim() === "") return null;
+    selectors.push(model.selector.trim());
+  }
+  return selectors;
+}
+
+function attachOmp(report: ConfigReport, cwd: string, run: HostCommandRunner): ConfigReport {
+  if (!report.ok || report.settings === null || report.sources === null) return report;
+  const rolesProbe = run("omp", ["config", "get", "modelRoles", "--json"], cwd);
+  if (!rolesProbe.found) {
+    return {
+      ...report, ok: false, hostValidation: "failed", hostRoles: null,
+      errors: [...report.errors, { code: "host-unavailable", message: "Oh My Pi CLI was not found." }],
+    };
+  }
+  if (!rolesProbe.ok) {
+    return {
+      ...report, ok: false, hostValidation: "failed", hostRoles: null,
+      errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi modelRoles query failed." }],
+    };
+  }
+  const parsedRoles = parseJsonObject(rolesProbe.stdout.trim());
+  const nativeRoles = parsedRoles !== null && parsedRoles.key === "modelRoles" ? stringRecord(parsedRoles.value) : null;
+  if (nativeRoles === null) {
+    return {
+      ...report, ok: false, hostValidation: "failed", hostRoles: null,
+      errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi modelRoles query returned an unusable result." }],
+    };
+  }
+
+  const explicit = roles.filter((role) => report.settings!.roles[role] !== "inherit-parent");
+  let catalog: readonly string[] | null = null;
+  if (explicit.length !== 0) {
+    const modelsProbe = run("omp", ["models", "--json"], cwd);
+    if (!modelsProbe.found) {
+      return {
+        ...report, ok: false, hostValidation: "failed", hostRoles: null,
+        errors: [...report.errors, { code: "host-unavailable", message: "Oh My Pi CLI was not found." }],
+      };
+    }
+    if (!modelsProbe.ok) {
+      return {
+        ...report, ok: false, hostValidation: "failed", hostRoles: null,
+        errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi models query failed." }],
+      };
+    }
+    catalog = modelSelectors(parseJsonObject(modelsProbe.stdout.trim()));
+    if (catalog === null) {
+      return {
+        ...report, ok: false, hostValidation: "failed", hostRoles: null,
+        errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi models query returned an unusable result." }],
+      };
+    }
+  }
+
+  const provenance = { ...report.sources };
+  const hostRoles: HostRoleResolution[] = [];
+  const unverified: Role[] = [];
+  for (const role of roles) {
+    const nativeRole = OMP_NATIVE_ROLES[role];
+    const projectValue = report.settings.roles[role];
+    const projectOverride = projectValue !== "inherit-parent";
+    const nativeSelector = nativeRoles[nativeRole];
+    const nativeConfigured = nativeSelector !== undefined;
+    let fallback: NativeFallback | null = null;
+    let catalogMatch: CatalogMatch = "unknown";
+    if (projectOverride) {
+      const matched = catalog !== null && (catalog.includes(projectValue) ||
+        catalog.includes(projectValue.replace(OMP_THINKING_SUFFIX, "")));
+      catalogMatch = matched ? "yes" : "no";
+      if (!matched) unverified.push(role);
+    } else if (nativeConfigured) {
+      fallback = "native-role";
+      if (provenance["roles." + role as ConfigField] === "default") {
+        provenance["roles." + role as ConfigField] = "host";
+      }
+    } else if (nativeRole === "task") {
+      fallback = "native-session";
+    } else {
+      fallback = nativeRoles.default !== undefined ? "native-default" : "native-priority";
+    }
+    hostRoles.push({ role, nativeRole, projectOverride, nativeConfigured, fallback, catalogMatch });
+  }
+  return { ...report, sources: provenance, hostValidation: "passed", hostRoles, unverifiedModelRoles: unverified };
+}
+
+/** Read only this project's config; never search parents or write files. Probe a host only when requested. */
+export async function readConfig(
+  cwd: string,
+  host: ConfigHost = "codex",
+  run: HostCommandRunner = runHostCommand,
+): Promise<ConfigReport> {
   const path = resolve(cwd, ".codex", "deepwright.toml");
-  const unreadable = () => failure(path, "unreadable", [{ code: "unreadable", message: "Project configuration could not be read safely." }]);
+  const unreadable = () => failure(path, host, "unreadable", [{ code: "unreadable", message: "Project configuration could not be read safely." }]);
   let root: string;
   let directory: string;
   let canonical: string;
@@ -166,24 +331,30 @@ export async function readConfig(cwd: string): Promise<ConfigReport> {
     try {
       await lstat(candidateDirectory);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return missing(path);
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        const report = missing(path, host);
+        return host === "omp" ? attachOmp(report, cwd, run) : report;
+      }
       return unreadable();
     }
     directory = await realpath(candidateDirectory);
     if (!confined(root, directory)) {
-      return failure(path, "unreadable", [{ code: "outside-project", message: "The configuration directory resolves outside this project." }]);
+      return failure(path, host, "unreadable", [{ code: "outside-project", message: "The configuration directory resolves outside this project." }]);
     }
     if (!(await stat(directory)).isDirectory()) return unreadable();
     const candidate = join(directory, "deepwright.toml");
     try {
       await lstat(candidate);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return missing(path);
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        const report = missing(path, host);
+        return host === "omp" ? attachOmp(report, cwd, run) : report;
+      }
       return unreadable();
     }
     canonical = await realpath(candidate);
     if (!confined(root, canonical)) {
-      return failure(path, "unreadable", [{ code: "outside-project", message: "The configuration file resolves outside this project." }]);
+      return failure(path, host, "unreadable", [{ code: "outside-project", message: "The configuration file resolves outside this project." }]);
     }
   } catch {
     // A dangling link is invalid, not absent; realpath errors reach this branch.
@@ -193,14 +364,14 @@ export async function readConfig(cwd: string): Promise<ConfigReport> {
   let bytes: Buffer;
   try {
     if (!(await stat(canonical)).isFile()) {
-      return failure(path, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
+      return failure(path, host, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
     }
     // O_NONBLOCK prevents FIFO/device opens from hanging before fstat rejects them.
     const handle = await open(canonical, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
     try {
       const metadata = await handle.stat();
       if (!metadata.isFile()) {
-        return failure(path, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
+        return failure(path, host, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
       }
       // Recheck the resolved path and inode after opening; do not accept a swapped link.
       const current = await realpath(join(directory, "deepwright.toml"));
@@ -208,7 +379,7 @@ export async function readConfig(cwd: string): Promise<ConfigReport> {
       if (!confined(root, current) || current !== canonical ||
           currentMetadata.dev !== metadata.dev || currentMetadata.ino !== metadata.ino) return unreadable();
       if (metadata.size > MAX_CONFIG_BYTES) {
-        return failure(path, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
+        return failure(path, host, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
       }
       const buffer = Buffer.alloc(MAX_CONFIG_BYTES + 1);
       let length = 0;
@@ -218,7 +389,7 @@ export async function readConfig(cwd: string): Promise<ConfigReport> {
         length += result.bytesRead;
       }
       if (length > MAX_CONFIG_BYTES) {
-        return failure(path, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
+        return failure(path, host, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
       }
       bytes = buffer.subarray(0, length);
     } finally {
@@ -232,16 +403,18 @@ export async function readConfig(cwd: string): Promise<ConfigReport> {
   try {
     source = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
-    return failure(path, "present", [{ code: "invalid-utf8", message: "Configuration must contain valid UTF-8." }]);
+    return failure(path, host, "present", [{ code: "invalid-utf8", message: "Configuration must contain valid UTF-8." }]);
   }
+  let report: ConfigReport;
   try {
     // BigInts preserve TOML's integer/float distinction before schema validation.
-    return validate(path, parse(source, { integersAsBigInt: true, maxDepth: 8 }));
+    report = validate(path, host, parse(source, { integersAsBigInt: true, maxDepth: 8 }));
   } catch (error) {
     // Parser messages include source excerpts: deliberately expose only location.
     const location = error instanceof TomlError ? { line: error.line, column: error.column } : {};
-    return failure(path, "present", [{ code: "invalid-toml", message: "Invalid TOML configuration.", ...location }]);
+    return failure(path, host, "present", [{ code: "invalid-toml", message: "Invalid TOML configuration.", ...location }]);
   }
+  return host === "omp" && report.ok ? attachOmp(report, cwd, run) : report;
 }
 
 /** A print-only template generated from the same defaults used by readConfig. */

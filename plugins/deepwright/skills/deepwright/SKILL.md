@@ -2,6 +2,7 @@
 name: deepwright
 description: "Use for Deepwright engineering workflows that need investigation, behavior changes, or consequential review. Skip greetings, syntax questions, prose-only edits, and mechanical typo fixes."
 license: MIT
+disable-model-invocation: false
 metadata:
   tags: [codex, engineering, verification, orchestration, workflow]
 ---
@@ -16,7 +17,7 @@ Owl selects the smallest workflow within the user's delivery boundary. Use avail
 
 Route this request; preserve explicit leaf scope. Explanation, diagnosis, comparison, specification, planning, and review alone authorize no fix or shipping. If the write boundary is unclear, inspect read-only and clarify it. Stop applying this workflow when Deepwright is declined or the user replaces the task.
 
-Discovery help shows entries and invocation guidance without starting work. For uncertain discovery, optional `scripts/deepwright find "<task>"` ranks metadata only; `skills` and `playbooks` keep literal matching. Desktop uses `@`; CLI tokens go in Codex prompts, not the shell.
+Discovery help shows entries and invocation guidance without starting work. For uncertain discovery, optional `scripts/deepwright find "<task>"` ranks metadata only; `skills` and `playbooks` keep literal matching. Name a skill in the host's native invocation; examples use the task in plain prose.
 
 Use Specification for requirements or acceptance criteria; an authorized build uses Feature's acceptance contract through design, implementation, and review.
 
@@ -77,7 +78,7 @@ Correctness, regression, or requirements review of code or diffs, including conf
 | Reclaim worktree or simulator disk safely | `playbooks/worktree-cleanup.md` |
 | Open a pull request | `playbooks/opening-a-pr.md` |
 
-Use `$deepwright:figure-it-out` when no route fits or a cross-cutting migration needs a bespoke run. Orchestrate is only for standing programs that cannot finish in one session.
+Use [Figure It Out](../figure-it-out/SKILL.md) when no route fits or a cross-cutting migration needs a bespoke run. Orchestrate is only for standing programs that cannot finish in one session.
 
 ## Requirements
 

@@ -2,6 +2,7 @@
 name: owl-agent
 description: "Coordinate investigation, implementation, and verification within the authorized boundary. Use for an explicit Owl takeover."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Owl agent

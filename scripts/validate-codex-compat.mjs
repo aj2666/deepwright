@@ -206,7 +206,7 @@ const forbidden = [
   [/agent-transcripts/gi, "hidden transcript path"],
   [/~\/\.codex\/projects/gi, "hidden Codex project path"],
   [/\b(?:export\s+)?CODEX_HOME\s*=/g, "CODEX_HOME assignment"],
-  [/\bclaude-[a-z0-9._-]+/gi, "hardcoded Claude model"],
+  [/\bclaude-(?:\d|opus\b|sonnet\b|haiku\b)[a-z0-9._-]*/gi, "hardcoded Claude model"],
   [/\bgrok-[a-z0-9._-]+/gi, "hardcoded Grok model"],
   [/\/add-plugin\b/g, "legacy /add-plugin command"],
   [/\buDeepwright\b/g, "broken Deepwright replacement"]
@@ -276,5 +276,5 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log(`Deepwright compatibility validation passed: ${skillDirs.length} skills, skills-only manifest, Codex-native policies.`);
+console.log(`Deepwright compatibility validation passed: ${skillDirs.length} skills, skills-only manifests, consistent cross-host activation policies.`);
 console.log(`Documentation validation passed: ${markdownFiles.length} Markdown files checked for local file links.`);

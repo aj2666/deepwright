@@ -1,7 +1,8 @@
 ---
 name: principle-sequence-verifiable-units
-description: "Break work into independently checkable units. Use for $deepwright:principle-sequence-verifiable-units."
+description: "Use when planning a migration, sweep, or feature; order coherent, independently checkable units so failures are localized before dependent work."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Sequence Work into Verifiable Units

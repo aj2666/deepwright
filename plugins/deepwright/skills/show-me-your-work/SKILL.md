@@ -2,6 +2,7 @@
 name: show-me-your-work
 description: "Record decisions, verification evidence, reversals, and blockers during an authorized task for review or handoff."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Show me your work

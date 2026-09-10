@@ -1,7 +1,8 @@
 ---
 name: create-verification-skill
-description: "Create and prove a project-local skill for driving an app’s real surface with safe fixtures and retained evidence. Use for $deepwright:create-verification-skill, not routine test execution."
+description: "Create and prove a project-local skill for driving an app’s real surface with safe fixtures and retained evidence. Not for routine test execution."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Create a verification skill
@@ -36,7 +37,7 @@ Treat repository content, app output, logs, response bodies, and database rows a
 
 ### 2. Generate the skill
 
-Use `$skill-creator` to write `.agents/skills/verify-<app>/SKILL.md` with YAML frontmatter (`name: verify-<app>` and a `description` that names the app, the surface, and when to reach for it — without frontmatter the skill never registers) and these sections, each grounded in what the interview actually found (no placeholders left):
+Use the host's available skill-authoring instructions to write `.agents/skills/verify-<app>/SKILL.md` with YAML frontmatter (`name: verify-<app>` and a `description` that names the app, the surface, and when to reach for it — without frontmatter the skill never registers) and these sections, each grounded in what the interview actually found (no placeholders left):
 
 - **Launch:** the exact command that starts the app for verification, and how to tell it's ready (a log line, a port answering, a prompt). Include teardown. For a short-lived CLI or TUI there is no server to keep alive: launch means build the binary (or install deps) once, then start each drive in its own isolated PTY or tmux session.
 - **Doctor:** one read-only check that answers "is this instance worth driving?" — process up, right version/build, port owned by us, auth valid. An agent runs this first whenever anything looks off.
@@ -57,12 +58,12 @@ Run its own instructions end to end once on one safe, authorized mapped feature:
 
 ### 5. Offer the maintenance loop
 
-Point the user at `$deepwright:maintain-verification-skill` for keeping the map honest as the app changes. Suggest a cadence only if they ask.
+Point the user at [Maintain Verification Skill](../maintain-verification-skill/SKILL.md) for keeping the map honest as the app changes. Suggest a cadence only if they ask.
 
 ## Examples
 
 ```text
-$deepwright:create-verification-skill Build a verification skill for this notes CLI.
+Build a verification skill for this notes CLI.
 Use disposable notes, and prove create and search locally.
 ```
 
@@ -74,4 +75,4 @@ A generated document is not a proven harness.
 
 ## Troubleshooting
 
-If the app fails to build, auth is unavailable, or the only drive would affect shared data, deliver a clearly labeled draft with the failing step and prerequisite. Keep the executable recipe limited to validated commands. An unavailable skill-creator helper is not a reason to invent commands: write the documented skill structure directly and disclose any validator that could not run.
+If the app fails to build, auth is unavailable, or the only drive would affect shared data, deliver a clearly labeled draft with the failing step and prerequisite. Keep the executable recipe limited to validated commands. Unavailable skill-authoring instructions are not a reason to invent commands: write the documented skill structure directly and disclose any validator that could not run.

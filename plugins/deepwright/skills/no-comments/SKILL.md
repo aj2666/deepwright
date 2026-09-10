@@ -1,7 +1,8 @@
 ---
 name: no-comments
-description: "Remove redundant comments and stale suppressions within a requested file or diff scope, retaining necessary contracts. Use for $deepwright:no-comments."
+description: "Remove redundant comments and stale suppressions within a requested file or diff scope, retaining necessary contracts."
 license: MIT
+disable-model-invocation: true
 ---
 
 # No comments
@@ -16,7 +17,7 @@ Use the caller's files or diff. Otherwise compare the working tree with the repo
 
 ## Instructions
 
-1. Apply `$deepwright:comment-auditor` to the exact diff or file scope. If the skill is unavailable, inspect comments locally using the retention rules below and report that fallback.
+1. Apply [Comment Auditor](../comment-auditor/SKILL.md) to the exact diff or file scope. If the skill is unavailable, inspect comments locally using the retention rules below and report that fallback.
 2. For a broad or uncertain cleanup, use a fresh read-only reviewer when delegation is available and useful. A small, obvious deletion can be reviewed directly. Give any reviewer the same exact scope and auditor boundaries.
 3. Verify each proposed deletion against nearby code. Keep legal headers, public API contracts, proven external constraints, precise issue links that code cannot express, and necessary style-only tool directives.
 4. Remove narration, commented-out code, stale warnings, and explanations of behavior the code can make obvious. Preserve user edits outside the agreed scope.

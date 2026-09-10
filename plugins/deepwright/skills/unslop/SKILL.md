@@ -1,7 +1,8 @@
 ---
 name: unslop
-description: "Rewrite supplied prose to remove generic AI patterns while preserving facts, uncertainty, and the writer's intended voice. Use for $deepwright:unslop."
+description: "Rewrite supplied prose to remove generic AI patterns while preserving facts, uncertainty, and the writer's intended voice."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Unslop

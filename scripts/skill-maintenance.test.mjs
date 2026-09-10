@@ -104,7 +104,7 @@ test('analysis rejects copied run directories relabelled as additional repetitio
 
 async function skill(root, name, text = '') {
   const folder = path.join(root, 'skills', name); await mkdir(path.join(folder, 'agents'), { recursive: true });
-  await writeFile(path.join(folder, 'SKILL.md'), `---\nname: ${name}\ndescription: "Synthetic catalog test"\n---\n${text}\n`);
+  await writeFile(path.join(folder, 'SKILL.md'), `---\nname: ${name}\ndescription: "Synthetic catalog test"\ndisable-model-invocation: ${name !== 'deepwright'}\n---\n${text}\n`);
   await writeFile(path.join(folder, 'agents/openai.yaml'), `interface:\n  display_name: "Synthetic"\npolicy:\n  allow_implicit_invocation: ${name === 'deepwright'}\n`);
   return folder;
 }

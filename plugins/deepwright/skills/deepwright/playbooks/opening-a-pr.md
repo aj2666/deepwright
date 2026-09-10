@@ -6,9 +6,9 @@ Run this only when the user explicitly asks to open a PR or the authorized workf
 
 **Commits.** Stage only agent-owned paths and inspect the staged diff for unrelated changes or secrets. Create small, ordered commits when the task authorizes commits. Rewrite only an unshared task branch; never rebase or amend shared user history without explicit authorization.
 
-**PRs.** Run `$deepwright:no-comments` before review. Write every PR title, description, and commit body with `$deepwright:technical-writing`, then apply `$deepwright:unslop`. If a named skill is unavailable, perform the equivalent review directly instead of failing. Use one word for each action, keep articles, and prefer a plain verb to a gerund.
+**PRs.** Run [No Comments](../../no-comments/SKILL.md) before review. Write every PR title, description, and commit body with [Technical Writing](../../technical-writing/SKILL.md), then apply [Unslop](../../unslop/SKILL.md). If a named skill is unavailable, perform the equivalent review directly instead of failing. Use one word for each action, keep articles, and prefer a plain verb to a gerund.
 
-**Titles.** Use Conventional Commits in the form `type(scope): subject`. Use `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or `perf` as the type. Use the changed area, such as `Deepwright` or `deepwright`, as the scope. Keep the subject short and imperative. Apply the same `$deepwright:technical-writing` and `$deepwright:unslop` pass as the body. Name a real symbol when one carries the change. For example, `fix(Deepwright): retarget opening-a-pr babysit trigger`. Do not add a trailing period.
+**Titles.** Use Conventional Commits in the form `type(scope): subject`. Use `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, or `perf` as the type. Use the changed area, such as `Deepwright` or `deepwright`, as the scope. Keep the subject short and imperative. Apply the same [Technical Writing](../../technical-writing/SKILL.md) and [Unslop](../../unslop/SKILL.md) pass as the body. Name a real symbol when one carries the change. For example, `fix(Deepwright): retarget opening-a-pr babysit trigger`. Do not add a trailing period.
 
 **Descriptions.** Use these sections in order. Drop a section when it is empty.
 
@@ -28,4 +28,4 @@ After these sections, attach videos or screenshots when they prove a claim. Do n
 
 **Babysit.** Opening a PR does not authorize an open-ended watcher or a merge. Post the URL and finish the requested build. Run a bounded babysit pass only when the user asks. Push back when feedback drifts from intent.
 
-A delegated PR owner invokes `$deepwright:interrogate`, `$deepwright:no-comments`, and `$deepwright:unslop` when applicable. It returns the URL and exact head SHA, then stops; it does not babysit or merge unless those actions were separately authorized.
+A delegated PR owner invokes [Interrogate](../../interrogate/SKILL.md), [No Comments](../../no-comments/SKILL.md), and [Unslop](../../unslop/SKILL.md) when applicable. It returns the URL and exact head SHA, then stops; it does not babysit or merge unless those actions were separately authorized.

@@ -1,7 +1,8 @@
 ---
 name: bro
-description: "Restate the last answer in plain language while preserving its facts, caveats, and next action. Use for $deepwright:bro."
+description: "Use when the last answer needs a plain-language restatement; preserve its facts, caveats, and next action."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Bro

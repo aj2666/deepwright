@@ -1,7 +1,8 @@
 ---
 name: principle-redesign-from-first-principles
-description: "Integrate new requirements as foundations. Use for $deepwright:principle-redesign-from-first-principles."
+description: "Use when a new requirement strains the current design; find the smallest coherent change as if that capability had existed from the start."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Redesign From First Principles

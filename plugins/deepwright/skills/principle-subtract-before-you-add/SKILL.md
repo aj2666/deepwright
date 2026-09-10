@@ -1,7 +1,8 @@
 ---
 name: principle-subtract-before-you-add
-description: "Remove dead weight before adding new structure. Use for $deepwright:principle-subtract-before-you-add."
+description: "Use when proven in-scope dead weight makes a requested change harder; remove it before adding structure while preserving supported behavior."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Subtract Before You Add

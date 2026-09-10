@@ -1,7 +1,8 @@
 ---
 name: interrogate
-description: "Review correctness, security, and requirement coverage in a design or change with independent adversarial passes; synthesize an evidenced verdict without edits. Use for $deepwright:interrogate."
+description: "Review correctness, security, and requirement coverage in a design or change with independent adversarial passes; synthesize an evidenced verdict without edits."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Interrogate
@@ -128,7 +129,7 @@ Where reviewers agreed or diverged, what the evidence supports, and unresolved v
 ## Examples
 
 ```text
-$deepwright:interrogate Review this diff for “dry-run prints planned imports
+Review this diff for “dry-run prints planned imports
 and performs no writes.” Include the uncommitted CLI changes.
 ```
 

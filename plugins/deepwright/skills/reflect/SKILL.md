@@ -1,7 +1,8 @@
 ---
 name: reflect
-description: "Review task evidence or a named skill catalog and propose scoped, evidence-backed improvements for approval. Use for $deepwright:reflect."
+description: "Review task evidence or a named skill catalog and propose scoped, evidence-backed improvements for approval."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Reflect
@@ -47,7 +48,7 @@ Present the full Accepted, Rejected, and Backlog result. Apply only explicitly a
 For approved changes:
 
 - Make tiny corrections directly.
-- Use `$skill-creator` for substantive skill work and run its validation loop.
+- Use the host's available skill-authoring instructions for substantive skill work and run their validation loop.
 - Resolve the approved destination from the named catalog and its package metadata. Update existing skills in place; add distributed plugin skills under the manifest-declared skills directory, preserving invocation names, UI metadata, and callers. For a requested project-local addition, follow the existing convention or `.agents/skills/<skill-name>/`. Use `$HOME/.agents/skills/<skill-name>/` only for an explicitly requested personal installation; catalog maintenance never implies global installation.
 - Preserve the target skill's existing scope unless the approved finding requires a change.
 

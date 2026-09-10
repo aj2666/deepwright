@@ -1,7 +1,8 @@
 ---
 name: arena
-description: "Compare independent candidate designs, analyses, or authorized implementations against a task rubric and verify one coherent synthesis. Use for $deepwright:arena."
+description: "Compare independent candidate designs, analyses, or authorized implementations against a task rubric and verify one coherent synthesis."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Arena
@@ -32,7 +33,7 @@ The N candidates will receive the same prompt, so the prompt is the contract. Ge
 1. State the artifact each candidate is producing.
 2. Derive the rubric. State what success looks like for *this* task, then turn it into 3-6 concrete gradeable criteria. Concrete: `Adds a --dry-run flag that skips writes`. Vague: `code is correct`. The rubric is the picker's tool in Phase D; candidates only see the task.
 3. Pick the runners. Read [the shared configuration contract](../deepwright/references/configuration.md) before choosing `parallelism.design_candidates` or role overrides, including when Arena is invoked directly. Follow its validation and explicit-user/project/default precedence. Cap concurrent runners to the host's advertised free capacity and process any remainder in bounded waves. Inherit the parent model by default. When configured and confirmed available, use `roles.research` for read-only investigation candidates and `roles.code` for design or implementation candidates. Independent briefs and structures matter even when all runners inherit one model.
-4. Choose an output contract. For analysis, review, planning, or design work, keep candidates read-only and have each return its artifact in its response. The coordinator labels and retains those responses for judging. For an explicitly authorized implementation task that truly requires file output, assign each candidate an isolated writable location: an existing task-scoped worktree where appropriate, otherwise a unique directory under a validated writable `TMPDIR`, or `.deepwright/tmp/arena-<run-id>/candidate-<n>/` when no writable system temporary root exists. Never create worktrees or files merely to hold an advisory response. N candidates writing to the same path violates `$deepwright:principle-separate-before-serializing-shared-state`.
+4. Choose an output contract. For analysis, review, planning, or design work, keep candidates read-only and have each return its artifact in its response. The coordinator labels and retains those responses for judging. For an explicitly authorized implementation task that truly requires file output, assign each candidate an isolated writable location: an existing task-scoped worktree where appropriate, otherwise a unique directory under a validated writable `TMPDIR`, or `.deepwright/tmp/arena-<run-id>/candidate-<n>/` when no writable system temporary root exists. Never create worktrees or files merely to hold an advisory response. N candidates writing to the same path violates [Separate Before Serializing Shared State](../principle-separate-before-serializing-shared-state/SKILL.md).
 
 ## Phase B: Fan out
 
@@ -54,7 +55,7 @@ Read every candidate end to end before picking. Skimming N candidates surfaces o
 
 Score each candidate against the rubric criterion by criterion, not on holistic feel. Compare against the cross-judge and trace decisive claims to their original evidence. Agreement may repeat a shared assumption; disagreement may expose missing evidence or a real tradeoff. Read both rationales before deciding. For disputed claims, use [testing an explanation](../deepwright/references/investigation-evidence.md) to identify an observation that would change the choice.
 
-Pick the base a future maintainer can extend most easily without breaking invariants. Prefer the cleaner boundary or smaller surface area when two feel tied; apply `$deepwright:principle-laziness-protocol`.
+Pick the base a future maintainer can extend most easily without breaking invariants. Prefer the cleaner boundary or smaller surface area when two feel tied; apply [Laziness Protocol](../principle-laziness-protocol/SKILL.md).
 
 Record the pick and the reason in the coordinator's final response or, only when the parent task authorizes file output, in a short synthesis note alongside the base artifact. Include the cross-judge's verdict.
 
@@ -62,7 +63,7 @@ Record the pick and the reason in the coordinator's final response or, only when
 
 Walk each losing candidate once more and identify what is worth porting into the base. The signal is usually one or two things per candidate, not most of it.
 
-Fold each graft in by hand under `$deepwright:principle-redesign-from-first-principles`. Do not paste mechanically. The result has to remain coherent under one mental model.
+Fold each graft in by hand under [Redesign from First Principles](../principle-redesign-from-first-principles/SKILL.md). Do not paste mechanically. The result has to remain coherent under one mental model.
 
 Record what was grafted, from which candidate, and what was rejected and why. Keep that record in the final response unless the parent task authorizes a durable artifact. The rejection notes are the highest-signal part of the record. Future readers learn from what you considered and dropped, not just what you kept.
 
@@ -70,7 +71,7 @@ When candidates converge on the same shape, record whether their reasons rest on
 
 ## Phase F: Verify
 
-The synthesized artifact has to hold up under `$deepwright:principle-prove-it-works`. The arena does not earn you a pass.
+The synthesized artifact has to hold up under [Prove It Works](../principle-prove-it-works/SKILL.md). The arena does not earn you a pass.
 
 If verification surfaces a problem the arena did not catch, either Phase A was wrong (re-frame and re-run) or one candidate caught it and you missed the graft (go back to Phase E). Don't paper over.
 
@@ -81,7 +82,7 @@ One synthesized artifact and one short synthesis note naming the base, the graft
 ## Examples
 
 ```text
-$deepwright:arena Compare designs for a --dry-run import mode. It must report
+Compare designs for a --dry-run import mode. It must report
 planned changes without writing files or contacting the remote service.
 ```
 

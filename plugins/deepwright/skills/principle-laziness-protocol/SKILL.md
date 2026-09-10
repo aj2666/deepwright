@@ -1,7 +1,8 @@
 ---
 name: principle-laziness-protocol
-description: "Prefer deletion and the smallest sufficient change. Use for $deepwright:principle-laziness-protocol."
+description: "Use when choosing how to implement a change; prefer deletion, reuse, and the smallest coherent solution that preserves required behavior."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Laziness Protocol

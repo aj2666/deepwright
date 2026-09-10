@@ -1,7 +1,8 @@
 ---
 name: principle-guard-the-context-window
-description: "Keep bulk detail out of the main context. Use for $deepwright:principle-guard-the-context-window."
+description: "Use when large logs, source trees, or delegated findings threaten to crowd out the task; retain bounded evidence and inspect details on demand."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Guard the Context Window

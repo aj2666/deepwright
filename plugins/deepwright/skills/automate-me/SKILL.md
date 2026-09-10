@@ -1,7 +1,8 @@
 ---
 name: automate-me
-description: "Capture explicit working preferences in a reusable mode skill for a repository or personal use. Use for $deepwright:automate-me."
+description: "Capture explicit working preferences in a reusable mode skill for a repository or personal use."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Automate me
@@ -39,21 +40,21 @@ Only explicit signals and confirmed repeated style/workflow signals become rules
 
 ### 3. Draft with the skill authoring workflow
 
-Use `$skill-creator` to create or update the skill:
+Use the host's available skill-authoring instructions to create or update the skill:
 
 - Repository: `.agents/skills/<handle>-mode/SKILL.md`.
 - Personal: `$HOME/.agents/skills/<handle>-mode/SKILL.md`, only with explicit authorization.
 - Frontmatter `name`: `<handle>-mode`.
-- Description: mention the chosen handle, `$<handle>-mode`, and working in that user's style.
+- Description: mention the chosen handle and working in that user's style.
 - Keep instructions operational and omit generic advice.
 
 Add `agents/openai.yaml` with `policy.allow_implicit_invocation: false` unless the user explicitly wants the mode to trigger automatically.
 
-Useful sections include response style, autonomy, investigation, delegation, code discipline, verification, and delivery. Include only sections backed by evidence. Reference other skills by `$name`; do not copy their bodies.
+Useful sections include response style, autonomy, investigation, delegation, code discipline, verification, and delivery. Include only sections backed by evidence. Reference other skills with relative Markdown links to their SKILL.md files; do not copy their bodies.
 
 ### 4. Review and land
 
-Apply `$deepwright:unslop`, show the draft, and incorporate feedback. Run the skill validator supplied by `$skill-creator`. If the repository has a normal review workflow, offer a branch or PR; do not push or open one without authorization.
+Apply [Unslop](../unslop/SKILL.md), show the draft, and incorporate feedback. Run the skill validator supplied with those instructions. If the repository has a normal review workflow, offer a branch or PR; do not push or open one without authorization.
 
 The result should feel recognizably like the user's working style without exposing private history.
 
@@ -73,7 +74,7 @@ The needed inputs are the working preferences, a chosen scope, and a handle. Reu
 
 ## Troubleshooting
 
-If `$skill-creator` or its validator is unavailable, use the established local skill format, inspect the YAML frontmatter and invocation policy manually, and disclose which validation could not run. If `$deepwright:unslop` is unavailable, edit for plain language directly. A write error should leave a reviewable draft in the response, not trigger installation elsewhere. Never change scopes just to bypass a failed write.
+If those instructions or their validator are unavailable, use the established local skill format, inspect the YAML frontmatter and invocation policy manually, and disclose which validation could not run. If [Unslop](../unslop/SKILL.md) is unavailable, edit for plain language directly. A write error should leave a reviewable draft in the response, not trigger installation elsewhere. Never change scopes just to bypass a failed write.
 
 ## Limitations
 

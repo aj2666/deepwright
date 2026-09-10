@@ -1,7 +1,8 @@
 ---
 name: comment-auditor
-description: "Review scoped comments and suppressions for deletion, retention, or root-cause redesign without editing code. Use for $deepwright:comment-auditor."
+description: "Review scoped comments and suppressions for deletion, retention, or root-cause redesign without editing code."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Comment auditor

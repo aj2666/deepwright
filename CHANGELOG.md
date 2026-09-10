@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Use host-neutral links throughout runtime skills and playbooks. Keep OMP and Claude activation metadata aligned with Codex: only the router is implicit, while all 47 skills remain explicitly callable.
+- Make helper discovery guidance host-aware across commands, default to neutral pointers, and replace the Codex-only catalog invocation field with selected-host guidance in the v2 discovery envelopes.
+- Verify the real OMP CLI lifecycle, exact installed contents, native skill visibility and resource access, disabled discovery, collisions, and clean removal in isolated homes. Run pinned OMP and Claude checks in Linux and macOS CI.
+- Map Deepwright worker preferences to OMP's task/smol/slow roles through read-only public CLI queries, preserving project precedence and native fallback behavior. Add OMP setup diagnostics and separate model-catalogue membership from runtime execution claims.
+
 - Standardize the repository package and fixture-test names on Deepwright, remove old project branding from documentation, and repair the README license link.
 - Consolidate plugin license terms in LICENSE and validate them there; add regression coverage for missing terms, broken README links, and package-name drift.
 

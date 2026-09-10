@@ -1,7 +1,8 @@
 ---
 name: principle-minimize-reader-load
-description: "Reduce layers and hidden state for future readers. Use for $deepwright:principle-minimize-reader-load."
+description: "Reduce layers and hidden state for future readers."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Minimize Reader Load

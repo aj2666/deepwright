@@ -1,7 +1,8 @@
 ---
 name: principle-build-the-lever
-description: "Automate repetitive work with reusable checks. Use for $deepwright:principle-build-the-lever."
+description: "Use when repetitive or error-prone work justifies a reusable command, codemod, or check instead of repeated manual edits."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Build the Lever

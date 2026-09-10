@@ -101,6 +101,13 @@ jobs:
         run: npm run validate
       - name: Verify package and CLI metadata contracts
         run: npm run test:contracts
+      - name: Install pinned portable hosts
+        run: npm install --prefix "$RUNNER_TEMP/portable-hosts" --no-save bun@1.4.0 @oh-my-pi/pi-coding-agent@18.1.16 @anthropic-ai/claude-code@2.1.263
+      - name: Verify Claude and OMP marketplace lifecycle and skill activation policy
+        shell: bash
+        run: |
+          export PATH="$RUNNER_TEMP/portable-hosts/node_modules/.bin:$PATH"
+          bun scripts/verify-portable-hosts.mjs "$RUNNER_TEMP/portable-hosts/node_modules/@oh-my-pi/pi-coding-agent"
       - name: Install Codex CLI
         run: npm install --global @openai/codex
       - name: Smoke-test plugin installation

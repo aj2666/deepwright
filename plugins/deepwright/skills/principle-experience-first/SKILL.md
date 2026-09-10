@@ -1,7 +1,8 @@
 ---
 name: principle-experience-first
-description: "Optimize product choices for the user's experience. Use for $deepwright:principle-experience-first."
+description: "Optimize product choices for the user's experience."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Experience First

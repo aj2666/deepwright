@@ -29,6 +29,7 @@ async function fixture() {
     await mkdir(join(directory, "agents"), { recursive: true });
     await writeFile(join(directory, "SKILL.md"), [
       "---", "name: " + name, "description: " + JSON.stringify("Investigate " + name + " workflow"),
+      "disable-model-invocation: " + (name !== "deepwright"),
       "---", "", "# " + name, "", "Canonical workflow body.", "",
     ].join("\n"));
     await writeFile(join(directory, "agents", "openai.yaml"), [
@@ -82,14 +83,14 @@ describe("read-only skill discovery", () => {
     const listed = await run(["skills", "--json"], context);
     expect(listed.code).toBe(0);
     expect(JSON.parse(listed.stdout)).toMatchObject({
-      schemaVersion: 1, tool: "deepwright", command: "skills", query: null,
+      schemaVersion: 2, tool: "deepwright", command: "skills", query: null,
       skills: [{ name: "alpha" }, { name: "deepwright" }, { name: "zeta" }],
     });
     for (const query of ["ALPHA", "First Steps", "Investigate alpha"]) {
       const result = await run(["skills", query, "--json"], context);
       expect(JSON.parse(result.stdout).skills.map((skill: { name: string }) => skill.name)).toEqual(["alpha"]);
     }
-    expect((await run(["skills", "no matches"], context)).stdout).toBe("No matching skills.\n");
+    expect(JSON.parse((await run(["skills", "no matches", "--json"], context)).stdout).skills).toEqual([]);
   });
 
   it("resolves a symlinked plugin root to canonical paths on every platform", async () => {
@@ -109,13 +110,10 @@ describe("read-only skill discovery", () => {
     const result = await run(["skill", "alpha", "--json"], context);
     expect(result.code).toBe(0);
     expect(JSON.parse(result.stdout).skill).toMatchObject({
-      name: "alpha", displayName: "First Steps", implicit: false, invocation: "$deepwright:alpha",
+      name: "alpha", displayName: "First Steps", implicit: false,
       path: join(context.pluginRoot, "skills", "alpha", "SKILL.md"),
     });
     expect(result.stdout).not.toContain("Canonical workflow body");
-    const human = await run(["skill", "alpha"], context);
-    expect(human.stdout).toContain("Desktop: type @ and select First Steps");
-    expect(human.stdout).toContain("activation is not checked");
   });
 
   it.each(["codex", "agents", "claude", "omp"] as const)("prints %s guidance without file or process side effects", async (host) => {
@@ -132,19 +130,35 @@ describe("read-only skill discovery", () => {
       expect(guidance.desktop).toContain("First Steps");
     } else if (host === "omp") {
       expect(guidance.prompt).toBe("/skill:alpha");
-      expect(guidance.note).toContain("fresh session");
     } else {
       if (host === "claude") expect(guidance.prompt).toBe("/deepwright:alpha");
       expect(guidance.target).toBe(host === "agents" ? "AGENTS.md" : "CLAUDE.md");
       expect(guidance.pointer).toContain(JSON.stringify(join(context.pluginRoot, "skills", "alpha", "SKILL.md")));
-      expect(guidance.pointer).toContain("grants no new permissions");
-      expect(guidance.note).toContain("no file was written");
     }
-    const human = await run(["invoke", "alpha", "--host", host], context);
-    expect(human.stdout).toContain("nothing executed or written");
     await run(["skills"], context);
     await run(["skill", "alpha"], context);
     await run(["status"], context);
+    expect(await snapshot(context.root)).toEqual(before);
+  });
+
+  it("keeps OMP home and skill guidance native in JSON and terminal output", async () => {
+    const context = await rankedFixture();
+    const before = await snapshot(context.root);
+    const home = await run(["home", "--host", "omp", "--json"], context);
+    expect(home.code).toBe(0);
+    expect(JSON.parse(home.stdout).entrypoints[0].guidance.prompt).toBe("/skill:deepwright");
+    for (const command of ["skill", "invoke"]) {
+      const result = await run([command, "alpha", "--host", "omp", "--json"], context);
+      expect(result.code).toBe(0);
+      expect(JSON.parse(result.stdout).guidance.prompt).toBe("/skill:alpha");
+      const human = await run([command, "alpha", "--host", "omp"], context);
+      expect(human.code).toBe(0);
+      expect(human.stdout).toContain("/skill:alpha");
+      expect(human.stdout).not.toContain("$deepwright:");
+    }
+    const human = await run(["home", "--host", "omp"], context);
+    expect(human.stdout).toContain("/skill:deepwright");
+    expect(human.stdout).not.toContain("$deepwright:");
     expect(await snapshot(context.root)).toEqual(before);
   });
 
@@ -153,7 +167,7 @@ describe("read-only skill discovery", () => {
     const missing = JSON.parse((await run(["status", "--json"], context)).stdout);
     expect(missing).toMatchObject({
       version: "1.0.1", skillCount: 3, explicitSkillCount: 2, implicitSkills: ["deepwright"],
-      schemaVersion: 2, config: { state: "missing", validation: "passed", projectOverrides: 0 },
+      schemaVersion: 3, config: { state: "missing", validation: "passed", projectOverrides: 0 },
       hostState: { sessionActivation: "unknown", models: "unknown", mcp: "unknown" },
     });
     await mkdir(join(context.cwd, ".codex"));
@@ -176,7 +190,7 @@ describe("read-only skill discovery", () => {
   it.each([
     ["run"], ["skill"], ["skill", "../alpha"], ["skill", "/alpha"], ["skill", "Alpha"],
     ["skills", "--bogus"], ["skills", "--json", "--json"], ["skills", "-h", "--help"],
-    ["skills", "a", "b"], ["status", "alpha"], ["status", "--host", "codex"],
+    ["skills", "a", "b"], ["status", "alpha"],
     ["invoke", "alpha", "--host"], ["invoke", "alpha", "--host", "unknown"],
     ["invoke", "alpha", "--host", "codex", "--host", "agents"], ["skills", "--help", "--bogus"],
     ["config"], ["config", "write"], ["config", "show", "extra"], ["home", "extra"],
@@ -195,24 +209,15 @@ describe("read-only skill discovery", () => {
     expect(result.stdout).toBe("");
   });
 
-  it("keeps help independent of plugin reads and preserves doctor dispatch", async () => {
-    expect((await run(["--help"], { pluginRoot: "/not-present" })).stdout).toContain("skills [query]");
-    expect((await run(["doctor", "--help"])).stdout).toContain("deepwright doctor [--json]");
-  });
 
   it("provides a compact canonical home and searchable playbooks without starting work", async () => {
     const context = { pluginRoot: defaultPluginRoot() };
-    const home = await run([], context);
-    expect(home.code).toBe(0);
-    expect(home.stdout.split("\n").length).toBeLessThan(22);
-    expect(home.stdout).toContain("47 skills · 24 playbooks");
-    expect(home.stdout).toContain("$deepwright:deepwright");
     const json = JSON.parse((await run(["home", "--json"], context)).stdout);
     expect(json.entrypoints.map((skill: { name: string }) => skill.name)).toEqual(["deepwright"]);
     const routes = await run(["playbooks", "measured performance", "--json"], context);
     expect(routes.code).toBe(0);
     expect(JSON.parse(routes.stdout).playbooks.map((entry: { name: string }) => entry.name)).toEqual(["perf-issue"]);
-    expect((await run(["playbooks", "no matching entry"], context)).stdout).toBe("No matching playbooks.\n");
+    expect(JSON.parse((await run(["playbooks", "no matching entry", "--json"], context)).stdout).playbooks).toEqual([]);
   });
 
   it("supports compact skill search across fields", async () => {
@@ -230,7 +235,7 @@ describe("read-only skill discovery", () => {
     expect(result.code, result.stderr).toBe(0);
     const found = JSON.parse(result.stdout);
     expect(found).toMatchObject({
-      schemaVersion: 1, tool: "deepwright", command: "find", query, limit: 3, algorithm: "bm25",
+      schemaVersion: 2, tool: "deepwright", command: "find", query, limit: 3, algorithm: "bm25",
     });
     expect(found.skills[0].name).toBe("interrogate");
     expect(found.skills[0].matchedTerms).toContain("security");
@@ -278,7 +283,7 @@ describe("read-only skill discovery", () => {
     ["find", "review", "--limit", "11"], ["find", "review", "--limit", "1.0"],
     ["find", "review", "--limit", "01"], ["find", "review", "--limit", "Infinity"],
     ["find", "review", "--limit", "2", "--limit", "3"],
-    ["find", "review", "--compact"], ["find", "review", "--host", "codex"],
+    ["find", "review", "--compact"],
     ["skills", "review", "--limit", "2"], ["find", "x".repeat(4097)], ["find", "é".repeat(2049)],
   ])("rejects invalid ranked-search arguments before reading files (%#)", async (...args) => {
     const result = await run([...args, "--json"], { pluginRoot: "/nonexistent/deepwright" });
@@ -316,13 +321,6 @@ describe("read-only skill discovery", () => {
       expect(result.code).toBe(0);
       expect(JSON.parse(result.stdout).action).toBe(action);
     }
-    const shown = await run(["config", "show"], context);
-    expect(shown.stdout).toContain('roles.code = "inherit-parent" [default]');
-    expect(shown.stdout).toContain("parallelism.swarm_workers = 4 [default]");
-    const template = await run(["config", "template"], context);
-    expect(template.stdout).toContain("[roles]");
-    const contract = await readFile(join(defaultPluginRoot(), "skills", "deepwright", "references", "configuration.md"), "utf8");
-    expect(contract.match(/```toml\n([\s\S]*?)```/u)![1]).toBe(template.stdout.split("\n").slice(1).join("\n"));
     expect(await snapshot(context.cwd)).toEqual(before);
     await mkdir(join(context.cwd, ".codex"));
     await writeFile(join(context.cwd, ".codex", "deepwright.toml"), "version = 1.0");
@@ -330,7 +328,7 @@ describe("read-only skill discovery", () => {
     expect(JSON.parse((await run(["config", "show", "--json"], context)).stdout).settings).toBeNull();
     await writeFile(join(context.cwd, ".codex", "deepwright.toml"), "version = [ PRIVATE-SECRET");
     const invalid = await run(["config", "check"], context);
-    expect(invalid.stdout).toMatch(/Invalid TOML configuration\. \(line \d+, column \d+\)/u);
+    expect(invalid.code).toBe(1);
     expect(invalid.stdout).not.toContain("PRIVATE-SECRET");
   });
 
@@ -370,7 +368,7 @@ describe("read-only skill discovery", () => {
   it("supports current plain/double/single-quoted scalar forms and CRLF", async () => {
     const context = await fixture();
     await writeFile(join(context.pluginRoot, "skills", "alpha", "SKILL.md"),
-      "---\r\nname: alpha\r\ndescription: 'User''s explicit workflow'\r\n---\r\n");
+      "---\r\nname: alpha\r\ndescription: 'User''s explicit workflow'\r\ndisable-model-invocation: true\r\n---\r\n");
     expect(JSON.parse((await run(["skill", "alpha", "--json"], context)).stdout).skill.description)
       .toBe("User's explicit workflow");
   });

@@ -1,7 +1,8 @@
 ---
 name: principle-outcome-oriented-execution
-description: "Converge on the target instead of preserving detours. Use for $deepwright:principle-outcome-oriented-execution."
+description: "Use when a planned rewrite or migration needs coupled changes; converge on a verified target without preserving unnecessary intermediate interfaces."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Outcome-Oriented Execution

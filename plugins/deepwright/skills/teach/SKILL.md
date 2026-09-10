@@ -1,7 +1,8 @@
 ---
 name: teach
-description: "Explain code, a change, or a subsystem in plain language, connecting its mechanics to evidence-backed rationale. Use for $deepwright:teach."
+description: "Explain code, a change, or a subsystem in plain language, connecting its mechanics to evidence-backed rationale."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Teach
@@ -16,9 +17,9 @@ Explain what a thing is, how it works, and why it is built that way at the perso
 
 Choose what the reader should understand from why they are asking: reviewing a change, debugging behavior, preparing an edit, or learning a subsystem. Infer their starting point from the conversation and skip what they plainly already know. Ask for a file, diff, or topic only when the referent cannot be identified.
 
-Use `$deepwright:how` for mechanics and `$deepwright:why` for rationale when those skills are available. Read the code to get oriented and use the needed skill or skills. Both may help with a subsystem; one may be enough for a small change. Independent research may run in parallel when it saves time, but a one-line question does not need delegation. Keep rationale research within the evidence sources the user authorized.
+Use [How](../how/SKILL.md) for mechanics and [Why](../why/SKILL.md) for rationale when those skills are available. Read the code to get oriented and use the needed skill or skills. Both may help with a subsystem; one may be enough for a small change. Independent research may run in parallel when it saves time, but a one-line question does not need delegation. Keep rationale research within the evidence sources the user authorized.
 
-Preserve confidence language from `$deepwright:why`. A reason inferred from code remains an inference. Neither a passing test nor a plausible design story proves the author's intent.
+Preserve confidence language from [Why](../why/SKILL.md). A reason inferred from code remains an inference. Neither a passing test nor a plausible design story proves the author's intent.
 
 ### Explain one idea at a time
 
@@ -40,7 +41,7 @@ Use Mermaid when the host renders it. Otherwise use a compact code-native SVG, a
 
 ### Finish in plain language
 
-Apply `$deepwright:unslop` when available, or edit directly for the same plain spoken style. Cut filler while keeping the part that makes the mechanism understandable. Use sentence case, precise verbs, and one consistent name for each concept.
+Apply [Unslop](../unslop/SKILL.md) when available, or edit directly for the same plain spoken style. Cut filler while keeping the part that makes the mechanism understandable. Use sentence case, precise verbs, and one consistent name for each concept.
 
 Return the explanation itself, not a report of the research or skills used. Lead with the main point and add the evidence or caveat needed to assess it. Include code pointers where they help the reader follow the explanation.
 

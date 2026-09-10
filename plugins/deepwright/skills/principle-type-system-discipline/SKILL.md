@@ -1,7 +1,8 @@
 ---
 name: principle-type-system-discipline
-description: "Use types to make invalid states unrepresentable. Use for $deepwright:principle-type-system-discipline."
+description: "Use types to make invalid states unrepresentable."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Type System Discipline

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { CONFIG_FIELDS, DEFAULT_CONFIG, formatConfigTemplate, MAX_CONFIG_BYTES, readConfig } from "./config.ts";
+import { CONFIG_FIELDS, DEFAULT_CONFIG, formatConfigTemplate, MAX_CONFIG_BYTES, readConfig, type HostCommandResult, type HostCommandRunner } from "./config.ts";
 
 const temporaryDirectories: string[] = [];
 afterEach(async () => {
@@ -29,8 +29,8 @@ describe("project-local configuration", () => {
     const context = await fixture();
     const result = await readConfig(context.project);
     expect(result).toMatchObject({
-      path: context.path, state: "missing", validation: "passed", ok: true,
-      settings: DEFAULT_CONFIG, errors: [], hostValidation: "not-performed", unverifiedModelRoles: [],
+      path: context.path, state: "missing", validation: "passed", ok: true, host: "codex",
+      settings: DEFAULT_CONFIG, errors: [], hostValidation: "not-performed", hostRoles: null, unverifiedModelRoles: [],
     });
     expect(result.sources).toEqual(Object.fromEntries(CONFIG_FIELDS.map((field) => [field, "default"])));
     await mkdir(context.directory);
@@ -273,5 +273,120 @@ describe("project-local configuration", () => {
     await readConfig(context.project);
     expect(await readFile(context.path, "utf8")).toBe(source);
     expect(await readFile(instructions, "utf8")).toBe("Existing instructions.\n");
+  });
+});
+
+function ompJson(key: string, value: unknown): HostCommandResult {
+  return { found: true, ok: true, stdout: JSON.stringify({ key, value, type: "record", description: "" }) + "\n", stderr: "" };
+}
+
+function modelsJson(selectors: readonly string[]): HostCommandResult {
+  return {
+    found: true, ok: true,
+    stdout: JSON.stringify({ models: selectors.map((selector) => ({ selector })) }) + "\n",
+    stderr: "",
+  };
+}
+
+function replies(mapping: Record<string, HostCommandResult>): HostCommandRunner {
+  return (command, args) => mapping[[command, ...args].join(" ")] ?? { found: false, ok: false, stdout: "", stderr: "" };
+}
+
+describe("explicit host resolution", () => {
+  it("does not probe a host unless --host omp is requested", async () => {
+    const context = await fixture('[roles]\nresearch = "provider/model"\n');
+    const fail: HostCommandRunner = () => { throw new Error("probed unrelated host"); };
+    for (const host of ["codex", "claude", "agents"] as const) {
+      const result = await readConfig(context.project, host, fail);
+      expect(result).toMatchObject({ host, ok: true, hostValidation: "not-performed", hostRoles: null });
+      expect(result.unverifiedModelRoles).toEqual(["research"]);
+    }
+  });
+
+  it("keeps explicit inherit-parent as a valid project choice on omp", async () => {
+    const context = await fixture('[roles]\ncode = "inherit-parent"\n');
+    const result = await readConfig(context.project, "omp", replies({
+      "omp config get modelRoles --json": ompJson("modelRoles", { task: "provider/task-model", smol: "provider/fast", slow: "provider/slow" }),
+    }));
+    expect(result).toMatchObject({ ok: true, host: "omp", hostValidation: "passed" });
+    expect(result.sources?.["roles.code"]).toBe("project");
+    expect(result.settings?.roles.code).toBe("inherit-parent");
+    expect(result.hostRoles).toEqual([
+      { role: "code", nativeRole: "task", projectOverride: false, nativeConfigured: true, fallback: "native-role", catalogMatch: "unknown" },
+      { role: "research", nativeRole: "smol", projectOverride: false, nativeConfigured: true, fallback: "native-role", catalogMatch: "unknown" },
+      { role: "review", nativeRole: "slow", projectOverride: false, nativeConfigured: true, fallback: "native-role", catalogMatch: "unknown" },
+    ]);
+    expect(result.unverifiedModelRoles).toEqual([]);
+    expect(JSON.stringify(result)).not.toContain("provider/task-model");
+  });
+
+  it("reports native fallbacks without inventing model identifiers", async () => {
+    const context = await fixture();
+    const result = await readConfig(context.project, "omp", replies({
+      "omp config get modelRoles --json": ompJson("modelRoles", { default: "provider/default-model" }),
+    }));
+    expect(result.hostValidation).toBe("passed");
+    expect(result.sources).toMatchObject({ "roles.code": "default", "roles.research": "default", "roles.review": "default" });
+    expect(result.hostRoles?.map((entry) => [entry.role, entry.fallback, entry.nativeConfigured])).toEqual([
+      ["code", "native-session", false],
+      ["research", "native-default", false],
+      ["review", "native-default", false],
+    ]);
+    expect(JSON.stringify(result)).not.toContain("provider/default-model");
+  });
+
+  it("distinguishes a project override from host catalogue presence", async () => {
+    const context = await fixture('[roles]\ncode = "provider/available"\nreview = "provider/missing"\n');
+    const result = await readConfig(context.project, "omp", replies({
+      "omp config get modelRoles --json": ompJson("modelRoles", { task: "ignored" }),
+      "omp models --json": modelsJson(["provider/available"]),
+    }));
+    expect(result.ok).toBe(true);
+    expect(result.hostValidation).toBe("passed");
+    expect(result.sources?.["roles.code"]).toBe("project");
+    expect(result.hostRoles).toEqual([
+      { role: "code", nativeRole: "task", projectOverride: true, nativeConfigured: true, fallback: null, catalogMatch: "yes" },
+      { role: "research", nativeRole: "smol", projectOverride: false, nativeConfigured: false, fallback: "native-priority", catalogMatch: "unknown" },
+      { role: "review", nativeRole: "slow", projectOverride: true, nativeConfigured: false, fallback: null, catalogMatch: "no" },
+    ]);
+    expect(result.unverifiedModelRoles).toEqual(["review"]);
+  });
+
+  it("leaves unsupported selector suffixes unverified", async () => {
+    const context = await fixture('[roles]\ncode = "provider/model:made-up"\nresearch = "provider/model:high"\nreview = "provider/literal:special"\n');
+    const result = await readConfig(context.project, "omp", replies({
+      "omp config get modelRoles --json": ompJson("modelRoles", {}),
+      "omp models --json": modelsJson(["provider/model", "provider/literal:special"]),
+    }));
+    expect(result.unverifiedModelRoles).toEqual(["code"]);
+  });
+
+  it("fails closed when the omp binary is absent", async () => {
+    const context = await fixture();
+    const result = await readConfig(context.project, "omp", () => ({ found: false, ok: false, stdout: "", stderr: "" }));
+    expect(result).toMatchObject({ ok: false, hostValidation: "failed", hostRoles: null });
+    expect(result.errors.some((error) => error.code === "host-unavailable")).toBe(true);
+    expect(result.settings).toEqual(DEFAULT_CONFIG);
+  });
+
+  it("fails closed on malformed host output without echoing it", async () => {
+    const context = await fixture('[roles]\ncode = "provider/model"\n');
+    const result = await readConfig(context.project, "omp", replies({
+      "omp config get modelRoles --json": { found: true, ok: true, stdout: "{ not json PRIVATE-SECRET\n", stderr: "" },
+    }));
+    expect(result).toMatchObject({ ok: false, hostValidation: "failed", hostRoles: null });
+    expect(result.errors.some((error) => error.code === "host-query-failed")).toBe(true);
+    expect(JSON.stringify(result)).not.toContain("PRIVATE-SECRET");
+  });
+
+  it("does not search parent projects even when omp is requested", async () => {
+    const context = await fixture("[parallelism]\nreviewers = 7\n");
+    const child = join(context.project, "child");
+    await mkdir(child);
+    const result = await readConfig(child, "omp", replies({
+      "omp config get modelRoles --json": ompJson("modelRoles", {}),
+    }));
+    expect(result.settings?.parallelism.reviewers).toBe(3);
+    expect(result.state).toBe("missing");
   });
 });

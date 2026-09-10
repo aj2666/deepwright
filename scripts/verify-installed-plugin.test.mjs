@@ -29,7 +29,7 @@ async function fixture(t) {
   for (const name of ["deepwright", "feature"]) {
     const description = "Run the " + name + " workflow.";
     const skillDirectory = path.join(expectedPluginRoot, "skills", name);
-    await put(path.join(skillDirectory, "SKILL.md"), `---\nname: ${name}\ndescription: ${description}\n---\n\nFollow [details](references/details.md).\n`);
+    await put(path.join(skillDirectory, "SKILL.md"), `---\nname: ${name}\ndescription: ${description}\ndisable-model-invocation: ${name !== "deepwright"}\n---\n\nFollow [details](references/details.md).\n`);
     await put(path.join(skillDirectory, "agents", "openai.yaml"), `interface:\n  display_name: ${name}\npolicy:\n  allow_implicit_invocation: ${name === "deepwright"}\n`);
     await put(path.join(skillDirectory, "references", "details.md"), "Expected reference\n");
     await put(path.join(skillDirectory, "scripts", "helper.mjs"), "export const result = true;\n");

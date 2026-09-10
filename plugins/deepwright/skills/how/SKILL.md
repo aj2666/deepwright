@@ -1,7 +1,8 @@
 ---
 name: how
-description: "Explain a repository subsystem by tracing inputs, ownership, decisions, and outputs; optionally critique its architecture. Use for $deepwright:how."
+description: "Use when explaining how a repository subsystem works; trace inputs, ownership, decisions, and outputs, with architectural critique only when requested."
 license: MIT
+disable-model-invocation: true
 ---
 
 # How
@@ -134,7 +135,7 @@ Present the explanation first (from Step 1), then the critique verdict below it.
 ## Examples
 
 ```text
-$deepwright:how What happens between clicking Save and the document reaching disk?
+What happens between clicking Save and the document reaching disk?
 ```
 
 Trace the actual handler through state ownership, serialization, and persistence, including the error path and any debounce. Expected result: a short input-to-effect explanation with code pointers and the key timing constraint. A one-module path stays a direct local read; cross-service paths may benefit from separate explorers.

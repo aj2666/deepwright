@@ -3,7 +3,6 @@ export interface Skill {
   readonly description: string;
   readonly displayName: string;
   readonly path: string;
-  readonly invocation: string;
   readonly implicit: boolean;
 }
 

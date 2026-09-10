@@ -1,7 +1,8 @@
 ---
 name: principle-make-operations-idempotent
-description: "Make retries converge on the same end state. Use for $deepwright:principle-make-operations-idempotent."
+description: "Use when operations may be retried or interrupted; reconcile toward the intended state without duplicating effects or overwriting unowned resources."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Make Operations Idempotent

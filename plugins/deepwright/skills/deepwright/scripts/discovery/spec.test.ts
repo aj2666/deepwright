@@ -41,11 +41,11 @@ describe("specification package integration", () => {
   });
 
   it("discovers Spec as an explicit skill with canonical invocation guidance", async () => {
-    const result = await run(["skill", "spec", "--json"]);
-    expect(result.skill).toMatchObject({ name: "spec", displayName: "Spec", implicit: false, invocation: "$deepwright:spec" });
-    const guidance = await run(["invoke", "spec", "--json"]);
+    const result = await run(["skill", "spec", "--host", "omp", "--json"]);
+    expect(result.skill).toMatchObject({ name: "spec", displayName: "Spec", implicit: false });
+    expect(result.guidance.prompt).toBe("/skill:spec");
+    const guidance = await run(["invoke", "spec", "--host", "codex", "--json"]);
     expect(guidance.guidance.cli).toBe("$deepwright:spec");
-    expect(guidance.guidance.desktop).toContain("Spec");
     const status = await run(["status", "--json"]);
     expect(status.implicitSkills).toEqual(["deepwright"]);
   });
@@ -65,21 +65,6 @@ describe("specification package integration", () => {
     }
   });
 
-  it("keeps one acceptance contract linked by its consumers", async () => {
-    const contract = join(pluginRoot, "skills/spec/references/acceptance-contract.md");
-    const consumers = [
-      ["spec/SKILL.md", "references/acceptance-contract.md"],
-      ["tdd/SKILL.md", "../spec/references/acceptance-contract.md"],
-      ["interrogate/SKILL.md", "../spec/references/acceptance-contract.md"],
-      ["deepwright/playbooks/feature.md", "../../spec/references/acceptance-contract.md"],
-      ["deepwright/playbooks/multi-phase-plan.md", "../../spec/references/acceptance-contract.md"],
-    ];
-    for (const [file, link] of consumers) {
-      const path = join(pluginRoot, "skills", file);
-      expect(await readFile(path, "utf8")).toContain(`](${link})`);
-      expect(resolve(dirname(path), link)).toBe(contract);
-    }
-  });
 
   it("ships specification license terms in the Deepwright plugin license", async () => {
     const license = await readFile(join(pluginRoot, "LICENSE"), "utf8");

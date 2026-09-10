@@ -1,7 +1,8 @@
 ---
 name: recall
-description: "Rebuild a current work brief from scoped history, repository state, and linked work records before resuming a task. Use for $deepwright:recall."
+description: "Rebuild a current work brief from scoped history, repository state, and linked work records before resuming a task."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Recall

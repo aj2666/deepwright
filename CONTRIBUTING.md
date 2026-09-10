@@ -165,14 +165,19 @@ with Claude Code, Bun, and Oh My Pi installed, run:
 bun scripts/verify-portable-hosts.mjs /absolute/path/to/node_modules/@oh-my-pi/pi-coding-agent
 ```
 
-The smoke uses temporary registries and caches, validates and installs through
-Claude Code, then uses the installed Oh My Pi source's marketplace installer and
-skill discovery provider. It compares every skill and supporting file with the
-source package and cleans up afterward. It makes no model calls and does not
-change your installed plugins. It requires Oh My Pi's distributed `src/` tree;
-loader API changes should fail visibly and be investigated. This verifies
-packaging and discovery, not live-agent routing or workflow quality.
+The smoke runs the public Claude Code and Oh My Pi plugin CLIs in temporary
+homes with inherited host-state paths removed. It checks marketplace add,
+discovery, installation, list, refresh by upgrade or forced reinstall, and removal.
+Native OMP checks cover all 47 slash commands, `skill://` and supporting-file
+reads, router-only prompt visibility, disabled-provider behavior, name collisions,
+and `--plugin-dir` without installation. Every installed package file is compared
+with its source; real user registries must remain unchanged. Scratch state is
+removed afterward. No model calls or user-plugin changes are made.
 
-Verified locally with Claude Code 2.1.263 and Oh My Pi 18.1.14. For live behavior,
-start a fresh session in each host and invoke a read-only investigation against
-a small known fixture; verify the skill is loaded and the no-edit boundary holds.
+CI pins Bun 1.4.0, Claude Code 2.1.263, and Oh My Pi 18.1.16 on Linux and macOS.
+The verifier requires Oh My Pi's distributed `src/` tree and fails on a different
+OMP version so native API changes require deliberate review. It proves packaging,
+discovery, and activation metadata, not live-agent workflow quality. For live
+behavior, start a fresh session in each host and invoke a read-only investigation
+against a small known fixture; verify files stay unchanged and the answer remains
+within the requested boundary.

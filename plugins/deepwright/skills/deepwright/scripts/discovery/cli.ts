@@ -32,12 +32,13 @@ const USAGE = [
   "  playbooks [query] [--json]              browse the canonical router table",
   "  find <query> [--limit 1..10] [--json]   rank metadata; default 3 per kind",
   "  skill <name> [--json]                   inspect a skill and its invocation",
-  "  invoke <name> [--host codex|agents|claude|omp] [--json]",
-  "                                         print guidance; never execute it",
+  "  invoke <name> [--json]                  print guidance; never execute it",
   "  status [--json]                         inspect package and config validity",
   "  config show|check|template [--json]     inspect settings; never write them",
   "",
-  "All commands are read-only. They cannot confirm active host/session state.",
+  "--host codex|agents|claude|omp selects host guidance for every command.",
+  "Default: agents (host-neutral). Only --host omp config/status/doctor query OMP.",
+  "All commands are read-only; no helper proves live session activation.",
   "-h, --help displays this help. Quote a multiword search query.",
   "",
 ].join("\n");
@@ -47,7 +48,7 @@ class UsageError extends Error {}
 function parse(argv: readonly string[]) {
   const seen = new Set<string>();
   const positionals: string[] = [];
-  let host: Host = "codex";
+  let host: Host = "agents";
   let limit = 3;
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
@@ -74,7 +75,6 @@ function parse(argv: readonly string[]) {
   }
   const command = positionals[0] ?? "home";
   if (!commands.includes(command)) throw new UsageError("expected a valid command");
-  if (seen.has("--host") && command !== "invoke") throw new UsageError("--host is only valid with invoke");
   if (seen.has("--limit") && command !== "find") throw new UsageError("--limit is only valid with find");
   if (seen.has("--compact") && command !== "skills") throw new UsageError("--compact is only valid with skills");
   if (seen.has("--compact") && seen.has("--json")) throw new UsageError("--compact and --json are mutually exclusive");
@@ -107,15 +107,13 @@ function rankedLines(label: string, entries: readonly ({ readonly name: string; 
   ]))];
 }
 
-function skillLines(skill: Skill): string[] {
+function skillLines(skill: Skill, host: Host): string[] {
   return [
     terminalText(skill.displayName) + " (" + skill.name + ")",
     terminalText(skill.description),
-    "Codex CLI: " + skill.invocation,
-    "Desktop: type @ and select " + terminalText(skill.displayName),
+    ...guidanceLines(invocation(skill, host)),
     "Implicit invocation policy: " + skill.implicit,
     "Canonical file: " + jsonText(skill.path).trim(),
-    "Start a fresh host session after installation; activation is not checked here.",
   ];
 }
 
@@ -123,7 +121,7 @@ function invocation(skill: Skill, host: Host): Guidance {
   if (host === "codex") {
     return {
       host,
-      cli: skill.invocation,
+      cli: "$deepwright:" + skill.name,
       desktop: "Type @ and select " + skill.displayName,
       note: "Start a fresh session after installation. This helper prints guidance only; it does not launch Codex or check activation.",
     };
@@ -153,6 +151,18 @@ function invocation(skill: Skill, host: Host): Guidance {
   };
 }
 
+function guidanceLines(guidance: Guidance): string[] {
+  return [
+    ...("cli" in guidance
+      ? ["Codex CLI: " + guidance.cli, terminalText(guidance.desktop)]
+      : [
+        ...("prompt" in guidance && guidance.prompt ? ["Host prompt: " + guidance.prompt] : []),
+        ...("pointer" in guidance ? ["Optional " + guidance.target + " pointer:", guidance.pointer] : []),
+      ]),
+    terminalText(guidance.note),
+  ];
+}
+
 export async function main(
   argv: readonly string[],
   io: Io = { stdout: (value) => process.stdout.write(value), stderr: (value) => process.stderr.write(value) },
@@ -160,19 +170,19 @@ export async function main(
 ): Promise<number> {
   try {
     const options = parse(argv);
-    if (options.command === "doctor") return doctorMain(argv, io);
+    if (options.command === "doctor") return doctorMain(argv, io, context);
     if (options.help) {
       io.stdout(USAGE);
       return 0;
     }
-    const envelope = { schemaVersion: 1, tool: "deepwright", command: options.command };
+    const envelope = { schemaVersion: 2, tool: "deepwright", command: options.command, host: options.host };
     if (options.command === "config") {
       if (options.value === "template") {
         const template = formatConfigTemplate();
         io.stdout(options.json ? jsonText({ ...envelope, action: "template", template, written: false }) : template);
         return 0;
       }
-      const report = await readConfig(context.cwd ?? process.cwd());
+      const report = await readConfig(context.cwd ?? process.cwd(), options.host);
       const { settings, sources, ...summary } = report;
       const values = settings === null ? [] : CONFIG_FIELDS.map((field) => {
         const [section, key] = field.split(".");
@@ -188,7 +198,7 @@ export async function main(
           ...(options.value === "show" ? values : []),
           ...report.errors.map((issue) => terminalText(issue.message) +
             (issue.line === undefined ? "" : " (line " + issue.line + ", column " + issue.column + ")")),
-          "Model availability: not checked. Settings are preferences, not host capability or permission.",
+          "Host validation: " + report.hostValidation + ". Model preferences do not prove execution or grant permission.",
         ].join("\n") + "\n");
       return report.ok ? 0 : 1;
     }
@@ -196,23 +206,22 @@ export async function main(
     const skills = await loadCatalog(pluginRoot);
     if (options.command === "home") {
       const routes = await loadPlaybooks(pluginRoot);
-      const entrypoints = skills.filter((skill) => skill.implicit);
+      const entrypoints = skills.filter((skill) => skill.implicit).map((skill) => ({ ...skill, guidance: invocation(skill, options.host) }));
       io.stdout(options.json ? jsonText({ ...envelope, skillCount: skills.length, playbookCount: routes.length, entrypoints }) : [
         "Deepwright — Go deep. Ship sound.",
         skills.length + " skills · " + routes.length + " playbooks · no background mode",
         "",
-        ...entrypoints.map((skill) => "Start in Codex: " + skill.invocation + " <your engineering task>"),
-        "Desktop: type @ and select a Deepwright skill.",
+        ...entrypoints.flatMap((skill) => guidanceLines(skill.guidance)),
         "",
         "Find:     deepwright skills review --compact",
         'Suggest:  deepwright find "review code security"',
         "Route:    deepwright playbooks performance",
-        "Inspect:  deepwright skill interrogate",
-        "Invoke:   deepwright invoke interrogate",
-        "Settings: deepwright config show",
-        "Health:   deepwright status   /   deepwright doctor",
+        "Inspect:  deepwright skill interrogate --host " + options.host,
+        "Invoke:   deepwright invoke interrogate --host " + options.host,
+        "Settings: deepwright config show --host " + options.host,
+        "Health:   deepwright status --host " + options.host + "   /   deepwright doctor --host " + options.host,
         "",
-        "Read-only helper. Paste skill tokens into Codex, not your shell.",
+        "Read-only helper. Use native skill prompts in your selected host, not your shell.",
       ].join("\n") + "\n");
     } else if (options.command === "find") {
       const query = options.value!;
@@ -239,12 +248,13 @@ export async function main(
           skill.name + (skill.implicit ? " [implicit]" : "") + " — " + terminalText(skill.displayName) +
           (options.compact ? "" : "\n  " + terminalText(skill.description))).join("\n") + "\n"));
     } else if (options.command === "status") {
-      const manifest: unknown = JSON.parse(await readFile(join(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
+      const manifestDirectory = options.host === "omp" || options.host === "claude" ? ".claude-plugin" : ".codex-plugin";
+      const manifest: unknown = JSON.parse(await readFile(join(pluginRoot, manifestDirectory, "plugin.json"), "utf8"));
       if (typeof manifest !== "object" || manifest === null || !("version" in manifest) ||
           typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+$/u.test(manifest.version)) {
         throw new Error("plugin manifest has no valid version");
       }
-      const { settings: _settings, sources, ...config } = await readConfig(context.cwd ?? process.cwd());
+      const { settings: _settings, sources, ...config } = await readConfig(context.cwd ?? process.cwd(), options.host);
       const projectOverrides = sources === null ? null : Object.values(sources).filter((value) => value === "project").length;
       const implicitSkills = skills.filter((skill) => skill.implicit).map((skill) => skill.name);
       const hostState = {
@@ -254,7 +264,7 @@ export async function main(
         note: "Package metadata is not host state; use the host's own plugin, model, and MCP interfaces.",
       };
       io.stdout(options.json ? jsonText({
-        ...envelope, schemaVersion: 2, version: manifest.version, pluginRoot, skillCount: skills.length,
+        ...envelope, schemaVersion: 3, version: manifest.version, pluginRoot, skillCount: skills.length,
         implicitSkills, explicitSkillCount: skills.length - implicitSkills.length, config: { ...config, projectOverrides }, hostState,
       }) : [
         "Deepwright " + manifest.version + ": " + skills.length + " skills",
@@ -262,25 +272,19 @@ export async function main(
         "Plugin root: " + jsonText(pluginRoot).trim(),
         "Project config: " + config.state + " — " + jsonText(config.path).trim(),
         "Config validation: " + config.validation + (projectOverrides === null ? "; run deepwright config check" : "; " + projectOverrides + " project overrides"),
-        "Host session activation, models, and MCP state: unknown (not available to this helper).",
+        "Host validation: " + config.hostValidation + "; live session activation and MCP state are not checked.",
       ].join("\n") + "\n");
       return config.ok ? 0 : 1;
     } else {
       const skill = skills.find((entry) => entry.name === options.value);
       if (skill === undefined) throw new UsageError("unknown skill: " + options.value + "; run deepwright skills");
       if (options.command === "skill") {
-        io.stdout(options.json ? jsonText({ ...envelope, skill }) : skillLines(skill).join("\n") + "\n");
+        io.stdout(options.json ? jsonText({ ...envelope, skill, guidance: invocation(skill, options.host) }) : skillLines(skill, options.host).join("\n") + "\n");
       } else {
         const guidance = invocation(skill, options.host);
         io.stdout(options.json ? jsonText({ ...envelope, skill, guidance }) : [
           "Invocation guidance only — nothing executed or written.",
-          ...("cli" in guidance
-            ? ["Codex CLI: " + guidance.cli, terminalText(guidance.desktop)]
-            : [
-              ...("prompt" in guidance && guidance.prompt ? ["Host prompt: " + guidance.prompt] : []),
-              ...("pointer" in guidance ? ["Optional " + guidance.target + " pointer:", guidance.pointer] : []),
-            ]),
-          terminalText(guidance.note),
+          ...guidanceLines(guidance),
         ].join("\n") + "\n");
       }
     }

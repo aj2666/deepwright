@@ -1,7 +1,8 @@
 ---
 name: architect
-description: "Design interfaces, types, and module boundaries before implementation; compare alternatives and capture the chosen contract. Use for $deepwright:architect."
+description: "Design interfaces, types, and module boundaries before implementation; compare alternatives and capture the chosen contract."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Architect
@@ -28,9 +29,9 @@ Track the phases in the task plan for a multi-step run. A short design-only answ
 
 Before proposing a new dependency or substantial helper, use [reuse research](references/reuse-research.md) to inspect local options and compare adopting, extending, or building. Keep the search proportional to the decision.
 
-Build a traced model of the systems the new code touches using `$deepwright:how` guidance. Reuse current, cited grounding from the task when it already traces the relevant paths; do not rerun exploration solely to satisfy a phase label. Use critique mode when existing structure constrains the design.
+Build a traced model of the systems the new code touches using [How](../how/SKILL.md) guidance. Reuse current, cited grounding from the task when it already traces the relevant paths; do not rerun exploration solely to satisfy a phase label. Use critique mode when existing structure constrains the design.
 
-Naming a file isn't grounding. Produce the traced model `$deepwright:how` prescribes. If the design redefines ownership or layering, also run `$deepwright:why` on the existing shape so the rationale becomes a constraint, not a guess.
+Naming a file isn't grounding. Produce the traced model that [How](../how/SKILL.md) prescribes. If the design redefines ownership or layering, also run [Why](../why/SKILL.md) on the existing shape so the rationale becomes a constraint, not a guess.
 
 Skip Phase A only when the work is genuinely greenfield with no surrounding system to integrate.
 
@@ -40,11 +41,11 @@ When work crosses a serialized boundary or splits provider and consumer ownershi
 
 When the design changes service access or persisted data, select the relevant invariants from [service and data work](../deepwright/references/service-data.md). Carry the enforcement point, atomic boundary, and applicable migration or recovery check into the sketch; a design-only request describes those checks without running them.
 
-Run `$deepwright:arena` with the design-sketch task and the Phase A grounding artifacts. Before delegating, read `references/runner-prompt.md` and `references/rationale-template.md` from this skill. Embed their relevant content plus the task and grounding directly in every runner brief; do not expect a delegated worker to resolve plugin-relative paths from the target repository. Each candidate produces a design package shaped by the supplied rationale template: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
+Run [Arena](../arena/SKILL.md) with the design-sketch task and the Phase A grounding artifacts. Before delegating, read `references/runner-prompt.md` and `references/rationale-template.md` from this skill. Embed their relevant content plus the task and grounding directly in every runner brief; do not expect a delegated worker to resolve plugin-relative paths from the target repository. Each candidate produces a design package shaped by the supplied rationale template: the caller's usage written first, then the type sketch, function signatures, module map, and prose rationale derived from it.
 
 Apply [the configuration contract](../deepwright/references/configuration.md) to `parallelism.design_candidates` and `roles.code`: explicit task requirements precede valid project preferences, then defaults. Preserve the two-design minimum below even if the preference is one, using sequential candidates when capacity requires it. Inherit the parent model unless the host confirms the configured exact identifier. Independent structures matter more than invented model diversity.
 
-Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This applies `$deepwright:principle-exhaust-the-design-space`. Whole-shape alternatives, not point fixes inside one shape.
+Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This applies [Exhaust the Design Space](../principle-exhaust-the-design-space/SKILL.md). Whole-shape alternatives, not point fixes inside one shape.
 
 Screen every candidate against [`references/design-red-flags.md`](references/design-red-flags.md) before synthesis. Reject or revise shallow modules, information leakage, temporal decomposition, and pass-through methods.
 
@@ -58,7 +59,7 @@ If the request is design-only, return the synthesized design and stop. If the pa
 
 Pause for a checkpoint when the invoker requests one or the design reveals a material product, compatibility, data, cost, or scope choice that the original request did not settle.
 
-When implementation and commits are authorized, the synthesis may ship as its own commit. That is the scaffold-first mode of `$deepwright:principle-foundational-thinking`; subsequent commits read as filling in bodies against a stable contract. Planned and scoped breakage during fill-in is fine under `$deepwright:principle-outcome-oriented-execution`. For adversarial pressure on the design before implementing, run `$deepwright:interrogate` on the synthesized sketch.
+When implementation and commits are authorized, the synthesis may ship as its own commit. That is the scaffold-first mode of [Foundational Thinking](../principle-foundational-thinking/SKILL.md); subsequent commits read as filling in bodies against a stable contract. Planned and scoped breakage during fill-in is fine under [Outcome-Oriented Execution](../principle-outcome-oriented-execution/SKILL.md). For adversarial pressure on the design before implementing, run [Interrogate](../interrogate/SKILL.md) on the synthesized sketch.
 
 If the human pushes back on the shape (in a checkpoint or after the fact), treat that as Phase A evidence. Re-ground and re-run Phase B before writing more code.
 
@@ -70,7 +71,7 @@ Deviations from the sketch are signal worth surfacing, not friction to absorb si
 
 ## Phase E: Scrap when the architecture is wrong
 
-If implementation keeps producing friction the sketch can't absorb, throw the sketch out. Do not bolt fixes onto a wrong design; apply `$deepwright:principle-redesign-from-first-principles` and `$deepwright:principle-fix-root-causes`.
+If implementation keeps producing friction the sketch can't absorb, throw the sketch out. Do not bolt fixes onto a wrong design; apply [Redesign from First Principles](../principle-redesign-from-first-principles/SKILL.md) and [Fix Root Causes](../principle-fix-root-causes/SKILL.md).
 
 The signal is a *pattern*, not single instances. Tells:
 
@@ -85,10 +86,10 @@ Use judgment. A few edge cases don't condemn an architecture. Some problems are 
 
 When you scrap:
 
-1. Re-run `$deepwright:how` over what has been built. The implementation lessons enter the new design as inputs, not vibes.
-2. Redesign as if the new constraints had been day-one assumptions under `$deepwright:principle-redesign-from-first-principles`.
-3. Apply `$deepwright:principle-subtract-before-you-add`. The new sketch should be smaller than the old one before it grows.
-4. Return to Phase B and re-run `$deepwright:arena`.
+1. Re-run [How](../how/SKILL.md) over what has been built. The implementation lessons enter the new design as inputs, not vibes.
+2. Redesign as if the new constraints had been day-one assumptions under [Redesign from First Principles](../principle-redesign-from-first-principles/SKILL.md).
+3. Apply [Subtract Before You Add](../principle-subtract-before-you-add/SKILL.md). The new sketch should be smaller than the old one before it grows.
+4. Return to Phase B and re-run [Arena](../arena/SKILL.md).
 
 ## Outputs
 
@@ -97,7 +98,7 @@ The caller's usage is written first and the type sketch derived from it. One fil
 ## Examples
 
 ```text
-$deepwright:architect Design a resumable file importer. Keep the CLI flags stable;
+Design a resumable file importer. Keep the CLI flags stable;
 show the design before implementing.
 ```
 

@@ -1,7 +1,8 @@
 ---
 name: principle-foundational-thinking
-description: "Choose models and invariants before logic. Use for $deepwright:principle-foundational-thinking."
+description: "Use when a feature or refactor depends on data shapes, ownership, and invariants; choose those foundations before distributing logic across callers."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Foundational Thinking

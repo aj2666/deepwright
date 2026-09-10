@@ -29,7 +29,7 @@ async function put(path, content) {
 }
 
 function frontmatter(name, description = "Investigate the requested change with bounded evidence.") {
-  return ["---", "name: " + name, "description: " + JSON.stringify(description), "---", "", "# Workflow", ""].join("\n");
+  return ["---", "name: " + name, "description: " + JSON.stringify(description), "disable-model-invocation: " + (name !== "deepwright"), "---", "", "# Workflow", ""].join("\n");
 }
 
 function policy(name) {
@@ -94,11 +94,23 @@ test("package validation and shipped CLI agree without installed dependencies", 
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(discovery.status, 0, discovery.stderr);
   assert.match(validation.stdout, /3 skills/);
-  assert.deepEqual(JSON.parse(discovery.stdout).skills.map(({ name, implicit, invocation }) => ({ name, implicit, invocation })), [
-    { name: "alpha", implicit: false, invocation: "$deepwright:alpha" },
-    { name: "deepwright", implicit: true, invocation: "$deepwright:deepwright" },
-    { name: "show-me-your-work", implicit: false, invocation: "$deepwright:show-me-your-work" },
+  assert.deepEqual(JSON.parse(discovery.stdout).skills.map(({ name, implicit }) => ({ name, implicit })), [
+    { name: "alpha", implicit: false },
+    { name: "deepwright", implicit: true },
+    { name: "show-me-your-work", implicit: false },
   ]);
+});
+
+test("model pin checks distinguish Claude plugin identifiers from model identifiers", async (t) => {
+  const context = await fixture(t);
+  const file = join(context.root, pluginPath, "provider.mjs");
+  await put(file, 'export const provider = "claude-plugins";\n');
+  const portable = run(context.root, validatorPath);
+  assert.equal(portable.status, 0, portable.stderr);
+  await put(file, 'export const model = "claude-opus-99";\n');
+  const pinned = run(context.root, validatorPath);
+  assert.equal(pinned.status, 1);
+  assert.match(pinned.stderr, /hardcoded Claude model/);
 });
 
 test("release validation rejects portable version drift and wrong install targets", async (t) => {
@@ -201,6 +213,23 @@ test("both entrypoints reject a router made explicit-only", async (t) => {
   rejected(observe(context), /implicit invocation must be true/);
 });
 
+test("both entrypoints reject portable activation drift without publishing a partial catalog", async (t) => {
+  const context = await fixture(t);
+  await writeFile(context.skill, frontmatter("alpha").replace("disable-model-invocation: true", "disable-model-invocation: false"));
+  rejected(observe(context), /disable-model-invocation must be true/);
+  await writeFile(context.skill, frontmatter("alpha"));
+  await writeFile(join(context.skills, "deepwright", "SKILL.md"), frontmatter("deepwright").replace("disable-model-invocation: false", "disable-model-invocation: true"));
+  rejected(observe(context), /disable-model-invocation must be false/);
+});
+
+test("both entrypoints reject ambiguous portable activation metadata", async (t) => {
+  const context = await fixture(t);
+  for (const replacement of ["", 'disable-model-invocation: "true"', "disable-model-invocation: true\ndisable-model-invocation: false"]) {
+    await writeFile(context.skill, frontmatter("alpha").replace("disable-model-invocation: true", replacement));
+    rejected(observe(context), /disable-model-invocation/);
+  }
+});
+
 for (const [name, reason] of [["Alpha", /invalid skill directory/], ["a".repeat(54), /qualified skill name exceeds 64/]]) {
   test(`both entrypoints reject invalid directory ${name}`, async (t) => {
     const context = await fixture(t);
@@ -260,7 +289,7 @@ const validDescriptions = [
 for (const [name, scalar, expected] of validDescriptions) {
   test(`both entrypoints accept ${name}`, async (t) => {
     const context = await fixture(t);
-    await writeFile(context.skill, "---\r\nname: alpha\r\ndescription: " + scalar + "\r\n---\r\n");
+    await writeFile(context.skill, "---\r\nname: alpha\r\ndescription: " + scalar + "\r\ndisable-model-invocation: true\r\n---\r\n");
     await writeFile(context.policy, policy("alpha").replace("policy:\n", "# allow_implicit_invocation: true is only a comment\npolicy:\n").replaceAll("\n", "\r\n"));
     const { validation, discovery } = observe(context);
     assert.equal(validation.status, 0, validation.stderr);
@@ -282,7 +311,7 @@ test("both entrypoints accept the longest qualified name and confined metadata l
   const { validation, discovery } = observe(context);
   assert.equal(validation.status, 0, validation.stderr);
   assert.equal(discovery.status, 0, discovery.stderr);
-  assert.equal(JSON.parse(discovery.stdout).skills[0].invocation.length, 65); // '$' plus the 64-character qualified name.
+  assert.equal(JSON.parse(discovery.stdout).skills[0].name, name);
 });
 
 test("release validation requires the consolidated Deepwright license", async (t) => {

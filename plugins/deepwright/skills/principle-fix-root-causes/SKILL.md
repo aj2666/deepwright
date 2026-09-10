@@ -1,7 +1,8 @@
 ---
 name: principle-fix-root-causes
-description: "Reproduce symptoms and fix their underlying mechanism. Use for $deepwright:principle-fix-root-causes."
+description: "Use when a reported symptom needs diagnosis and repair; reproduce it, trace the failed invariant, and distinguish mitigation from a confirmed fix."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Fix Root Causes

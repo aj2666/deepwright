@@ -1,7 +1,8 @@
 ---
 name: principle-migrate-callers-then-delete-legacy-apis
-description: "Migrate all callers before deleting a legacy API. Use for $deepwright:principle-migrate-callers-then-delete-legacy-apis."
+description: "Use when a coordinated internal API refactor permits a clean cutover; migrate all supported callers before deleting the obsolete interface."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Migrate Callers Then Delete Legacy APIs

@@ -1,7 +1,8 @@
 ---
 name: principle-exhaust-the-design-space
-description: "Compare distinct designs before a one-way decision. Use for $deepwright:principle-exhaust-the-design-space."
+description: "Use when an expensive or difficult-to-reverse design decision has competing constraints; compare meaningfully different options before committing."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Exhaust the Design Space

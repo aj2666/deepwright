@@ -7,7 +7,7 @@
 
 # Deepwright
 
-Deepwright is a Codex plugin for investigating code, planning work, building features, fixing bugs, and reviewing changes. Describe what you need and what should stay untouched; Deepwright chooses a workflow for the task.
+Deepwright is a plugin for Codex, Claude Code, and Oh My Pi for investigating code, planning work, building features, fixing bugs, and reviewing changes. Describe what you need and what should stay untouched; Deepwright chooses a workflow for the task.
 
 ## Install
 
@@ -49,6 +49,10 @@ For this local checkout, replace the marketplace URL with the absolute path to t
 | Oh My Pi | `/skill:deepwright <task>` | `/skill:interrogate <task>` |
 
 These are chat prompts, not shell commands. Oh My Pi requires skill slash commands to be enabled and uses unqualified skill names; check for collisions with another installed skill of the same name. Claude Code namespaces plugin skills. Supporting paths stay relative to the installed skill.
+
+Oh My Pi must enable the `claude-plugins` discovery provider, `skills.enabled`, and `skills.enableSkillCommands`. Check them with `omp config get disabledProviders --json`, `omp config get skills.enabled --json`, and `omp config get skills.enableSkillCommands --json`. If `claude-plugins` appears in `disabledProviders`, remove only that entry; preserve unrelated provider settings. The router is the sole automatically discoverable Deepwright skill; all 47 skills remain explicitly callable.
+
+The optional helper accepts `--host omp` for native prompts and read-only OMP configuration diagnostics; see the [terminal reference](docs/TERMINAL.md). It does not rewrite OMP model settings.
 
 ## Use Owl as a desktop pet
 

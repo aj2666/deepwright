@@ -1,14 +1,15 @@
 ---
 name: typescript-best-practices
-description: "Improve TypeScript domain types, boundary validation, and narrowing while preserving runtime behavior and repository conventions. Use for $deepwright:typescript-best-practices."
+description: "Improve TypeScript domain types, boundary validation, and narrowing while preserving runtime behavior and repository conventions."
 license: MIT
+disable-model-invocation: true
 ---
 
 # TypeScript best practices
 
 ## Purpose
 
-Apply `$deepwright:principle-type-system-discipline` to TypeScript code. Make invalid states harder to express and external data safer to consume without introducing unnecessary types, dependencies, or API churn.
+Apply [Type System Discipline](../principle-type-system-discipline/SKILL.md) to TypeScript code. Make invalid states harder to express and external data safer to consume without introducing unnecessary types, dependencies, or API churn.
 
 ## Prerequisites
 
@@ -30,7 +31,7 @@ Trace data from its boundary to the operation that needs it. Choose the smallest
 | Narrowing | Prefer a discriminant, `in`, or `typeof`/`instanceof` check to a custom predicate; a predicate must verify every claim it makes. |
 | Exhaustiveness | Every variant needs deliberate handling. Use a `never` check and the repository's error convention when extending the union should fail compilation. |
 | `satisfies` | A value authored in code should meet a type without a broad assertion. It checks assignability at compile time; literal inference still depends on the expression and contextual type. |
-| Boundary validation | Parse incoming data into domain types at the trust boundary; avoid repeating the same validation deep in trusted call chains. Apply `$deepwright:principle-boundary-discipline`. |
+| Boundary validation | Parse incoming data into domain types at the trust boundary; avoid repeating the same validation deep in trusted call chains. Apply [Boundary Discipline](../principle-boundary-discipline/SKILL.md). |
 | Derived types | A generated or existing type already owns the shape. Consider `Pick`, `Omit`, `Parameters`, `ReturnType`, `Awaited`, or `typeof` before duplicating it. |
 | Object arguments | Several positional arguments can be confused or optional settings are growing. Keep established small APIs and measured hot paths simple. |
 | Real tests | The implementation can run safely locally. Exercise the real behavior; isolate unavailable external boundaries with the repository's existing test seams. |

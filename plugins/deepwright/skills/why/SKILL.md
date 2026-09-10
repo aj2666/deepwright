@@ -1,7 +1,8 @@
 ---
 name: why
-description: "Investigate why a code decision exists using repository history and explicitly scoped records, separating direct rationale from inference. Use for $deepwright:why."
+description: "Use when investigating why a code decision exists; separate direct rationale from inference using repository history and explicitly scoped records."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Why
@@ -109,7 +110,7 @@ Do not cite the code as proof of its own motivation. Do not smooth away uncertai
 ## Examples
 
 ```text
-$deepwright:why Why does the retry loop stop after three attempts? Use this repo only.
+Why does the retry loop stop after three attempts? Use this repo only.
 ```
 
 Find the introducing change and inspect its message, surrounding diff, and later adjustments. Expected result: cite an explicit latency-budget reason if the record states one; otherwise label that explanation inferred or unknown. Do not search team chat to fill the gap when the user limited scope to the repository.

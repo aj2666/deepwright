@@ -1,7 +1,8 @@
 ---
 name: principle-never-block-on-the-human
-description: "Advance safe work and pause only for real choices. Use for $deepwright:principle-never-block-on-the-human."
+description: "Advance safe work and pause only for real choices."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Never Block on the Human

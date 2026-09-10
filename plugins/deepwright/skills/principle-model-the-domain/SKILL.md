@@ -1,7 +1,8 @@
 ---
 name: principle-model-the-domain
-description: "Encode domain rules in explicit structures and types. Use for $deepwright:principle-model-the-domain."
+description: "Use when conditionals or synchronized flags repeat domain rules; move the invariant into an explicit structure with one owner."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Model the Domain

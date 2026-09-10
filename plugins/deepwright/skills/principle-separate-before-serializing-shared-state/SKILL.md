@@ -1,7 +1,8 @@
 ---
 name: principle-separate-before-serializing-shared-state
-description: "Separate writers before adding synchronization. Use for $deepwright:principle-separate-before-serializing-shared-state."
+description: "Use when concurrent writers share mutable state; separate independent facts before adding synchronization for genuinely shared invariants."
 license: MIT
+disable-model-invocation: true
 ---
 
 # Separate Before Serializing Shared State

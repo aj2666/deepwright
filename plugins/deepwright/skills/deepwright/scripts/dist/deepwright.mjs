@@ -3,10 +3,11 @@ import { createRequire as __deepwrightCreateRequire } from "node:module";
 const require = __deepwrightCreateRequire(import.meta.url);
 
 // discovery/cli.ts
-import { readFile as readFile3, realpath as realpath4 } from "node:fs/promises";
+import { readFile as readFile4, realpath as realpath4 } from "node:fs/promises";
 import { join as join5 } from "node:path";
 
 // config/config.ts
+import { spawnSync } from "node:child_process";
 import { constants } from "node:fs";
 import { lstat, open, realpath, stat } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -674,6 +675,24 @@ var DEFAULT_CONFIG = Object.freeze({
 var MAX_CONFIG_BYTES = 64 * 1024;
 var roles = ["code", "research", "review"];
 var parallelism = ["swarm_workers", "design_candidates", "reviewers"];
+var OMP_NATIVE_ROLES = { code: "task", research: "smol", review: "slow" };
+var OMP_THINKING_SUFFIX = /:(?:off|minimal|low|medium|high|xhigh|max|auto)$/u;
+function runHostCommand(command, args, cwd) {
+  const result = spawnSync(command, args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 5e3
+  });
+  const error = result.error;
+  if (error?.code === "ENOENT") return { found: false, ok: false, stdout: "", stderr: "" };
+  return {
+    found: error === void 0,
+    ok: error === void 0 && result.status === 0,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? ""
+  };
+}
 function defaults() {
   return {
     version: 1,
@@ -684,9 +703,10 @@ function defaults() {
 function sources() {
   return Object.fromEntries(CONFIG_FIELDS.map((field2) => [field2, "default"]));
 }
-function failure(path, state, errors) {
+function failure(path, host, state, errors) {
   return {
     path,
+    host,
     state,
     validation: "failed",
     ok: false,
@@ -694,12 +714,14 @@ function failure(path, state, errors) {
     sources: null,
     errors,
     hostValidation: "not-performed",
+    hostRoles: null,
     unverifiedModelRoles: []
   };
 }
-function missing(path) {
+function missing(path, host) {
   return {
     path,
+    host,
     state: "missing",
     validation: "passed",
     ok: true,
@@ -707,6 +729,7 @@ function missing(path) {
     sources: sources(),
     errors: [],
     hostValidation: "not-performed",
+    hostRoles: null,
     unverifiedModelRoles: []
   };
 }
@@ -717,7 +740,7 @@ function confined(root, path) {
 function isTable(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 }
-function validate(path, parsed) {
+function validate(path, host, parsed) {
   const settings = defaults();
   const provenance = sources();
   const errors = [];
@@ -778,9 +801,10 @@ function validate(path, parsed) {
       }
     }
   }
-  if (errors.length !== 0) return failure(path, "present", errors);
+  if (errors.length !== 0) return failure(path, host, "present", errors);
   return {
     path,
+    host,
     state: "present",
     validation: "passed",
     ok: true,
@@ -788,12 +812,132 @@ function validate(path, parsed) {
     sources: provenance,
     errors: [],
     hostValidation: "not-performed",
+    hostRoles: null,
     unverifiedModelRoles: roles.filter((role) => settings.roles[role] !== "inherit-parent")
   };
 }
-async function readConfig(cwd) {
+function parseJsonObject(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return isTable(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+function stringRecord(value) {
+  if (!isTable(value)) return null;
+  const record = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string" && entry.trim() !== "") record[key] = entry.trim();
+  }
+  return record;
+}
+function modelSelectors(value) {
+  if (!isTable(value) || !Array.isArray(value.models)) return null;
+  const selectors = [];
+  for (const model of value.models) {
+    if (!isTable(model) || typeof model.selector !== "string" || model.selector.trim() === "") return null;
+    selectors.push(model.selector.trim());
+  }
+  return selectors;
+}
+function attachOmp(report, cwd, run) {
+  if (!report.ok || report.settings === null || report.sources === null) return report;
+  const rolesProbe = run("omp", ["config", "get", "modelRoles", "--json"], cwd);
+  if (!rolesProbe.found) {
+    return {
+      ...report,
+      ok: false,
+      hostValidation: "failed",
+      hostRoles: null,
+      errors: [...report.errors, { code: "host-unavailable", message: "Oh My Pi CLI was not found." }]
+    };
+  }
+  if (!rolesProbe.ok) {
+    return {
+      ...report,
+      ok: false,
+      hostValidation: "failed",
+      hostRoles: null,
+      errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi modelRoles query failed." }]
+    };
+  }
+  const parsedRoles = parseJsonObject(rolesProbe.stdout.trim());
+  const nativeRoles = parsedRoles !== null && parsedRoles.key === "modelRoles" ? stringRecord(parsedRoles.value) : null;
+  if (nativeRoles === null) {
+    return {
+      ...report,
+      ok: false,
+      hostValidation: "failed",
+      hostRoles: null,
+      errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi modelRoles query returned an unusable result." }]
+    };
+  }
+  const explicit = roles.filter((role) => report.settings.roles[role] !== "inherit-parent");
+  let catalog = null;
+  if (explicit.length !== 0) {
+    const modelsProbe = run("omp", ["models", "--json"], cwd);
+    if (!modelsProbe.found) {
+      return {
+        ...report,
+        ok: false,
+        hostValidation: "failed",
+        hostRoles: null,
+        errors: [...report.errors, { code: "host-unavailable", message: "Oh My Pi CLI was not found." }]
+      };
+    }
+    if (!modelsProbe.ok) {
+      return {
+        ...report,
+        ok: false,
+        hostValidation: "failed",
+        hostRoles: null,
+        errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi models query failed." }]
+      };
+    }
+    catalog = modelSelectors(parseJsonObject(modelsProbe.stdout.trim()));
+    if (catalog === null) {
+      return {
+        ...report,
+        ok: false,
+        hostValidation: "failed",
+        hostRoles: null,
+        errors: [...report.errors, { code: "host-query-failed", message: "Oh My Pi models query returned an unusable result." }]
+      };
+    }
+  }
+  const provenance = { ...report.sources };
+  const hostRoles = [];
+  const unverified = [];
+  for (const role of roles) {
+    const nativeRole = OMP_NATIVE_ROLES[role];
+    const projectValue = report.settings.roles[role];
+    const projectOverride = projectValue !== "inherit-parent";
+    const nativeSelector = nativeRoles[nativeRole];
+    const nativeConfigured = nativeSelector !== void 0;
+    let fallback = null;
+    let catalogMatch = "unknown";
+    if (projectOverride) {
+      const matched = catalog !== null && (catalog.includes(projectValue) || catalog.includes(projectValue.replace(OMP_THINKING_SUFFIX, "")));
+      catalogMatch = matched ? "yes" : "no";
+      if (!matched) unverified.push(role);
+    } else if (nativeConfigured) {
+      fallback = "native-role";
+      if (provenance["roles." + role] === "default") {
+        provenance["roles." + role] = "host";
+      }
+    } else if (nativeRole === "task") {
+      fallback = "native-session";
+    } else {
+      fallback = nativeRoles.default !== void 0 ? "native-default" : "native-priority";
+    }
+    hostRoles.push({ role, nativeRole, projectOverride, nativeConfigured, fallback, catalogMatch });
+  }
+  return { ...report, sources: provenance, hostValidation: "passed", hostRoles, unverifiedModelRoles: unverified };
+}
+async function readConfig(cwd, host = "codex", run = runHostCommand) {
   const path = resolve(cwd, ".codex", "deepwright.toml");
-  const unreadable = () => failure(path, "unreadable", [{ code: "unreadable", message: "Project configuration could not be read safely." }]);
+  const unreadable = () => failure(path, host, "unreadable", [{ code: "unreadable", message: "Project configuration could not be read safely." }]);
   let root;
   let directory;
   let canonical;
@@ -804,24 +948,30 @@ async function readConfig(cwd) {
     try {
       await lstat(candidateDirectory);
     } catch (error) {
-      if (error.code === "ENOENT") return missing(path);
+      if (error.code === "ENOENT") {
+        const report2 = missing(path, host);
+        return host === "omp" ? attachOmp(report2, cwd, run) : report2;
+      }
       return unreadable();
     }
     directory = await realpath(candidateDirectory);
     if (!confined(root, directory)) {
-      return failure(path, "unreadable", [{ code: "outside-project", message: "The configuration directory resolves outside this project." }]);
+      return failure(path, host, "unreadable", [{ code: "outside-project", message: "The configuration directory resolves outside this project." }]);
     }
     if (!(await stat(directory)).isDirectory()) return unreadable();
     const candidate = join(directory, "deepwright.toml");
     try {
       await lstat(candidate);
     } catch (error) {
-      if (error.code === "ENOENT") return missing(path);
+      if (error.code === "ENOENT") {
+        const report2 = missing(path, host);
+        return host === "omp" ? attachOmp(report2, cwd, run) : report2;
+      }
       return unreadable();
     }
     canonical = await realpath(candidate);
     if (!confined(root, canonical)) {
-      return failure(path, "unreadable", [{ code: "outside-project", message: "The configuration file resolves outside this project." }]);
+      return failure(path, host, "unreadable", [{ code: "outside-project", message: "The configuration file resolves outside this project." }]);
     }
   } catch {
     return unreadable();
@@ -829,19 +979,19 @@ async function readConfig(cwd) {
   let bytes;
   try {
     if (!(await stat(canonical)).isFile()) {
-      return failure(path, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
+      return failure(path, host, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
     }
     const handle = await open(canonical, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
     try {
       const metadata = await handle.stat();
       if (!metadata.isFile()) {
-        return failure(path, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
+        return failure(path, host, "unreadable", [{ code: "not-regular-file", message: "Configuration must be a regular file." }]);
       }
       const current = await realpath(join(directory, "deepwright.toml"));
       const currentMetadata = await stat(current);
       if (!confined(root, current) || current !== canonical || currentMetadata.dev !== metadata.dev || currentMetadata.ino !== metadata.ino) return unreadable();
       if (metadata.size > MAX_CONFIG_BYTES) {
-        return failure(path, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
+        return failure(path, host, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
       }
       const buffer = Buffer.alloc(MAX_CONFIG_BYTES + 1);
       let length = 0;
@@ -851,7 +1001,7 @@ async function readConfig(cwd) {
         length += result.bytesRead;
       }
       if (length > MAX_CONFIG_BYTES) {
-        return failure(path, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
+        return failure(path, host, "present", [{ code: "too-large", message: "Configuration exceeds the 64 KiB limit." }]);
       }
       bytes = buffer.subarray(0, length);
     } finally {
@@ -864,14 +1014,16 @@ async function readConfig(cwd) {
   try {
     source = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
-    return failure(path, "present", [{ code: "invalid-utf8", message: "Configuration must contain valid UTF-8." }]);
+    return failure(path, host, "present", [{ code: "invalid-utf8", message: "Configuration must contain valid UTF-8." }]);
   }
+  let report;
   try {
-    return validate(path, parse(source, { integersAsBigInt: true, maxDepth: 8 }));
+    report = validate(path, host, parse(source, { integersAsBigInt: true, maxDepth: 8 }));
   } catch (error) {
     const location = error instanceof TomlError ? { line: error.line, column: error.column } : {};
-    return failure(path, "present", [{ code: "invalid-toml", message: "Invalid TOML configuration.", ...location }]);
+    return failure(path, host, "present", [{ code: "invalid-toml", message: "Invalid TOML configuration.", ...location }]);
   }
+  return host === "omp" && report.ok ? attachOmp(report, cwd, run) : report;
 }
 function formatConfigTemplate() {
   return [
@@ -888,38 +1040,24 @@ function formatConfigTemplate() {
 }
 
 // doctor/doctor.ts
-import { spawnSync } from "node:child_process";
 import { constants as constants2 } from "node:fs";
-import { access, stat as stat2 } from "node:fs/promises";
+import { access, readFile, stat as stat2 } from "node:fs/promises";
 import { dirname, join as join2, resolve as resolve2 } from "node:path";
 import { fileURLToPath } from "node:url";
 var MINIMUM_NODE_VERSION = "20.19.0";
-var USAGE = `Usage: deepwright doctor [--json]
+var HOSTS = ["codex", "claude", "agents", "omp"];
+var USAGE = `Usage: deepwright doctor [--json] [--host codex|agents|claude|omp]
 
 Run read-only environment and installation checks.
 
 Options:
   --json       emit a machine-readable report
+  --host       inspect a named host; omp is the only host that is queried
   -h, --help   display help
 `;
 function scriptsDirectory() {
   const moduleDirectory = dirname(fileURLToPath(import.meta.url));
   return dirname(moduleDirectory);
-}
-function commandProbe(command, args) {
-  const result = spawnSync(command, args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    timeout: 5e3
-  });
-  const error = result.error;
-  if (error?.code === "ENOENT") return { found: false, ok: false, output: "" };
-  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.trim();
-  return {
-    found: error === void 0,
-    ok: error === void 0 && result.status === 0,
-    output
-  };
 }
 function firstLine(value) {
   return value.split(/\r?\n/, 1)[0] ?? value;
@@ -954,9 +1092,262 @@ async function hasPath(path, kind) {
     return false;
   }
 }
-async function createReport() {
+function isTable2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) && (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
+}
+function parseJsonObject2(text) {
+  try {
+    const parsed = JSON.parse(text);
+    return isTable2(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+function configValue(result, key) {
+  if (!result.found) return { ok: false, missing: true };
+  if (!result.ok) return { ok: false, missing: false };
+  const parsed = parseJsonObject2(result.stdout.trim());
+  if (parsed === null || parsed.key !== key) return { ok: false, missing: false };
+  return { ok: true, value: parsed.value };
+}
+function stringList(value) {
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) return null;
+  return value;
+}
+function parseHost(argv) {
+  const seen = {};
+  let json = false;
+  let host = "agents";
+  let hostSpecified = false;
+  const positionals = [];
+  for (let index = 0; index < argv.length; index++) {
+    const argument = argv[index];
+    if (argument === "--help" || argument === "-h") {
+      if (seen["--help"]) return { error: "duplicate option: --help" };
+      seen["--help"] = true;
+      continue;
+    }
+    if (argument === "--json") {
+      if (seen["--json"]) return { error: "duplicate option: --json" };
+      seen["--json"] = true;
+      json = true;
+      continue;
+    }
+    if (argument === "--host") {
+      if (seen["--host"]) return { error: "duplicate option: --host" };
+      seen["--host"] = true;
+      const value = argv[++index];
+      if (value === void 0 || !HOSTS.includes(value)) {
+        return { error: "--host must be codex, agents, claude, or omp" };
+      }
+      host = value;
+      hostSpecified = true;
+      continue;
+    }
+    if (argument.startsWith("-")) return { error: "unknown option: " + argument };
+    positionals.push(argument);
+  }
+  if (seen["--help"]) return { json, host, hostSpecified, help: true };
+  if (positionals.length !== 1 || positionals[0] !== "doctor") {
+    return { error: "expected the 'doctor' command" };
+  }
+  return { json, host, hostSpecified, help: false };
+}
+function pluginName(id) {
+  const at = id.lastIndexOf("@");
+  return at > 0 ? id.slice(0, at) : id;
+}
+async function candidateIdentity(pluginRoot) {
+  for (const relative4 of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) {
+    try {
+      const parsed = JSON.parse(await readFile(join2(pluginRoot, relative4), "utf8"));
+      if (isTable2(parsed) && typeof parsed.name === "string" && typeof parsed.version === "string") {
+        return { name: parsed.name, version: parsed.version };
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+function matchesCandidate(name, candidate) {
+  return name === candidate || name.endsWith("/" + candidate);
+}
+async function ompChecks(run, cwd, pluginRoot) {
+  const checks = [];
+  const version = run("omp", ["--version"], cwd);
+  if (!version.found) {
+    checks.push({
+      id: "omp",
+      label: "Oh My Pi CLI",
+      status: "fail",
+      required: true,
+      detail: "omp was not found on PATH; install Oh My Pi or pass a host that does not require it"
+    });
+    return checks;
+  }
+  if (!version.ok) {
+    checks.push({
+      id: "omp",
+      label: "Oh My Pi CLI",
+      status: "fail",
+      required: true,
+      detail: "omp failed its version probe"
+    });
+    return checks;
+  }
+  const versionText = firstLine(version.stdout.trim() || version.stderr);
+  checks.push({
+    id: "omp",
+    label: "Oh My Pi CLI",
+    status: "pass",
+    required: true,
+    detail: versionText || "omp reported no version text"
+  });
+  const skillsEnabled = configValue(run("omp", ["config", "get", "skills.enabled", "--json"], cwd), "skills.enabled");
+  const skillCommands = configValue(
+    run("omp", ["config", "get", "skills.enableSkillCommands", "--json"], cwd),
+    "skills.enableSkillCommands"
+  );
+  if (!skillsEnabled.ok || !skillCommands.ok) {
+    checks.push({
+      id: "omp-skills",
+      label: "Oh My Pi skills",
+      status: "fail",
+      required: true,
+      detail: skillsEnabled.ok === false && "missing" in skillsEnabled && skillsEnabled.missing ? "Oh My Pi CLI was not found while reading skills settings" : "Oh My Pi skills settings could not be read"
+    });
+  } else if (skillsEnabled.value !== true || skillCommands.value !== true) {
+    checks.push({
+      id: "omp-skills",
+      label: "Oh My Pi skills",
+      status: "fail",
+      required: true,
+      detail: "skills.enabled and skills.enableSkillCommands must both be true for native skill commands"
+    });
+  } else {
+    checks.push({
+      id: "omp-skills",
+      label: "Oh My Pi skills",
+      status: "pass",
+      required: true,
+      detail: "skills.enabled and skills.enableSkillCommands are true"
+    });
+  }
+  const disabled = configValue(run("omp", ["config", "get", "disabledProviders", "--json"], cwd), "disabledProviders");
+  const enabled = configValue(run("omp", ["config", "get", "enabledProviders", "--json"], cwd), "enabledProviders");
+  if (!disabled.ok || !enabled.ok) {
+    checks.push({
+      id: "omp-discovery",
+      label: "Oh My Pi discovery",
+      status: "fail",
+      required: true,
+      detail: "Oh My Pi discovery provider flags could not be read"
+    });
+  } else {
+    const disabledList = stringList(disabled.value);
+    const enabledList = stringList(enabled.value);
+    if (disabledList === null || enabledList === null) {
+      checks.push({
+        id: "omp-discovery",
+        label: "Oh My Pi discovery",
+        status: "fail",
+        required: true,
+        detail: "Oh My Pi discovery provider flags were unusable"
+      });
+    } else {
+      const providerDisabled = disabledList.includes("claude-plugins");
+      const userEnabled = enabledList.includes("claude-plugins") || enabledList.includes("*") || enabledList.includes("all") || enabledList.includes("claude");
+      checks.push({
+        id: "omp-discovery",
+        label: "Oh My Pi discovery",
+        status: providerDisabled ? "fail" : "pass",
+        required: true,
+        detail: providerDisabled ? "claude-plugins is listed in disabledProviders; native marketplace discovery is off. This is not live plugin activation." : userEnabled ? "claude-plugins is not disabled and is opted in via enabledProviders; this is not live plugin activation" : "claude-plugins is not disabled and is not opted in via enabledProviders; this is not live plugin activation"
+      });
+    }
+  }
+  const listed = run("omp", ["plugin", "list", "--json"], cwd);
+  if (!listed.found) {
+    checks.push({
+      id: "omp-plugin",
+      label: "Oh My Pi plugin registry",
+      status: "fail",
+      required: true,
+      detail: "Oh My Pi CLI was not found while listing plugins"
+    });
+    return checks;
+  }
+  if (!listed.ok) {
+    checks.push({
+      id: "omp-plugin",
+      label: "Oh My Pi plugin registry",
+      status: "fail",
+      required: true,
+      detail: "Oh My Pi plugin list query failed"
+    });
+    return checks;
+  }
+  const parsedList = parseJsonObject2(listed.stdout.trim());
+  if (parsedList === null || !Array.isArray(parsedList.npm) || !Array.isArray(parsedList.marketplace)) {
+    checks.push({
+      id: "omp-plugin",
+      label: "Oh My Pi plugin registry",
+      status: "fail",
+      required: true,
+      detail: "Oh My Pi plugin list returned an unusable result"
+    });
+    return checks;
+  }
+  const candidate = await candidateIdentity(pluginRoot);
+  if (candidate === null) {
+    checks.push({
+      id: "omp-plugin",
+      label: "Oh My Pi plugin registry",
+      status: "fail",
+      required: true,
+      detail: "candidate plugin identity is missing from plugin.json"
+    });
+    return checks;
+  }
+  const matches = [];
+  for (const plugin of parsedList.npm) {
+    if (!isTable2(plugin) || typeof plugin.name !== "string" || typeof plugin.version !== "string") continue;
+    if (matchesCandidate(plugin.name, candidate.name)) matches.push("npm:" + plugin.name + "@" + plugin.version);
+  }
+  for (const plugin of parsedList.marketplace) {
+    if (!isTable2(plugin) || typeof plugin.id !== "string") continue;
+    const name = pluginName(plugin.id);
+    const entry = Array.isArray(plugin.entries) && isTable2(plugin.entries[0]) ? plugin.entries[0] : null;
+    const version2 = entry !== null && typeof entry.version === "string" ? entry.version : "unknown";
+    if (matchesCandidate(name, candidate.name)) matches.push("marketplace:" + plugin.id + "@" + version2);
+  }
+  if (matches.length === 0) {
+    checks.push({
+      id: "omp-plugin",
+      label: "Oh My Pi plugin registry",
+      status: "warn",
+      required: false,
+      detail: "Deepwright " + candidate.version + " is the candidate identity; no matching installed registry or package entry was found. This does not claim live activation."
+    });
+    return checks;
+  }
+  const colliding = matches.length > 1;
+  const versionMismatch = matches.some((entry) => !entry.endsWith("@" + candidate.version));
+  checks.push({
+    id: "omp-plugin",
+    label: "Oh My Pi plugin registry",
+    status: colliding || versionMismatch ? "warn" : "pass",
+    required: false,
+    detail: colliding ? "multiple installed Deepwright identities were found; name collision risk. This does not claim live activation." : versionMismatch ? "an installed Deepwright identity does not match candidate " + candidate.version + ". This does not claim live activation." : "installed Deepwright identity matches candidate " + candidate.name + " " + candidate.version + ". This does not claim live activation."
+  });
+  return checks;
+}
+async function createReport(host, context) {
   const scripts = scriptsDirectory();
-  const pluginRoot = resolve2(scripts, "../../..");
+  const pluginRoot = resolve2(context.pluginRoot ?? resolve2(scripts, "../../.."));
+  const cwd = context.cwd ?? process.cwd();
+  const run = context.run ?? runHostCommand;
   const checks = [];
   const nodeVersion = process.versions.node;
   const supportedNode = supportsNodeVersion(nodeVersion);
@@ -967,15 +1358,15 @@ async function createReport() {
     required: true,
     detail: supportedNode ? `Node.js ${nodeVersion}` : `Node.js ${nodeVersion} is unsupported; version ${MINIMUM_NODE_VERSION} or newer is required`
   });
-  const git = commandProbe("git", ["--version"]);
+  const git = run("git", ["--version"], cwd);
   checks.push({
     id: "git",
     label: "Git",
     status: git.ok ? "pass" : "fail",
     required: true,
-    detail: git.ok ? firstLine(git.output) : git.found ? `git failed its version probe: ${firstLine(git.output) || "unknown error"}` : "git was not found on PATH"
+    detail: git.ok ? firstLine((git.stdout + git.stderr).trim()) : git.found ? `git failed its version probe: ${firstLine((git.stdout + git.stderr).trim()) || "unknown error"}` : "git was not found on PATH"
   });
-  const gh = commandProbe("gh", ["--version"]);
+  const gh = run("gh", ["--version"], cwd);
   if (!gh.found) {
     checks.push({
       id: "github",
@@ -985,13 +1376,13 @@ async function createReport() {
       detail: "gh is not installed; GitHub watch commands will be unavailable"
     });
   } else {
-    const auth = commandProbe("gh", ["auth", "status", "--hostname", "github.com"]);
+    const auth = run("gh", ["auth", "status", "--hostname", "github.com"], cwd);
     checks.push({
       id: "github",
       label: "GitHub CLI",
       status: auth.ok ? "pass" : "warn",
       required: false,
-      detail: auth.ok ? `${firstLine(gh.output)}; authenticated for github.com` : `${firstLine(gh.output)}; authentication for github.com is unavailable`
+      detail: auth.ok ? `${firstLine((gh.stdout + gh.stderr).trim())}; authenticated for github.com` : `${firstLine((gh.stdout + gh.stderr).trim())}; authentication for github.com is unavailable`
     });
   }
   const bundleNames = ["deepwright.mjs", "orch.mjs", "watch-pr.mjs"];
@@ -1036,10 +1427,12 @@ async function createReport() {
     required: true,
     detail: missingPaths.length === 0 ? "plugin-relative scripts, skill, playbooks, and manifest are present" : `missing: ${missingPaths.join(", ")}`
   });
+  if (host === "omp") checks.push(...await ompChecks(run, cwd, pluginRoot));
   return {
     tool: "deepwright",
     command: "doctor",
     ok: checks.every((check) => !check.required || check.status === "pass"),
+    host,
     checks,
     paths: { scriptsDirectory: scripts, pluginRoot }
   };
@@ -1047,6 +1440,7 @@ async function createReport() {
 function renderHuman(report) {
   const lines = [
     `Deepwright doctor: ${report.ok ? "READY" : "FAILED"}`,
+    `Host: ${report.host}`,
     ...report.checks.map(
       (check) => `[${check.status}] ${check.label}: ${check.detail}`
     )
@@ -1057,20 +1451,20 @@ function renderHuman(report) {
 async function main(argv, io = {
   stdout: (value) => process.stdout.write(value),
   stderr: (value) => process.stderr.write(value)
-}) {
-  if (argv.includes("--help") || argv.includes("-h")) {
-    io.stdout(USAGE);
-    return 0;
-  }
-  const json = argv.includes("--json");
-  const positional = argv.filter((argument) => argument !== "--json");
-  if (positional.length !== 1 || positional[0] !== "doctor") {
-    io.stderr(`error: expected the 'doctor' command
+}, context = {}) {
+  const parsed = parseHost(argv);
+  if ("error" in parsed) {
+    io.stderr(`error: ${parsed.error}
 ${USAGE}`);
     return 64;
   }
-  const report = await createReport();
-  io.stdout(json ? `${JSON.stringify(report, null, 2)}
+  if (parsed.help) {
+    io.stdout(USAGE);
+    return 0;
+  }
+  const host = parsed.hostSpecified ? parsed.host : context.host ?? parsed.host;
+  const report = await createReport(host, context);
+  io.stdout(parsed.json ? `${JSON.stringify(report, null, 2)}
 ` : renderHuman(report));
   return report.ok ? 0 : 1;
 }
@@ -1080,7 +1474,7 @@ import { dirname as dirname2, resolve as resolve3 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 
 // discovery/metadata.mjs
-import { readFile, readdir, realpath as realpath2 } from "node:fs/promises";
+import { readFile as readFile2, readdir, realpath as realpath2 } from "node:fs/promises";
 import { isAbsolute as isAbsolute2, join as join3, relative as relative2, sep as sep2 } from "node:path";
 function validName(value) {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
@@ -1155,7 +1549,7 @@ async function loadCatalog(pluginRoot) {
     try {
       const path = await confinedFile(root, join3(directory, "SKILL.md"));
       const policyPath = await confinedFile(root, join3(directory, "agents", "openai.yaml"));
-      const source = (await readFile(path, "utf8")).replace(/\r\n/g, "\n");
+      const source = (await readFile2(path, "utf8")).replace(/\r\n/g, "\n");
       const frontmatter = /^---\n([\s\S]*?)\n---(?:\n|$)/u.exec(source)?.[1];
       if (frontmatter === void 0) throw new Error("missing YAML frontmatter");
       const name = field(frontmatter, "name");
@@ -1163,7 +1557,7 @@ async function loadCatalog(pluginRoot) {
       if (`deepwright:${name}`.length > 64) throw new Error("qualified skill name exceeds 64 characters");
       const description = field(frontmatter, "description");
       if (description.length > 1024) throw new Error("description exceeds 1024 characters");
-      const policy = (await readFile(policyPath, "utf8")).replace(/\r\n/g, "\n");
+      const policy = (await readFile2(policyPath, "utf8")).replace(/\r\n/g, "\n");
       const policySection = section(policy, "policy");
       const implicit = field(policySection, "allow_implicit_invocation", "  ", "boolean");
       if (!/^  allow_implicit_invocation: *(true|false) *$/m.test(policySection)) {
@@ -1173,12 +1567,18 @@ async function loadCatalog(pluginRoot) {
       if (implicit === "true" !== expectedImplicit) {
         throw new Error("implicit invocation must be " + expectedImplicit + " for " + name);
       }
+      const disabled = field(frontmatter, "disable-model-invocation", "", "boolean");
+      if (!/^disable-model-invocation: *(true|false) *$/m.test(frontmatter)) {
+        throw new Error("disable-model-invocation must be an unquoted true or false boolean");
+      }
+      if (disabled === "false" !== expectedImplicit) {
+        throw new Error("disable-model-invocation must be " + !expectedImplicit + " for " + name);
+      }
       skills.push({
         name,
         description,
         displayName: field(section(policy, "interface"), "display_name", "  "),
         path,
-        invocation: "$deepwright:" + name,
         implicit: implicit === "true"
       });
     } catch (error) {
@@ -1204,7 +1604,7 @@ function jsonText(value) {
 }
 
 // discovery/workbench.ts
-import { lstat as lstat2, readFile as readFile2, readdir as readdir2, realpath as realpath3, stat as stat3 } from "node:fs/promises";
+import { lstat as lstat2, readFile as readFile3, readdir as readdir2, realpath as realpath3, stat as stat3 } from "node:fs/promises";
 import { isAbsolute as isAbsolute3, join as join4, relative as relative3, sep as sep3 } from "node:path";
 function searchEntries(entries, query) {
   const tokens = query.toLowerCase().split(/\s+/u).filter(Boolean);
@@ -1279,7 +1679,7 @@ function routerRows(source) {
 async function loadPlaybooks(pluginRoot) {
   const root = await realpath3(pluginRoot);
   const router = await regularFile(root, join4(root, "skills", "deepwright", "SKILL.md"));
-  const rows = routerRows(await readFile2(router, "utf8"));
+  const rows = routerRows(await readFile3(router, "utf8"));
   const directory = await confined2(root, join4(root, "skills", "deepwright", "playbooks"));
   if (!(await stat3(directory)).isDirectory()) throw new Error("playbooks must be a directory");
   const expected = new Set(rows.map((row) => row.name + ".md"));
@@ -1365,12 +1765,13 @@ var USAGE2 = [
   "  playbooks [query] [--json]              browse the canonical router table",
   "  find <query> [--limit 1..10] [--json]   rank metadata; default 3 per kind",
   "  skill <name> [--json]                   inspect a skill and its invocation",
-  "  invoke <name> [--host codex|agents|claude|omp] [--json]",
-  "                                         print guidance; never execute it",
+  "  invoke <name> [--json]                  print guidance; never execute it",
   "  status [--json]                         inspect package and config validity",
   "  config show|check|template [--json]     inspect settings; never write them",
   "",
-  "All commands are read-only. They cannot confirm active host/session state.",
+  "--host codex|agents|claude|omp selects host guidance for every command.",
+  "Default: agents (host-neutral). Only --host omp config/status/doctor query OMP.",
+  "All commands are read-only; no helper proves live session activation.",
   "-h, --help displays this help. Quote a multiword search query.",
   ""
 ].join("\n");
@@ -1379,7 +1780,7 @@ var UsageError = class extends Error {
 function parse2(argv) {
   const seen = /* @__PURE__ */ new Set();
   const positionals = [];
-  let host = "codex";
+  let host = "agents";
   let limit = 3;
   for (let index = 0; index < argv.length; index++) {
     const argument = argv[index];
@@ -1406,7 +1807,6 @@ function parse2(argv) {
   }
   const command = positionals[0] ?? "home";
   if (!commands.includes(command)) throw new UsageError("expected a valid command");
-  if (seen.has("--host") && command !== "invoke") throw new UsageError("--host is only valid with invoke");
   if (seen.has("--limit") && command !== "find") throw new UsageError("--limit is only valid with find");
   if (seen.has("--compact") && command !== "skills") throw new UsageError("--compact is only valid with skills");
   if (seen.has("--compact") && seen.has("--json")) throw new UsageError("--compact and --json are mutually exclusive");
@@ -1438,22 +1838,20 @@ function rankedLines(label, entries) {
     "    Score: " + entry.score.toFixed(3) + "; matched terms: " + terminalText(entry.matchedTerms.join(", "))
   ])];
 }
-function skillLines(skill) {
+function skillLines(skill, host) {
   return [
     terminalText(skill.displayName) + " (" + skill.name + ")",
     terminalText(skill.description),
-    "Codex CLI: " + skill.invocation,
-    "Desktop: type @ and select " + terminalText(skill.displayName),
+    ...guidanceLines(invocation(skill, host)),
     "Implicit invocation policy: " + skill.implicit,
-    "Canonical file: " + jsonText(skill.path).trim(),
-    "Start a fresh host session after installation; activation is not checked here."
+    "Canonical file: " + jsonText(skill.path).trim()
   ];
 }
 function invocation(skill, host) {
   if (host === "codex") {
     return {
       host,
-      cli: skill.invocation,
+      cli: "$deepwright:" + skill.name,
       desktop: "Type @ and select " + skill.displayName,
       note: "Start a fresh session after installation. This helper prints guidance only; it does not launch Codex or check activation."
     };
@@ -1481,22 +1879,31 @@ function invocation(skill, host) {
     note: (host === "claude" ? "Use the native prompt after installing the plugin in Claude Code and starting a fresh session. Activation is not checked here. " : "") + "Optional fallback pointer. Review it before adding it to " + file + "; no file was written. Do not duplicate an installed native skill."
   };
 }
+function guidanceLines(guidance) {
+  return [
+    ..."cli" in guidance ? ["Codex CLI: " + guidance.cli, terminalText(guidance.desktop)] : [
+      ..."prompt" in guidance && guidance.prompt ? ["Host prompt: " + guidance.prompt] : [],
+      ..."pointer" in guidance ? ["Optional " + guidance.target + " pointer:", guidance.pointer] : []
+    ],
+    terminalText(guidance.note)
+  ];
+}
 async function main2(argv, io = { stdout: (value) => process.stdout.write(value), stderr: (value) => process.stderr.write(value) }, context = {}) {
   try {
     const options = parse2(argv);
-    if (options.command === "doctor") return main(argv, io);
+    if (options.command === "doctor") return main(argv, io, context);
     if (options.help) {
       io.stdout(USAGE2);
       return 0;
     }
-    const envelope = { schemaVersion: 1, tool: "deepwright", command: options.command };
+    const envelope = { schemaVersion: 2, tool: "deepwright", command: options.command, host: options.host };
     if (options.command === "config") {
       if (options.value === "template") {
         const template = formatConfigTemplate();
         io.stdout(options.json ? jsonText({ ...envelope, action: "template", template, written: false }) : template);
         return 0;
       }
-      const report = await readConfig(context.cwd ?? process.cwd());
+      const report = await readConfig(context.cwd ?? process.cwd(), options.host);
       const { settings, sources: sources2, ...summary } = report;
       const values = settings === null ? [] : CONFIG_FIELDS.map((field2) => {
         const [section2, key] = field2.split(".");
@@ -1509,7 +1916,7 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
         "Config validation: " + report.validation + (report.state === "missing" ? " (defaults)" : ""),
         ...options.value === "show" ? values : [],
         ...report.errors.map((issue) => terminalText(issue.message) + (issue.line === void 0 ? "" : " (line " + issue.line + ", column " + issue.column + ")")),
-        "Model availability: not checked. Settings are preferences, not host capability or permission."
+        "Host validation: " + report.hostValidation + ". Model preferences do not prove execution or grant permission."
       ].join("\n") + "\n");
       return report.ok ? 0 : 1;
     }
@@ -1517,23 +1924,22 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
     const skills = await loadCatalog(pluginRoot);
     if (options.command === "home") {
       const routes = await loadPlaybooks(pluginRoot);
-      const entrypoints = skills.filter((skill) => skill.implicit);
+      const entrypoints = skills.filter((skill) => skill.implicit).map((skill) => ({ ...skill, guidance: invocation(skill, options.host) }));
       io.stdout(options.json ? jsonText({ ...envelope, skillCount: skills.length, playbookCount: routes.length, entrypoints }) : [
         "Deepwright \u2014 Go deep. Ship sound.",
         skills.length + " skills \xB7 " + routes.length + " playbooks \xB7 no background mode",
         "",
-        ...entrypoints.map((skill) => "Start in Codex: " + skill.invocation + " <your engineering task>"),
-        "Desktop: type @ and select a Deepwright skill.",
+        ...entrypoints.flatMap((skill) => guidanceLines(skill.guidance)),
         "",
         "Find:     deepwright skills review --compact",
         'Suggest:  deepwright find "review code security"',
         "Route:    deepwright playbooks performance",
-        "Inspect:  deepwright skill interrogate",
-        "Invoke:   deepwright invoke interrogate",
-        "Settings: deepwright config show",
-        "Health:   deepwright status   /   deepwright doctor",
+        "Inspect:  deepwright skill interrogate --host " + options.host,
+        "Invoke:   deepwright invoke interrogate --host " + options.host,
+        "Settings: deepwright config show --host " + options.host,
+        "Health:   deepwright status --host " + options.host + "   /   deepwright doctor --host " + options.host,
         "",
-        "Read-only helper. Paste skill tokens into Codex, not your shell."
+        "Read-only helper. Use native skill prompts in your selected host, not your shell."
       ].join("\n") + "\n");
     } else if (options.command === "find") {
       const query = options.value;
@@ -1558,11 +1964,12 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
       const matches = searchEntries(skills, options.value ?? "");
       io.stdout(options.json ? jsonText({ ...envelope, query: options.value ?? null, skills: matches }) : matches.length === 0 ? "No matching skills.\n" : matches.map((skill) => skill.name + (skill.implicit ? " [implicit]" : "") + " \u2014 " + terminalText(skill.displayName) + (options.compact ? "" : "\n  " + terminalText(skill.description))).join("\n") + "\n");
     } else if (options.command === "status") {
-      const manifest = JSON.parse(await readFile3(join5(pluginRoot, ".codex-plugin", "plugin.json"), "utf8"));
+      const manifestDirectory = options.host === "omp" || options.host === "claude" ? ".claude-plugin" : ".codex-plugin";
+      const manifest = JSON.parse(await readFile4(join5(pluginRoot, manifestDirectory, "plugin.json"), "utf8"));
       if (typeof manifest !== "object" || manifest === null || !("version" in manifest) || typeof manifest.version !== "string" || !/^\d+\.\d+\.\d+$/u.test(manifest.version)) {
         throw new Error("plugin manifest has no valid version");
       }
-      const { settings: _settings, sources: sources2, ...config } = await readConfig(context.cwd ?? process.cwd());
+      const { settings: _settings, sources: sources2, ...config } = await readConfig(context.cwd ?? process.cwd(), options.host);
       const projectOverrides = sources2 === null ? null : Object.values(sources2).filter((value) => value === "project").length;
       const implicitSkills = skills.filter((skill) => skill.implicit).map((skill) => skill.name);
       const hostState = {
@@ -1573,7 +1980,7 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
       };
       io.stdout(options.json ? jsonText({
         ...envelope,
-        schemaVersion: 2,
+        schemaVersion: 3,
         version: manifest.version,
         pluginRoot,
         skillCount: skills.length,
@@ -1587,23 +1994,19 @@ async function main2(argv, io = { stdout: (value) => process.stdout.write(value)
         "Plugin root: " + jsonText(pluginRoot).trim(),
         "Project config: " + config.state + " \u2014 " + jsonText(config.path).trim(),
         "Config validation: " + config.validation + (projectOverrides === null ? "; run deepwright config check" : "; " + projectOverrides + " project overrides"),
-        "Host session activation, models, and MCP state: unknown (not available to this helper)."
+        "Host validation: " + config.hostValidation + "; live session activation and MCP state are not checked."
       ].join("\n") + "\n");
       return config.ok ? 0 : 1;
     } else {
       const skill = skills.find((entry) => entry.name === options.value);
       if (skill === void 0) throw new UsageError("unknown skill: " + options.value + "; run deepwright skills");
       if (options.command === "skill") {
-        io.stdout(options.json ? jsonText({ ...envelope, skill }) : skillLines(skill).join("\n") + "\n");
+        io.stdout(options.json ? jsonText({ ...envelope, skill, guidance: invocation(skill, options.host) }) : skillLines(skill, options.host).join("\n") + "\n");
       } else {
         const guidance = invocation(skill, options.host);
         io.stdout(options.json ? jsonText({ ...envelope, skill, guidance }) : [
           "Invocation guidance only \u2014 nothing executed or written.",
-          ..."cli" in guidance ? ["Codex CLI: " + guidance.cli, terminalText(guidance.desktop)] : [
-            ..."prompt" in guidance && guidance.prompt ? ["Host prompt: " + guidance.prompt] : [],
-            ..."pointer" in guidance ? ["Optional " + guidance.target + " pointer:", guidance.pointer] : []
-          ],
-          terminalText(guidance.note)
+          ...guidanceLines(guidance)
         ].join("\n") + "\n");
       }
     }
